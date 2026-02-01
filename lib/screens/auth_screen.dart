@@ -5,6 +5,7 @@ import 'dart:io' show Platform;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
+import '../utils/button_styles.dart';
 import 'home_screen.dart';
 
 class AuthScreen extends StatefulWidget {
@@ -199,11 +200,16 @@ class _AuthScreenState extends State<AuthScreen> {
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               ),
               const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: _isLoading ? null : _sendOTP,
-                child: _isLoading
-                    ? const CircularProgressIndicator()
-                    : const Text('인증 코드 전송'),
+              SizedBox(
+                width: double.infinity,
+                height: AppButtonStyles.primaryMinHeight,
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _sendOTP,
+                  style: AppButtonStyles.primaryElevated,
+                  child: _isLoading
+                      ? const CircularProgressIndicator()
+                      : const Text('인증 코드 전송'),
+                ),
               ),
             ] else ...[
               TextField(
@@ -217,11 +223,16 @@ class _AuthScreenState extends State<AuthScreen> {
                 maxLength: 6,
               ),
               const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: _isLoading ? null : _verifyOTP,
-                child: _isLoading
-                    ? const CircularProgressIndicator()
-                    : const Text('인증 확인'),
+              SizedBox(
+                width: double.infinity,
+                height: AppButtonStyles.primaryMinHeight,
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _verifyOTP,
+                  style: AppButtonStyles.primaryElevated,
+                  child: _isLoading
+                      ? const CircularProgressIndicator()
+                      : const Text('인증 확인'),
+                ),
               ),
               const SizedBox(height: 16),
               TextButton(

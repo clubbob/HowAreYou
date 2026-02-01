@@ -2,10 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 enum Mood {
   good(emoji: '😊', label: '좋아', value: 1),
-  okay(emoji: '🙂', label: '괜찮아', value: 2),
-  normal(emoji: '😐', label: '보통', value: 3),
-  bad(emoji: '🙁', label: '별로', value: 4),
-  hard(emoji: '😞', label: '힘들어', value: 5);
+  normal(emoji: '😐', label: '보통', value: 2),
+  bad(emoji: '😞', label: '안좋아', value: 3);
 
   final String emoji;
   final String label;
@@ -49,9 +47,15 @@ class MoodResponseModel {
 
   factory MoodResponseModel.fromMap(Map<String, dynamic> map, String id) {
     final parts = id.split('_');
-    final date = parts[0];
     final slotValue = parts[1];
-    
+    final moodVal = map['mood'] as int?;
+    // 1=좋아, 2=보통, 3=안좋아. 예전 데이터(4,5)는 안좋아로 매핑
+    final Mood mood = moodVal == 1
+        ? Mood.good
+        : moodVal == 2
+            ? Mood.normal
+            : Mood.bad;
+
     return MoodResponseModel(
       subjectId: map['subjectId'] ?? '',
       dateSlot: id,
@@ -60,10 +64,7 @@ class MoodResponseModel {
         orElse: () => TimeSlot.morning,
       ),
       answeredAt: (map['answeredAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      mood: Mood.values.firstWhere(
-        (m) => m.value == map['mood'],
-        orElse: () => Mood.normal,
-      ),
+      mood: mood,
       note: map['note'],
     );
   }

@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
@@ -93,7 +94,7 @@ class NotificationService {
       title,
       body,
       _nextInstanceOfTime(hour, minute),
-      const NotificationDetails(
+      NotificationDetails(
         android: AndroidNotificationDetails(
           'daily_mood_check',
           '일일 상태 확인',
@@ -101,8 +102,10 @@ class NotificationService {
           importance: Importance.high,
           priority: Priority.high,
           playSound: true,
+          enableVibration: true,
+          vibrationPattern: Int64List.fromList([0, 500, 200, 500]),
         ),
-        iOS: DarwinNotificationDetails(
+        iOS: const DarwinNotificationDetails(
           presentAlert: true,
           presentBadge: true,
           presentSound: true,

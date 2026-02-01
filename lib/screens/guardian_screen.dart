@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
+import '../utils/button_styles.dart';
 
 class GuardianScreen extends StatefulWidget {
   const GuardianScreen({super.key});
@@ -17,6 +18,11 @@ class _GuardianScreenState extends State<GuardianScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   bool _isLoading = false;
 
+  static const double _inputRadius = 12;
+  static const double _inputMinHeight = 56;
+  static const EdgeInsets _inputPadding =
+      EdgeInsets.symmetric(horizontal: 16, vertical: 16);
+
   @override
   void dispose() {
     _nameController.dispose();
@@ -30,7 +36,7 @@ class _GuardianScreenState extends State<GuardianScreen> {
     await showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('지정자 이름'),
+        title: const Text('보호자 이름'),
         content: TextField(
           controller: _nameController,
           decoration: const InputDecoration(
@@ -54,6 +60,7 @@ class _GuardianScreenState extends State<GuardianScreen> {
             onPressed: () {
               Navigator.pop(ctx, true);
             },
+            style: AppButtonStyles.primaryFilled,
             child: const Text('확인'),
           ),
         ],
@@ -112,7 +119,7 @@ class _GuardianScreenState extends State<GuardianScreen> {
     final name = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('지정자 이름'),
+        title: const Text('보호자 이름'),
         content: TextField(
           controller: controller,
           decoration: const InputDecoration(
@@ -132,6 +139,7 @@ class _GuardianScreenState extends State<GuardianScreen> {
               final n = controller.text.trim();
               Navigator.pop(ctx, n.isNotEmpty ? n : null);
             },
+            style: AppButtonStyles.primaryFilled,
             child: const Text('저장'),
           ),
         ],
@@ -188,7 +196,7 @@ class _GuardianScreenState extends State<GuardianScreen> {
     if (_nameController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text('지정자 이름을 먼저 입력해 주세요. (버튼을 눌러 이름 입력)')),
+            content: Text('보호자 이름을 먼저 입력해 주세요. (버튼을 눌러 이름 입력)')),
       );
       return;
     }
@@ -257,7 +265,7 @@ class _GuardianScreenState extends State<GuardianScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('지정자가 추가되었습니다.')),
+          const SnackBar(content: Text('보호자가 추가되었습니다.')),
         );
         _nameController.clear();
         _phoneController.clear();
@@ -284,7 +292,28 @@ class _GuardianScreenState extends State<GuardianScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('지정자 관리'),
+        title: const Text('보호자 관리'),
+        leadingWidth: 72,
+        leading: Center(
+          child: InkWell(
+            onTap: () => Navigator.of(context).pop(),
+            borderRadius: BorderRadius.circular(24),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.arrow_back_ios_new, size: 20),
+                    const SizedBox(width: 4),
+                    const Text('뒤로', style: TextStyle(fontSize: 15)),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
       body: userId == null
           ? const Center(child: Text('로그인이 필요합니다.'))
@@ -303,68 +332,109 @@ class _GuardianScreenState extends State<GuardianScreen> {
                     ? Map<String, dynamic>.from(guardianInfosRaw)
                     : <String, dynamic>{};
 
+                final padding = MediaQuery.of(context).padding;
+                final rightPadding = 24 + padding.right + 20;
                 return SingleChildScrollView(
-                  padding: const EdgeInsets.all(24.0),
+                  padding: EdgeInsets.fromLTRB(
+                    24,
+                    24,
+                    rightPadding,
+                    24 + padding.bottom,
+                  ),
+                  clipBehavior: Clip.none,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       const Text(
-                        '지정자 추가',
+                        '보호자 추가',
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       const SizedBox(height: 16),
-                      OutlinedButton.icon(
-                        onPressed: () => _showNameInputDialog(context),
-                        icon: const Icon(Icons.person),
-                        label: Text(
-                          _nameController.text.isEmpty
-                              ? '지정자 이름 입력 (예: 와이프, 엄마)'
-                              : '지정자 이름: ${_nameController.text}',
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                            vertical: 16,
-                            horizontal: 16,
+                      SizedBox(
+                        height: _inputMinHeight,
+                        child: OutlinedButton.icon(
+                          onPressed: () => _showNameInputDialog(context),
+                          icon: const Icon(Icons.person, size: 22),
+                          label: Text(
+                            _nameController.text.isEmpty
+                                ? '보호자 이름 입력 (예: 와이프, 엄마)'
+                                : '보호자 이름: ${_nameController.text}',
                           ),
-                          alignment: Alignment.centerLeft,
+                          style: OutlinedButton.styleFrom(
+                            padding: _inputPadding,
+                            alignment: Alignment.centerLeft,
+                            minimumSize: const Size(double.infinity, _inputMinHeight),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(_inputRadius),
+                            ),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 16),
-                      TextField(
-                        controller: _phoneController,
-                        decoration: const InputDecoration(
-                          labelText: '지정자 전화번호',
-                          hintText: '01012345678 (숫자만)',
-                          border: OutlineInputBorder(),
-                          filled: true,
-                          fillColor: Colors.white,
-                        ),
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                        canRequestFocus: true,
-                        onChanged: (_) => setState(() {}),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        '에뮬레이터: 창을 클릭한 뒤 입력란 터치 → PC 키보드로 입력. 한글은 실기기에서 테스트해 보세요.',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.grey[600],
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8, bottom: 10),
+                        child: TextField(
+                          controller: _phoneController,
+                          decoration: InputDecoration(
+                            labelText: '보호자 전화번호',
+                            hintText: '01012345678 (숫자만)',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(_inputRadius),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade400 ?? Colors.grey,
+                                width: 1.0,
+                              ),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(_inputRadius),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade400 ?? Colors.grey,
+                                width: 1.0,
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(_inputRadius),
+                              borderSide: const BorderSide(
+                                color: Colors.blue,
+                                width: 1.5,
+                              ),
+                            ),
+                            filled: true,
+                            fillColor: Colors.white,
+                            contentPadding: const EdgeInsets.fromLTRB(
+                              16,
+                              20,
+                              16,
+                              16,
+                            ),
+                          ),
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                          canRequestFocus: true,
+                          onChanged: (_) => setState(() {}),
                         ),
                       ),
                       const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: _isLoading ? null : _addGuardian,
-                        child: _isLoading
-                            ? const CircularProgressIndicator()
-                            : const Text('지정자 추가'),
+                      SizedBox(
+                        height: _inputMinHeight,
+                        child: ElevatedButton(
+                          onPressed: _isLoading ? null : _addGuardian,
+                          style: AppButtonStyles.primaryElevated,
+                          child: _isLoading
+                              ? const SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Text('보호자 추가'),
+                        ),
                       ),
                       const SizedBox(height: 32),
                       const Text(
-                        '등록된 지정자',
+                        '등록된 보호자',
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
@@ -372,7 +442,7 @@ class _GuardianScreenState extends State<GuardianScreen> {
                       ),
                       const SizedBox(height: 16),
                       if (guardianUids.isEmpty)
-                        const Text('등록된 지정자가 없습니다.')
+                        const Text('등록된 보호자가 없습니다.')
                       else
                         ...guardianUids.map((uid) {
                           final info = guardianInfos[uid];

@@ -2,6 +2,8 @@ import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:firebase_core/firebase_core.dart';
+import 'package:timezone/timezone.dart' as tz;
+import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:provider/provider.dart';
 import 'firebase_options.dart';
@@ -20,7 +22,11 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
+  // 한국 시간 사용을 위해 timezone 초기화 (MoodService 등에서 사용)
+  tz_data.initializeTimeZones();
+  tz.setLocalLocation(tz.getLocation('Asia/Seoul'));
+
   // Firebase 초기화 (모바일 플랫폼만)
   // Windows에서는 Firebase가 완전히 지원되지 않으므로 초기화 건너뛰기
   if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
