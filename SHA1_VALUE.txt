@@ -1,0 +1,17 @@
+# Firebase Console에 등록할 SHA-1 지문
+
+아래 값을 Firebase Console → 프로젝트 설정 → 내 앱 → Android 앱 → SHA 인증서 지문에 붙여넣으세요.
+
+SHA-1 (콜론 포함):
+89:C1:47:04:B6:F7:A4:17:AC:A1:B9:18:19:5F:42:41:82:0C:D7:B3
+
+등록 방법:
+1. Firebase Console 접속
+2. 프로젝트 설정 (톱니바퀴) → 내 앱
+3. Android 앱 "지금 어때?" 선택
+4. "SHA 인증서 지문" 섹션으로 스크롤
+5. "인증서 지문" 입력 필드에 위 값 붙여넣기
+6. "SHA1" 버튼이 선택되어 있는지 확인
+7. "저장" 클릭
+
+※ 이 값은 debug.keystore 기준입니다. 앱 배포 시 release keystore의 SHA-1도 추가해야 합니다.

@@ -1,0 +1,36 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 사용자 문서 - 본인만 읽기/쓰기 가능
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // 보호대상 문서
+    match /subjects/{subjectId} {
+      // 본인은 읽기/쓰기 가능
+      allow read, write: if request.auth != null && request.auth.uid == subjectId;
+      
+      // 지정자는 읽기만 가능 (응답 내역은 볼 수 없음)
+      allow read: if request.auth != null && 
+        request.auth.uid in resource.data.pairedGuardianUids;
+      
+      // 알림 문서
+      match /alerts/{alertId} {
+        allow read: if request.auth != null && 
+          request.auth.uid in resource.data.guardianUids;
+      }
+      
+      // 응답 문서 (prompts) - 지정자는 접근 불가
+      match /prompts/{promptId} {
+        allow read, write: if request.auth != null && request.auth.uid == subjectId;
+      }
+    }
+    
+    // 알림 컬렉션
+    match /alerts/{alertId} {
+      allow read: if request.auth != null && 
+        request.auth.uid in resource.data.guardianUids;
+    }
+  }
+}
