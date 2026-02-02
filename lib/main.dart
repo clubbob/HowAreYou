@@ -6,6 +6,7 @@ import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'firebase_options.dart';
 import 'services/auth_service.dart';
 import 'services/notification_service.dart';
@@ -26,6 +27,9 @@ void main() async {
   // 한국 시간 사용을 위해 timezone 초기화 (MoodService 등에서 사용)
   tz_data.initializeTimeZones();
   tz.setLocalLocation(tz.getLocation('Asia/Seoul'));
+
+  // 한국어 날짜 포맷 (보호자 대시보드 7일 이력 등)
+  await initializeDateFormatting('ko_KR', null);
 
   // Firebase 초기화 (모바일 플랫폼만)
   // Windows에서는 Firebase가 완전히 지원되지 않으므로 초기화 건너뛰기

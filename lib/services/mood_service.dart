@@ -102,4 +102,39 @@ class MoodService {
     }
     return result;
   }
+
+  /// 최근 7일 응답 이력 (보호자 대시보드용). 날짜 문자열(YYYY-MM-DD) → (시간대별 응답)
+  Future<Map<String, Map<TimeSlot, MoodResponseModel?>>> getLast7DaysResponses(
+    String subjectId,
+  ) async {
+    final now = _nowKorea();
+    final result = <String, Map<TimeSlot, MoodResponseModel?>>{};
+
+    for (var d = 0; d < 7; d++) {
+      final date = DateTime(now.year, now.month, now.day).subtract(Duration(days: d));
+      final dateStr = DateFormat('yyyy-MM-dd').format(date);
+      final dayResponses = <TimeSlot, MoodResponseModel?>{};
+
+      for (final slot in TimeSlot.values) {
+        final dateSlot = '${dateStr}_${slot.value}';
+        final doc = await _firestore
+            .collection('subjects')
+            .doc(subjectId)
+            .collection('prompts')
+            .doc(dateSlot)
+            .get();
+
+        if (doc.exists && doc.data() != null) {
+          dayResponses[slot] = MoodResponseModel.fromMap(
+            doc.data() as Map<String, dynamic>,
+            dateSlot,
+          );
+        } else {
+          dayResponses[slot] = null;
+        }
+      }
+      result[dateStr] = dayResponses;
+    }
+    return result;
+  }
 }

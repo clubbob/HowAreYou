@@ -7,7 +7,7 @@ import '../services/mood_service.dart';
 import '../models/mood_response_model.dart';
 import '../utils/button_styles.dart';
 import '../utils/constants.dart';
-import 'no_response_screen.dart';
+import 'subject_detail_screen.dart';
 
 class GuardianDashboardScreen extends StatefulWidget {
   const GuardianDashboardScreen({super.key});
@@ -241,6 +241,7 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
             );
           }
 
+          // 보호 대상이 1명 이상이면 목록 표시 (선택 시 상세 화면으로 이동)
           return ListView(
             padding: const EdgeInsets.all(24),
             children: [
@@ -255,33 +256,38 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  TextButton.icon(
+                  FilledButton.icon(
                     onPressed: () => _showAddSubjectDialog(context, userId),
-                    icon: const Icon(Icons.person_add, size: 20),
+                    icon: const Icon(Icons.person_add, size: 22),
                     label: const Text('보호 대상 추가'),
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                    ),
                   ),
                 ],
               ),
               const SizedBox(height: 16),
               ...subjectIds.map((subjectId) {
-              return _SubjectStatusCard(
-                subjectId: subjectId,
-                guardianUid: userId,
-                guardianService: _guardianService,
-                moodService: _moodService,
-                onNoResponseTap: (name, slot) {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => NoResponseScreen(
-                        subjectName: name,
-                        subjectId: subjectId,
-                        slot: slot,
+                return _SubjectListItem(
+                  subjectId: subjectId,
+                  guardianUid: userId,
+                  guardianService: _guardianService,
+                  moodService: _moodService,
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => SubjectDetailScreen(
+                          subjectId: subjectId,
+                          guardianUid: userId,
+                          guardianService: _guardianService,
+                          moodService: _moodService,
+                        ),
                       ),
-                    ),
-                  );
-                },
-              );
-            }),
+                    );
+                  },
+                );
+              }),
             ],
           );
         },
@@ -290,37 +296,38 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
   }
 }
 
-class _SubjectStatusCard extends StatefulWidget {
+/// 보호 대상 목록 아이템 (여러 명일 때 사용)
+class _SubjectListItem extends StatefulWidget {
   final String subjectId;
   final String guardianUid;
   final GuardianService guardianService;
   final MoodService moodService;
-  final void Function(String subjectName, TimeSlot slot) onNoResponseTap;
+  final VoidCallback onTap;
 
-  const _SubjectStatusCard({
+  const _SubjectListItem({
     required this.subjectId,
     required this.guardianUid,
     required this.guardianService,
     required this.moodService,
-    required this.onNoResponseTap,
+    required this.onTap,
   });
 
   @override
-  State<_SubjectStatusCard> createState() => _SubjectStatusCardState();
+  State<_SubjectListItem> createState() => _SubjectListItemState();
 }
 
-class _SubjectStatusCardState extends State<_SubjectStatusCard> {
+class _SubjectListItemState extends State<_SubjectListItem> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  Map<TimeSlot, MoodResponseModel?>? _responses;
+  String _subjectName = '…';
+  Map<TimeSlot, MoodResponseModel?>? _todayResponses;
   String _fallbackName = '이름 없음';
   late final Stream<String> _nameStream;
 
   @override
   void initState() {
     super.initState();
-    _loadResponses();
-    _loadFallbackName();
-    // 스트림을 한 번만 생성 - Firestore 변경을 직접 감지
+    _loadName();
+    _loadTodayResponses();
     _nameStream = _firestore
         .collection(AppConstants.usersCollection)
         .doc(widget.guardianUid)
@@ -337,22 +344,11 @@ class _SubjectStatusCardState extends State<_SubjectStatusCard> {
           return v.trim();
         }
       }
-      // Firestore에 이름이 없으면 fallback 사용 (나중에 업데이트될 수 있음)
       return '이름 없음';
     });
   }
 
-  Future<void> _loadResponses() async {
-    final responses =
-        await widget.moodService.getTodayResponses(widget.subjectId);
-    if (mounted) {
-      setState(() {
-        _responses = responses;
-      });
-    }
-  }
-  
-  Future<void> _loadFallbackName() async {
+  Future<void> _loadName() async {
     final name = await widget.guardianService.getSubjectDisplayName(widget.subjectId);
     if (mounted) {
       setState(() {
@@ -361,147 +357,12 @@ class _SubjectStatusCardState extends State<_SubjectStatusCard> {
     }
   }
 
-  Future<void> _showSetNameDialog(BuildContext context) async {
-    // 현재 이름 가져오기
-    final currentName = await widget.guardianService.getSubjectDisplayNameForGuardian(
-      widget.subjectId,
-      widget.guardianUid,
-    );
-    // "이름 없음"이면 빈 문자열로 시작
-    final initialText = currentName == '이름 없음' ? '' : currentName;
-    final controller = TextEditingController(text: initialText);
-    final focusNode = FocusNode();
-    
-    final newName = await showDialog<String>(
-      context: context,
-      builder: (ctx) {
-        // 다이얼로그가 표시된 후 포커스 주기
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          focusNode.requestFocus();
-        });
-        
-        return StatefulBuilder(
-          builder: (ctx, setState) {
-            return AlertDialog(
-              title: const Text('보호 대상 이름'),
-              content: SizedBox(
-                width: 320,
-                child: TextField(
-                  controller: controller,
-                  focusNode: focusNode,
-                  decoration: const InputDecoration(
-                    labelText: '이름(별칭)',
-                    hintText: '예: 엄마, 아빠',
-                    border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 14,
-                    ),
-                  ),
-                  autofocus: true,
-                  enabled: true,
-                  readOnly: false,
-                  textCapitalization: TextCapitalization.words,
-                  keyboardType: TextInputType.name,
-                  textInputAction: TextInputAction.done,
-                  onChanged: (_) {
-                    // 입력 변경 시 상태 업데이트
-                    setState(() {});
-                  },
-                  onSubmitted: (v) {
-                    final n = v.trim();
-                    Navigator.pop(ctx, n.isEmpty ? null : n);
-                  },
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  child: const Text('취소'),
-                ),
-                FilledButton(
-                  onPressed: () {
-                    final n = controller.text.trim();
-                    Navigator.pop(ctx, n.isEmpty ? null : n);
-                  },
-                  style: AppButtonStyles.primaryFilled,
-                  child: const Text('저장'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-    
-    focusNode.dispose();
-    
-    // 다이얼로그가 완전히 닫힌 후 처리
-    await Future.delayed(const Duration(milliseconds: 100));
-    controller.dispose();
-    
-    if (!mounted) return;
-    
-    if (newName != null && newName.isNotEmpty) {
-      try {
-        await widget.guardianService.setSubjectDisplayNameByGuardian(
-          guardianUid: widget.guardianUid,
-          subjectId: widget.subjectId,
-          displayName: newName,
-        );
-        
-        // 이름은 StreamBuilder가 자동으로 갱신하므로 별도 처리 불필요
-        if (!mounted) return;
-        
-        // SnackBar는 다음 프레임에서 표시
-        Future.microtask(() {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('이름이 저장되었습니다.')),
-            );
-          }
-        });
-      } catch (e) {
-        if (!mounted) return;
-        Future.microtask(() {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('저장 실패: $e')),
-            );
-          }
-        });
-      }
-    } else if (newName != null && newName.isEmpty) {
-      // 빈 문자열이면 이름 삭제
-      try {
-        await _firestore
-            .collection(AppConstants.usersCollection)
-            .doc(widget.guardianUid)
-            .update({
-          'subjectLabels.${widget.subjectId}': FieldValue.delete(),
-        });
-        
-        // 이름은 StreamBuilder가 자동으로 갱신하므로 별도 처리 불필요
-        if (!mounted) return;
-        
-        // SnackBar는 다음 프레임에서 표시
-        Future.microtask(() {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('이름이 삭제되었습니다.')),
-            );
-          }
-        });
-      } catch (e) {
-        if (!mounted) return;
-        Future.microtask(() {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('삭제 실패: $e')),
-            );
-          }
-        });
-      }
+  Future<void> _loadTodayResponses() async {
+    final responses = await widget.moodService.getTodayResponses(widget.subjectId);
+    if (mounted) {
+      setState(() {
+        _todayResponses = responses;
+      });
     }
   }
 
@@ -512,118 +373,33 @@ class _SubjectStatusCardState extends State<_SubjectStatusCard> {
       initialData: _fallbackName,
       builder: (context, nameSnapshot) {
         final subjectName = nameSnapshot.data ?? _fallbackName;
+        final responseCount = _todayResponses?.values.where((r) => r != null).length ?? 0;
         
-        if (_responses == null) {
-          return Card(
-            margin: const EdgeInsets.only(bottom: 16),
-            child: ListTile(
-              title: Text(subjectName),
-              trailing: const SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(strokeWidth: 2),
+        return Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          child: ListTile(
+            title: Text(
+              subjectName,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
               ),
             ),
-          );
-        }
-
-        return Card(
-          margin: const EdgeInsets.only(bottom: 16),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        subjectName,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.edit_outlined, size: 22),
-                      onPressed: () => _showSetNameDialog(context),
-                      tooltip: '이름 설정',
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(
-                        minWidth: 40,
-                        minHeight: 40,
-                      ),
-                    ),
-                  ],
-                ),
-            const SizedBox(height: 12),
-            Row(
-              children: TimeSlot.values.map((slot) {
-                final response = _responses![slot];
-                final hasResponse = response != null;
-                final isNoResponse = !hasResponse;
-                return Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: Material(
-                      color: isNoResponse
-                          ? Colors.orange.shade50
-                          : Colors.green.shade50,
-                      borderRadius: BorderRadius.circular(8),
-                      child: InkWell(
-                        onTap: isNoResponse
-                            ? () => widget.onNoResponseTap(subjectName, slot)
-                            : null,
-                        borderRadius: BorderRadius.circular(8),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            vertical: 10,
-                            horizontal: 6,
-                          ),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                slot.label,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey[700],
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                hasResponse
-                                    ? response!.mood.emoji
-                                    : '—',
-                                style: const TextStyle(fontSize: 20),
-                              ),
-                              Text(
-                                hasResponse
-                                    ? '응답함'
-                                    : '회신 없음',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: isNoResponse
-                                      ? Colors.orange.shade800
-                                      : Colors.green.shade800,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
+            subtitle: _todayResponses == null
+                ? const Text('로딩 중...')
+                : Text(
+                    '오늘 응답: ${responseCount}/3',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: responseCount == 3
+                          ? Colors.green.shade700
+                          : Colors.orange.shade700,
                     ),
                   ),
-                );
-              }).toList(),
-            ),
-          ],
-        ),
-      ),
-    );
+            trailing: const Icon(Icons.chevron_right, size: 32),
+            onTap: widget.onTap,
+          ),
+        );
       },
     );
   }

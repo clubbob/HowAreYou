@@ -102,7 +102,7 @@ class _QuestionScreenState extends State<QuestionScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('기분 알려주기'),
+        title: const Text('상태 알려주기'),
         leadingWidth: 72,
         leading: Center(
           child: InkWell(
@@ -136,7 +136,7 @@ class _QuestionScreenState extends State<QuestionScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     const Text(
-                      '지금 기분이 어때요?',
+                      '지금 어때?',
                       style: TextStyle(
                         fontSize: 32,
                         fontWeight: FontWeight.bold,
