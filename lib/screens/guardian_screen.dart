@@ -101,7 +101,7 @@ class _GuardianScreenState extends State<GuardianScreen> {
     return phone;
   }
 
-  /// 기존 지정자(코드만 보이는 경우)에 이름만 나중에 입력
+  /// 기존 보호자 정보 수정 (이름, 전화번호)
   Future<void> _showSetNameDialog(
     BuildContext context,
     String userId,
@@ -115,19 +115,65 @@ class _GuardianScreenState extends State<GuardianScreen> {
     final initialName = infoMap['displayName'] is String
         ? (infoMap['displayName'] as String).trim()
         : '';
-    final controller = TextEditingController(text: initialName);
-    final name = await showDialog<String>(
+    final initialPhone = infoMap['phone'] is String
+        ? _formatPhoneDisplay(infoMap['phone'] as String)
+        : '';
+    
+    final nameController = TextEditingController(text: initialName);
+    final phoneController = TextEditingController(text: initialPhone);
+    final formKey = GlobalKey<FormState>();
+    
+    final result = await showDialog<Map<String, String>?>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('보호자 이름'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(
-            labelText: '이름(별칭)',
-            hintText: '예: 와이프, 엄마',
-            border: OutlineInputBorder(),
+        title: const Text('보호자 정보 수정'),
+        content: Form(
+          key: formKey,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameController,
+                  decoration: const InputDecoration(
+                    labelText: '이름(별칭)',
+                    hintText: '예: 와이프, 엄마',
+                    border: OutlineInputBorder(),
+                  ),
+                  autofocus: true,
+                  textCapitalization: TextCapitalization.words,
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: phoneController,
+                  decoration: const InputDecoration(
+                    labelText: '전화번호',
+                    hintText: '01012345678',
+                    border: OutlineInputBorder(),
+                  ),
+                  keyboardType: TextInputType.phone,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  enabled: true,
+                  canRequestFocus: true,
+                  onTap: () {
+                    // 탭하면 전체 선택
+                    if (phoneController.text.isNotEmpty) {
+                      phoneController.selection = TextSelection(
+                        baseOffset: 0,
+                        extentOffset: phoneController.text.length,
+                      );
+                    }
+                  },
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) {
+                      return '전화번호를 입력하세요.';
+                    }
+                    return null;
+                  },
+                ),
+              ],
+            ),
           ),
-          autofocus: true,
         ),
         actions: [
           TextButton(
@@ -136,8 +182,13 @@ class _GuardianScreenState extends State<GuardianScreen> {
           ),
           FilledButton(
             onPressed: () {
-              final n = controller.text.trim();
-              Navigator.pop(ctx, n.isNotEmpty ? n : null);
+              if (!formKey.currentState!.validate()) return;
+              final n = nameController.text.trim();
+              final p = phoneController.text.trim();
+              Navigator.pop(ctx, {
+                'name': n,
+                'phone': p,
+              });
             },
             style: AppButtonStyles.primaryFilled,
             child: const Text('저장'),
@@ -145,30 +196,57 @@ class _GuardianScreenState extends State<GuardianScreen> {
         ],
       ),
     );
-    // 다이얼로그가 완전히 닫힌 뒤 controller dispose (에러 방지)
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      controller.dispose();
-    });
-    if (name == null || !mounted) return;
-    // 지정자 추가와 동일하게 guardianInfos 전체를 읽어 수정 후 통째로 저장 (수정이 반영되도록)
-    final docRef = _firestore.collection('subjects').doc(userId);
-    final docSnap = await docRef.get();
-    final existingData = docSnap.data() as Map<String, dynamic>?;
-    final existingInfosRaw = existingData?['guardianInfos'];
-    final existingInfos = existingInfosRaw is Map
-        ? Map<String, dynamic>.from(
-            (existingInfosRaw as Map).map((k, v) => MapEntry(
-                  k.toString(),
-                  v is Map ? Map<String, dynamic>.from(v) : v,
-                )))
-        : <String, dynamic>{};
-    final current = existingInfos[guardianUid] is Map
-        ? Map<String, dynamic>.from(existingInfos[guardianUid] as Map)
-        : <String, dynamic>{};
-    existingInfos[guardianUid] = {...current, 'displayName': name};
-    await docRef.set({
-      'guardianInfos': existingInfos,
-    }, SetOptions(merge: true));
+    
+    // 다이얼로그가 완전히 닫힌 후 처리
+    await Future.delayed(const Duration(milliseconds: 100));
+    if (!mounted) return;
+    
+    nameController.dispose();
+    phoneController.dispose();
+    
+    if (result == null) return;
+    
+    try {
+      // 보호자 추가와 동일하게 guardianInfos 전체를 읽어 수정 후 통째로 저장
+      final docRef = _firestore.collection('subjects').doc(userId);
+      final docSnap = await docRef.get();
+      final existingData = docSnap.data() as Map<String, dynamic>?;
+      final existingInfosRaw = existingData?['guardianInfos'];
+      final existingInfos = existingInfosRaw is Map
+          ? Map<String, dynamic>.from(
+              (existingInfosRaw as Map).map((k, v) => MapEntry(
+                    k.toString(),
+                    v is Map ? Map<String, dynamic>.from(v) : v,
+                  )))
+          : <String, dynamic>{};
+      
+      // 전화번호를 E.164 형식으로 변환
+      final normalizedPhone = _toE164(result['phone']!);
+      
+      existingInfos[guardianUid] = {
+        'displayName': result['name'] ?? '',
+        'phone': normalizedPhone,
+      };
+      
+      await docRef.set({
+        'guardianInfos': existingInfos,
+      }, SetOptions(merge: true));
+      
+      if (!mounted) return;
+      
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('보호자 정보가 수정되었습니다.')),
+          );
+        }
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('수정 실패: $e')),
+      );
+    }
   }
 
   /// 지정자 조회용: Firestore에 저장된 형식이 다양할 수 있어 여러 형식으로 시도
@@ -292,7 +370,7 @@ class _GuardianScreenState extends State<GuardianScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('보호자 관리'),
+        title: const Text('보호자 지정'),
         leadingWidth: 72,
         leading: Center(
           child: InkWell(
@@ -488,7 +566,7 @@ class _GuardianScreenState extends State<GuardianScreen> {
                                 children: [
                                   IconButton(
                                     icon: const Icon(Icons.edit),
-                                    tooltip: hasName ? '이름 수정' : '이름 입력',
+                                    tooltip: '정보 수정',
                                     onPressed: () => _showSetNameDialog(
                                       context,
                                       userId!,

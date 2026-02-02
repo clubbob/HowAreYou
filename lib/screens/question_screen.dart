@@ -76,22 +76,23 @@ class _QuestionScreenState extends State<QuestionScreen> {
   void _showThankYouDialog() {
     showDialog(
       context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        content: const Text(
-          '확인해 줘서 고마워요.',
-          style: TextStyle(fontSize: 18),
-        ),
-        actions: [
-          FilledButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-            },
-            style: AppButtonStyles.primaryFilled,
-            child: const Text('확인'),
+      barrierDismissible: true,
+      builder: (dialogContext) {
+        // 다이얼로그가 표시된 후 2초 뒤 자동으로 닫기
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          Future.delayed(const Duration(seconds: 2), () {
+            if (Navigator.of(dialogContext).canPop()) {
+              Navigator.of(dialogContext).pop();
+            }
+          });
+        });
+        return AlertDialog(
+          content: const Text(
+            '확인해 줘서 고마워요.',
+            style: TextStyle(fontSize: 18),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 

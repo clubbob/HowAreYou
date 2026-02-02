@@ -36,7 +36,12 @@ class GuardianService {
           .get();
       if (q.docs.isNotEmpty) return q;
     }
-    return _firestore.collection(AppConstants.usersCollection).limit(0).get();
+    // 빈 결과를 반환하기 위해 limit(1)로 쿼리하되, 결과는 비어있을 것
+    return _firestore
+        .collection(AppConstants.usersCollection)
+        .where('phone', isEqualTo: '__never_match__')
+        .limit(1)
+        .get();
   }
 
   /// 보호 대상(대상자) 전화번호로 나를 보호자로 등록 → 보호 대상 목록에 추가
@@ -143,11 +148,25 @@ class GuardianService {
     required String subjectId,
     required String displayName,
   }) async {
-    await _firestore
+    final docRef = _firestore
         .collection(AppConstants.usersCollection)
-        .doc(guardianUid)
-        .set({
-      'subjectLabels.$subjectId': displayName.trim(),
-    }, SetOptions(merge: true));
+        .doc(guardianUid);
+    
+    // 문서가 존재하는지 확인
+    final docSnap = await docRef.get();
+    
+    if (docSnap.exists) {
+      // 문서가 있으면 update 사용
+      await docRef.update({
+        'subjectLabels.$subjectId': displayName.trim(),
+      });
+    } else {
+      // 문서가 없으면 set으로 생성 (merge: true 사용)
+      await docRef.set({
+        'subjectLabels': {
+          subjectId: displayName.trim(),
+        },
+      }, SetOptions(merge: true));
+    }
   }
 }

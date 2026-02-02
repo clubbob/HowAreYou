@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../utils/button_styles.dart';
+import '../widgets/app_logo.dart';
 import 'home_screen.dart';
 
 class AuthScreen extends StatefulWidget {
@@ -179,13 +180,8 @@ class _AuthScreenState extends State<AuthScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text(
-              '지금 어때?',
-              style: TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-              ),
-              textAlign: TextAlign.center,
+            const Center(
+              child: AppLogo(height: 80, fontSize: 32),
             ),
             const SizedBox(height: 48),
             if (!_codeSent) ...[

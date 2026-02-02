@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
 import '../services/guardian_service.dart';
 import '../services/mood_service.dart';
 import '../models/mood_response_model.dart';
 import '../utils/button_styles.dart';
+import '../utils/constants.dart';
 import 'no_response_screen.dart';
 
 class GuardianDashboardScreen extends StatefulWidget {
@@ -308,154 +310,253 @@ class _SubjectStatusCard extends StatefulWidget {
 }
 
 class _SubjectStatusCardState extends State<_SubjectStatusCard> {
-  String _subjectName = '…';
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   Map<TimeSlot, MoodResponseModel?>? _responses;
+  String _fallbackName = '이름 없음';
+  late final Stream<String> _nameStream;
 
   @override
   void initState() {
     super.initState();
-    _load();
+    _loadResponses();
+    _loadFallbackName();
+    // 스트림을 한 번만 생성 - Firestore 변경을 직접 감지
+    _nameStream = _firestore
+        .collection(AppConstants.usersCollection)
+        .doc(widget.guardianUid)
+        .snapshots()
+        .map((doc) {
+      if (!doc.exists) {
+        return '이름 없음';
+      }
+      final data = doc.data();
+      final labels = data?['subjectLabels'];
+      if (labels is Map) {
+        final v = labels[widget.subjectId];
+        if (v is String && v.trim().isNotEmpty) {
+          return v.trim();
+        }
+      }
+      // Firestore에 이름이 없으면 fallback 사용 (나중에 업데이트될 수 있음)
+      return '이름 없음';
+    });
   }
 
-  Future<void> _load() async {
-    final name = await widget.guardianService.getSubjectDisplayNameForGuardian(
-      widget.subjectId,
-      widget.guardianUid,
-    );
+  Future<void> _loadResponses() async {
     final responses =
         await widget.moodService.getTodayResponses(widget.subjectId);
     if (mounted) {
       setState(() {
-        _subjectName = name;
         _responses = responses;
+      });
+    }
+  }
+  
+  Future<void> _loadFallbackName() async {
+    final name = await widget.guardianService.getSubjectDisplayName(widget.subjectId);
+    if (mounted) {
+      setState(() {
+        _fallbackName = name;
       });
     }
   }
 
   Future<void> _showSetNameDialog(BuildContext context) async {
-    final controller = TextEditingController(text: _subjectName);
+    // 현재 이름 가져오기
+    final currentName = await widget.guardianService.getSubjectDisplayNameForGuardian(
+      widget.subjectId,
+      widget.guardianUid,
+    );
+    // "이름 없음"이면 빈 문자열로 시작
+    final initialText = currentName == '이름 없음' ? '' : currentName;
+    final controller = TextEditingController(text: initialText);
     final focusNode = FocusNode();
+    
     final newName = await showDialog<String>(
       context: context,
       builder: (ctx) {
+        // 다이얼로그가 표시된 후 포커스 주기
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          try {
-            focusNode.requestFocus();
-          } catch (_) {}
+          focusNode.requestFocus();
         });
-        return AlertDialog(
-          title: const Text('보호 대상 이름'),
-          content: SizedBox(
-            width: 320,
-            child: TextField(
-              controller: controller,
-              focusNode: focusNode,
-              decoration: const InputDecoration(
-                labelText: '이름(별칭)',
-                hintText: '예: 엄마, 아빠 (PC에서 직접 입력)',
-                border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 14,
+        
+        return StatefulBuilder(
+          builder: (ctx, setState) {
+            return AlertDialog(
+              title: const Text('보호 대상 이름'),
+              content: SizedBox(
+                width: 320,
+                child: TextField(
+                  controller: controller,
+                  focusNode: focusNode,
+                  decoration: const InputDecoration(
+                    labelText: '이름(별칭)',
+                    hintText: '예: 엄마, 아빠',
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 14,
+                    ),
+                  ),
+                  autofocus: true,
+                  enabled: true,
+                  readOnly: false,
+                  textCapitalization: TextCapitalization.words,
+                  keyboardType: TextInputType.name,
+                  textInputAction: TextInputAction.done,
+                  onChanged: (_) {
+                    // 입력 변경 시 상태 업데이트
+                    setState(() {});
+                  },
+                  onSubmitted: (v) {
+                    final n = v.trim();
+                    Navigator.pop(ctx, n.isEmpty ? null : n);
+                  },
                 ),
               ),
-              autofocus: true,
-              textCapitalization: TextCapitalization.words,
-              keyboardType: TextInputType.name,
-              textInputAction: TextInputAction.done,
-              onSubmitted: (v) {
-                final n = v.trim();
-                Navigator.pop(ctx, n.isEmpty ? null : n);
-              },
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('취소'),
-            ),
-            FilledButton(
-              onPressed: () {
-                final n = controller.text.trim();
-                Navigator.pop(ctx, n.isEmpty ? null : n);
-              },
-              style: AppButtonStyles.primaryFilled,
-              child: const Text('저장'),
-            ),
-          ],
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('취소'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    final n = controller.text.trim();
+                    Navigator.pop(ctx, n.isEmpty ? null : n);
+                  },
+                  style: AppButtonStyles.primaryFilled,
+                  child: const Text('저장'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
+    
     focusNode.dispose();
-    if (newName != null && newName.isNotEmpty && mounted) {
+    
+    // 다이얼로그가 완전히 닫힌 후 처리
+    await Future.delayed(const Duration(milliseconds: 100));
+    controller.dispose();
+    
+    if (!mounted) return;
+    
+    if (newName != null && newName.isNotEmpty) {
       try {
         await widget.guardianService.setSubjectDisplayNameByGuardian(
           guardianUid: widget.guardianUid,
           subjectId: widget.subjectId,
           displayName: newName,
         );
-        if (mounted) {
-          setState(() => _subjectName = newName);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('이름이 저장되었습니다.')),
-          );
-        }
+        
+        // 이름은 StreamBuilder가 자동으로 갱신하므로 별도 처리 불필요
+        if (!mounted) return;
+        
+        // SnackBar는 다음 프레임에서 표시
+        Future.microtask(() {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('이름이 저장되었습니다.')),
+            );
+          }
+        });
       } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('저장 실패: $e')),
-          );
-        }
+        if (!mounted) return;
+        Future.microtask(() {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('저장 실패: $e')),
+            );
+          }
+        });
+      }
+    } else if (newName != null && newName.isEmpty) {
+      // 빈 문자열이면 이름 삭제
+      try {
+        await _firestore
+            .collection(AppConstants.usersCollection)
+            .doc(widget.guardianUid)
+            .update({
+          'subjectLabels.${widget.subjectId}': FieldValue.delete(),
+        });
+        
+        // 이름은 StreamBuilder가 자동으로 갱신하므로 별도 처리 불필요
+        if (!mounted) return;
+        
+        // SnackBar는 다음 프레임에서 표시
+        Future.microtask(() {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('이름이 삭제되었습니다.')),
+            );
+          }
+        });
+      } catch (e) {
+        if (!mounted) return;
+        Future.microtask(() {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('삭제 실패: $e')),
+            );
+          }
+        });
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_responses == null) {
-      return Card(
-        margin: const EdgeInsets.only(bottom: 16),
-        child: ListTile(
-          title: Text(_subjectName),
-          trailing: const SizedBox(
-            width: 24,
-            height: 24,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-        ),
-      );
-    }
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    _subjectName,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.edit_outlined, size: 22),
-                  onPressed: () => _showSetNameDialog(context),
-                  tooltip: '이름 설정',
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(
-                    minWidth: 40,
-                    minHeight: 40,
-                  ),
-                ),
-              ],
+    return StreamBuilder<String>(
+      stream: _nameStream,
+      initialData: _fallbackName,
+      builder: (context, nameSnapshot) {
+        final subjectName = nameSnapshot.data ?? _fallbackName;
+        
+        if (_responses == null) {
+          return Card(
+            margin: const EdgeInsets.only(bottom: 16),
+            child: ListTile(
+              title: Text(subjectName),
+              trailing: const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
             ),
+          );
+        }
+
+        return Card(
+          margin: const EdgeInsets.only(bottom: 16),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        subjectName,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.edit_outlined, size: 22),
+                      onPressed: () => _showSetNameDialog(context),
+                      tooltip: '이름 설정',
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(
+                        minWidth: 40,
+                        minHeight: 40,
+                      ),
+                    ),
+                  ],
+                ),
             const SizedBox(height: 12),
             Row(
               children: TimeSlot.values.map((slot) {
@@ -472,7 +573,7 @@ class _SubjectStatusCardState extends State<_SubjectStatusCard> {
                       borderRadius: BorderRadius.circular(8),
                       child: InkWell(
                         onTap: isNoResponse
-                            ? () => widget.onNoResponseTap(_subjectName, slot)
+                            ? () => widget.onNoResponseTap(subjectName, slot)
                             : null,
                         borderRadius: BorderRadius.circular(8),
                         child: Padding(
@@ -522,6 +623,8 @@ class _SubjectStatusCardState extends State<_SubjectStatusCard> {
           ],
         ),
       ),
+    );
+      },
     );
   }
 }

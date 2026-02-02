@@ -4,6 +4,7 @@ import '../services/auth_service.dart';
 import '../services/mood_service.dart';
 import '../models/mood_response_model.dart';
 import '../utils/button_styles.dart';
+import '../widgets/app_logo.dart';
 import 'question_screen.dart';
 import 'guardian_screen.dart';
 import 'guardian_dashboard_screen.dart';
@@ -18,6 +19,10 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final MoodService _moodService = MoodService();
 
+  Widget _buildAppBarTitle() {
+    return const AppLogo(height: 32, fontSize: 18, fontWeight: FontWeight.w600);
+  }
+
   @override
   Widget build(BuildContext context) {
     final authService = Provider.of<AuthService>(context);
@@ -28,13 +33,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: surfaceColor,
       appBar: AppBar(
-        title: const Text(
-          '지금 어때?',
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-            letterSpacing: -0.5,
-          ),
-        ),
+        title: _buildAppBarTitle(),
         backgroundColor: Colors.white,
         elevation: 0,
         foregroundColor: Colors.black87,
@@ -62,28 +61,32 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 48),
+              const SizedBox(height: 40),
               SizedBox(
                 width: double.infinity,
+                height: 88,
                 child: FilledButton.icon(
                   onPressed: () => _navigateToQuestion(),
-                  icon: const Icon(Icons.sentiment_satisfied_rounded, size: 22),
+                  icon: const Icon(Icons.sentiment_satisfied_rounded, size: 40),
                   label: const Text('상태 알려주기'),
                   style: FilledButton.styleFrom(
                     backgroundColor: primaryColor,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 32),
+                    elevation: 6,
+                    shadowColor: primaryColor.withOpacity(0.5),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(20),
                     ),
                     textStyle: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1,
                     ),
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 32),
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
@@ -94,7 +97,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     );
                   },
                   icon: const Icon(Icons.person_add_rounded, size: 22),
-                  label: const Text('보호자 관리'),
+                  label: const Text('보호자 지정'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: primaryColor,
                     side: const BorderSide(color: primaryColor, width: 1.5),

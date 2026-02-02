@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
+import '../widgets/app_logo.dart';
 import 'auth_screen.dart';
 import 'home_screen.dart';
 
@@ -46,13 +47,7 @@ class _SplashScreenState extends State<SplashScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text(
-              '지금 어때?',
-              style: TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+            const AppLogo(height: 80, fontSize: 32),
             const SizedBox(height: 20),
             const CircularProgressIndicator(),
           ],
