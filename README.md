@@ -73,6 +73,13 @@ flutter pub get
 flutter run
 ```
 
+**Android 에뮬레이터에서 EGL 로그가 반복될 때**
+
+- **`flutter run`을 직접 실행하면 EGL 로그가 반복됩니다.** 아래 방법 중 하나만 사용하세요.
+- **Cursor/VS Code**: **Ctrl+Shift+B** (빌드 작업) → EGL 로그 제외 실행
+- **터미널**: `.\run-android.ps1` (PowerShell) 또는 `.\run.bat` (CMD/PowerShell)
+- **디버그 실행(F5)** 시: 디버그 콘솔 필터에 `!EGL_emulation` 입력 시 해당 로그 숨김
+
 ## 프로젝트 구조
 
 ```

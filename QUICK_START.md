@@ -11,6 +11,8 @@ flutter pub get
 
 # 3. 앱 실행
 flutter run
+
+# (선택) 터미널에 EGL 로그가 반복될 때: Cursor에서 Ctrl+Shift+B 또는 .\run-android.ps1
 ```
 
 ## Flutter가 설치되어 있지 않은 경우

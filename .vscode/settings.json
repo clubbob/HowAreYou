@@ -1,0 +1,10 @@
+{
+  "dart.flutterRunLogFile": null,
+  "dart.flutterAdditionalArgs": [],
+  "dart.flutterHotReloadOnSave": "all",
+  "dart.flutterCreateAndroidLanguage": "kotlin",
+  "dart.flutterCreateIOSLanguage": "swift",
+  "dart.flutterCreatePlatforms": ["android", "ios", "web"],
+  "debug.console.fontSize": 12,
+  "debug.console.wordWrap": true
+}

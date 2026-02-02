@@ -133,6 +133,39 @@ C:\src\flutter\bin\flutter run
 - **제어판** → **프로그램 및 기능** → **Windows 기능 켜기/끄기**에서  
   **Hyper-V** 또는 **Windows Hypervisor Platform** 활성화 후 PC 재부팅
 
+### 터미널에 `D/EGL_emulation app_time_stats` 로그가 반복될 때
+
+이 메시지는 **Android 에뮬레이터의 GPU(EGL) 성능 통계** 로그입니다. 앱 오류가 아니며, Flutter/Android에서 비활성화 옵션을 제공하지 않습니다.
+
+**해결 방법 (Cursor/VS Code):**
+
+1. **F5(실행 및 디버그)** 로 앱을 실행합니다. (터미널에서 `flutter run` 대신)
+   - 상단 메뉴: **실행** → **디버깅 시작** 또는 **F5** 키
+   - 또는 왼쪽 사이드바의 **실행 및 디버그** 아이콘 클릭 → **Flutter** 선택 → **실행** 버튼
+
+2. 하단 **디버그 콘솔(Debug Console)** 탭을 엽니다.
+   - 터미널 탭 옆에 있는 **디버그 콘솔** 탭 클릭
+
+3. 디버그 콘솔 **우측 상단 필터 입력란**에 다음 중 하나를 입력:
+   - `!EGL_emulation` (EGL_emulation 로그 숨김)
+   - `!D/EGL` (모든 EGL 관련 로그 숨김)
+   - `!app_time_stats` (시간 통계 로그만 숨김)
+
+4. 필터가 적용되면 해당 로그가 더 이상 표시되지 않습니다.
+
+**터미널에서 실행할 때 (EGL 로그 제외):**
+- 프로젝트 폴더에서 PowerShell로 다음 스크립트를 실행하면 EGL 관련 로그가 출력되지 않습니다.
+  ```powershell
+  .\run-android.ps1
+  ```
+- 기기 지정이 필요하면: `.\run-android.ps1 -d emulator-5554`
+- 핫 리로드(r), 종료(q) 등은 그대로 사용할 수 있습니다.
+
+**참고:**
+- 터미널에서 `flutter run`을 직접 실행하면 EGL 로그가 그대로 출력됩니다.
+- 반복 로그를 피하려면 **F5 디버그 실행 + 디버그 콘솔 필터** 또는 **`.\run-android.ps1`** 사용을 권장합니다.
+- 필터(디버그 콘솔)는 세션마다 다시 입력해야 할 수 있습니다.
+
 ---
 
 ## 요약 체크리스트
@@ -142,7 +175,7 @@ C:\src\flutter\bin\flutter run
 - [ ] 시스템 이미지 다운로드 후 선택 (API 33 이상 권장)
 - [ ] AVD 이름 설정 후 Finish
 - [ ] 에뮬레이터 재생 버튼으로 실행
-- [ ] `flutter run`으로 앱을 에뮬레이터에서 실행
+- [ ] 앱 실행: `flutter run` 또는 **Ctrl+Shift+B** / `.\run-android.ps1` (EGL 로그 제외)
 - [ ] 테스트 전화번호 + 인증 코드로 로그인 테스트
 
 이 순서대로 진행하면 PC에서 Android 에뮬레이터를 만들고, 그 위에서 전화 인증까지 테스트할 수 있습니다.

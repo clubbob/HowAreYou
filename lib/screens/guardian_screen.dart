@@ -16,7 +16,9 @@ class _GuardianScreenState extends State<GuardianScreen> {
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final ScrollController _scrollController = ScrollController();
   bool _isLoading = false;
+  bool _hasScrolledAfterAdd = false;
 
   static const double _inputRadius = 12;
   static const double _inputMinHeight = 56;
@@ -27,46 +29,28 @@ class _GuardianScreenState extends State<GuardianScreen> {
   void dispose() {
     _nameController.dispose();
     _phoneController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
-  /// 지정자 이름을 다이얼로그에서 입력 (에뮬레이터에서 입력이 잘 됨)
+  /// 지정자 이름을 다이얼로그에서 입력 (전용 StatefulWidget + FocusNode로 입력 보장)
   Future<void> _showNameInputDialog(BuildContext context) async {
     final initialName = _nameController.text;
-    await showDialog(
+
+    final result = await showDialog<String>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('보호자 이름'),
-        content: TextField(
-          controller: _nameController,
-          decoration: const InputDecoration(
-            labelText: '이름(별칭)',
-            hintText: '예: 와이프, 엄마',
-            border: OutlineInputBorder(),
-          ),
-          keyboardType: TextInputType.text,
-          autofocus: true,
-          onSubmitted: (_) => Navigator.pop(ctx, true),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              _nameController.text = initialName;
-              Navigator.pop(ctx, false);
-            },
-            child: const Text('취소'),
-          ),
-          FilledButton(
-            onPressed: () {
-              Navigator.pop(ctx, true);
-            },
-            style: AppButtonStyles.primaryFilled,
-            child: const Text('확인'),
-          ),
-        ],
-      ),
+      barrierDismissible: false,
+      builder: (ctx) => _GuardianNameDialog(initialName: initialName),
     );
-    if (mounted) setState(() {});
+
+    if (result != null) {
+      _nameController.text = result;
+      if (mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) setState(() {});
+        });
+      }
+    }
   }
 
   /// 로그인 시 저장 형식과 맞추기 위해 E.164로 변환 (+821012345678)
@@ -267,7 +251,12 @@ class _GuardianScreenState extends State<GuardianScreen> {
           .get();
       if (q.docs.isNotEmpty) return q;
     }
-    return _firestore.collection('users').limit(0).get();
+    // 빈 결과를 반환하기 위해 존재하지 않는 값으로 쿼리
+    return _firestore
+        .collection('users')
+        .where('phone', isEqualTo: '__never_match__')
+        .limit(1)
+        .get();
   }
 
   Future<void> _addGuardian() async {
@@ -310,6 +299,18 @@ class _GuardianScreenState extends State<GuardianScreen> {
       final guardianPhone = guardianData['phone'] is String
           ? (guardianData['phone'] as String)
           : '';
+
+      final docRef = _firestore.collection('subjects').doc(userId);
+      // 기존 데이터를 먼저 읽어서 중복 확인
+      final docSnap = await docRef.get();
+      final existingData = docSnap.data() as Map<String, dynamic>?;
+      final existingPairedUids = List<String>.from(existingData?['pairedGuardianUids'] ?? []);
+      
+      // 이미 등록된 보호자인지 확인
+      if (existingPairedUids.contains(guardianId)) {
+        throw Exception('이미 등록된 보호자입니다.');
+      }
+
       // 입력한 이름 그대로 저장 (한 글자 "박" 등도 반드시 표시)
       final nameInput = _nameController.text.trim();
       final guardianDisplayName = nameInput.isNotEmpty
@@ -318,10 +319,7 @@ class _GuardianScreenState extends State<GuardianScreen> {
               ? (guardianData['displayName'] as String).trim()
               : '');
 
-      final docRef = _firestore.collection('subjects').doc(userId);
       // 기존 guardianInfos를 읽어서 새 지정자 정보를 넣은 뒤 통째로 저장 (이름이 확실히 반영되도록)
-      final docSnap = await docRef.get();
-      final existingData = docSnap.data() as Map<String, dynamic>?;
       final existingInfosRaw = existingData?['guardianInfos'];
       final existingInfos = existingInfosRaw is Map
           ? Map<String, dynamic>.from(
@@ -330,23 +328,54 @@ class _GuardianScreenState extends State<GuardianScreen> {
                     v is Map ? Map<String, dynamic>.from(v) : v,
                   )))
           : <String, dynamic>{};
+      
+      // 새 보호자 정보 추가 (중복 확인 완료 후)
       existingInfos[guardianId] = {
         'phone': guardianPhone,
         'displayName': guardianDisplayName, // 항상 문자열로 저장 (빈 문자열 가능)
       };
+      
+      // pairedGuardianUids에 새 보호자 추가 (중복 확인 완료했으므로 바로 추가)
+      existingPairedUids.add(guardianId);
 
-      await docRef.set({
-        'displayName': authService.userModel?.displayName ?? '',
-        'pairedGuardianUids': FieldValue.arrayUnion([guardianId]),
-        'guardianInfos': existingInfos,
-      }, SetOptions(merge: true));
+      // 문서가 있으면 update, 없으면 set 사용
+      if (docSnap.exists) {
+        await docRef.update({
+          'displayName': authService.userModel?.displayName ?? '',
+          'pairedGuardianUids': existingPairedUids,
+          'guardianInfos': existingInfos,
+        });
+      } else {
+        await docRef.set({
+          'displayName': authService.userModel?.displayName ?? '',
+          'pairedGuardianUids': existingPairedUids,
+          'guardianInfos': existingInfos,
+        });
+      }
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('보호자가 추가되었습니다.')),
-        );
         _nameController.clear();
         _phoneController.clear();
+        _hasScrolledAfterAdd = false;
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('보호자가 추가되었습니다.'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+        
+        // 리스트 쪽으로 스크롤 이동 (한 번만 실행)
+        Future.delayed(const Duration(milliseconds: 300), () {
+          if (mounted && _scrollController.hasClients && !_hasScrolledAfterAdd) {
+            _hasScrolledAfterAdd = true;
+            _scrollController.animateTo(
+              400, // 보호자 추가 섹션 높이 정도
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOut,
+            );
+          }
+        });
       }
     } catch (e) {
       if (mounted) {
@@ -356,8 +385,10 @@ class _GuardianScreenState extends State<GuardianScreen> {
       }
     } finally {
       if (mounted) {
-        setState(() {
-          _isLoading = false;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) setState(() {
+            _isLoading = false;
+          });
         });
       }
     }
@@ -413,6 +444,7 @@ class _GuardianScreenState extends State<GuardianScreen> {
                 final padding = MediaQuery.of(context).padding;
                 final rightPadding = 24 + padding.right + 20;
                 return SingleChildScrollView(
+                  controller: _scrollController,
                   padding: EdgeInsets.fromLTRB(
                     24,
                     24,
@@ -575,17 +607,82 @@ class _GuardianScreenState extends State<GuardianScreen> {
                                     ),
                                   ),
                                   IconButton(
-                                    icon: const Icon(Icons.delete),
-                                    onPressed: () async {
-                                      await _firestore
-                                          .collection('subjects')
-                                          .doc(userId)
-                                          .update({
-                                        'pairedGuardianUids':
-                                            FieldValue.arrayRemove([uid]),
-                                        'guardianInfos.$uid': FieldValue.delete(),
-                                      });
-                                    },
+                                    icon: Icon(
+                                      Icons.delete,
+                                      color: guardianUids.length <= 1
+                                          ? Colors.grey.shade400
+                                          : null,
+                                    ),
+                                    tooltip: guardianUids.length <= 1
+                                        ? '최소 1명의 보호자가 필요합니다'
+                                        : '삭제',
+                                    onPressed: guardianUids.length <= 1
+                                        ? null
+                                        : () async {
+                                            // 삭제 확인 다이얼로그
+                                            final confirm = await showDialog<bool>(
+                                              context: context,
+                                              builder: (ctx) => AlertDialog(
+                                                title: const Text('보호자 삭제'),
+                                                content: Text(
+                                                  '${hasName ? displayName : phone ?? "이 보호자"}를 삭제하시겠습니까?',
+                                                ),
+                                                actions: [
+                                                  TextButton(
+                                                    onPressed: () => Navigator.pop(ctx, false),
+                                                    child: const Text('취소'),
+                                                  ),
+                                                  FilledButton(
+                                                    onPressed: () => Navigator.pop(ctx, true),
+                                                    style: AppButtonStyles.primaryFilled,
+                                                    child: const Text('삭제'),
+                                                  ),
+                                                ],
+                                              ),
+                                            );
+                                            
+                                            if (confirm != true) return;
+                                            
+                                            // 마지막 1명인지 다시 확인
+                                            if (guardianUids.length <= 1) {
+                                              if (mounted) {
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  const SnackBar(
+                                                    content: Text('최소 1명의 보호자가 필요합니다.'),
+                                                  ),
+                                                );
+                                              }
+                                              return;
+                                            }
+                                            
+                                            try {
+                                              await _firestore
+                                                  .collection('subjects')
+                                                  .doc(userId)
+                                                  .update({
+                                                'pairedGuardianUids':
+                                                    FieldValue.arrayRemove([uid]),
+                                                'guardianInfos.$uid': FieldValue.delete(),
+                                              });
+                                              
+                                              if (mounted) {
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  const SnackBar(
+                                                    content: Text('보호자가 삭제되었습니다.'),
+                                                    duration: Duration(seconds: 2),
+                                                  ),
+                                                );
+                                              }
+                                            } catch (e) {
+                                              if (mounted) {
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  SnackBar(
+                                                    content: Text('삭제 실패: $e'),
+                                                  ),
+                                                );
+                                              }
+                                            }
+                                          },
                                   ),
                                 ],
                               ),
@@ -597,6 +694,70 @@ class _GuardianScreenState extends State<GuardianScreen> {
                 );
               },
             ),
+    );
+  }
+}
+
+/// 보호자 이름 입력 다이얼로그 (StatefulWidget + FocusNode로 에뮬/기기에서 입력 보장)
+class _GuardianNameDialog extends StatefulWidget {
+  const _GuardianNameDialog({required this.initialName});
+
+  final String initialName;
+
+  @override
+  State<_GuardianNameDialog> createState() => _GuardianNameDialogState();
+}
+
+class _GuardianNameDialogState extends State<_GuardianNameDialog> {
+  late final TextEditingController _controller;
+  late final FocusNode _focusNode;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialName);
+    _focusNode = FocusNode();
+    // 다이얼로그가 뜬 뒤 한 프레임 지나서 포커스 요청 (키보드·입력 확실히 동작)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _focusNode.requestFocus();
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('보호자 이름'),
+      content: TextField(
+        controller: _controller,
+        focusNode: _focusNode,
+        decoration: const InputDecoration(
+          labelText: '이름(별칭)',
+          hintText: '예: 와이프, 엄마',
+          border: OutlineInputBorder(),
+        ),
+        keyboardType: TextInputType.text,
+        textInputAction: TextInputAction.done,
+        autofocus: true,
+        onSubmitted: (value) => Navigator.of(context).pop(value),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('취소'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(_controller.text.trim()),
+          style: AppButtonStyles.primaryFilled,
+          child: const Text('확인'),
+        ),
+      ],
     );
   }
 }
