@@ -35,12 +35,16 @@ class MoodService {
       note: note,
     );
 
+    // 응답 저장 (Firestore 트리거가 자동으로 보호자에게 알림 발송)
     await _firestore
         .collection('subjects')
         .doc(subjectId)
         .collection('prompts')
         .doc(dateSlot)
         .set(response.toMap());
+    
+    // 최적화: notification_requests 컬렉션 제거
+    // Firestore 트리거(onResponseCreated)가 자동으로 보호자에게 알림 발송
   }
 
   Future<bool> hasRespondedToday({

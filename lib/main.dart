@@ -18,7 +18,10 @@ import 'screens/home_screen.dart';
 // 백그라운드 메시지 핸들러
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
   debugPrint('백그라운드 메시지 처리: ${message.messageId}');
+  debugPrint('알림 제목: ${message.notification?.title}');
+  debugPrint('알림 내용: ${message.notification?.body}');
 }
 
 void main() async {

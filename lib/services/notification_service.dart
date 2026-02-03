@@ -42,8 +42,29 @@ class NotificationService {
     // 알림 권한 요청
     await _requestPermissions();
     
+    // 보호자 알림 채널 생성 (Android)
+    await _createGuardianNotificationChannel();
+    
     // 일일 알림 스케줄 설정
     await scheduleDailyNotifications();
+  }
+
+  /// 보호자 알림 채널 생성 (Android)
+  Future<void> _createGuardianNotificationChannel() async {
+    const androidChannel = AndroidNotificationChannel(
+      'guardian_notifications',
+      '보호자 알림',
+      description: '보호 대상의 상태 확인 및 미회신 알림',
+      importance: Importance.high,
+      playSound: true,
+      enableVibration: true,
+    );
+
+    final androidPlugin = _notifications.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    if (androidPlugin != null) {
+      await androidPlugin.createNotificationChannel(androidChannel);
+    }
   }
 
   Future<void> _requestPermissions() async {
