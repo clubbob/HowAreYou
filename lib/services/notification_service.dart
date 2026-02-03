@@ -7,6 +7,8 @@ import '../main.dart';
 import '../screens/question_screen.dart';
 import '../models/mood_response_model.dart';
 import '../services/mood_service.dart';
+import '../services/mode_service.dart';
+import '../screens/subject_mode_screen.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -156,9 +158,23 @@ class NotificationService {
     }
 
     if (timeSlot != null) {
-      // 홈 화면으로 먼저 이동한 후 질문 화면으로 이동
+      // 알림은 보호대상자용이므로 보호대상자 모드로 자동 진입
+      await ModeService.saveSelectedMode(ModeService.modeSubject);
+      
+      // 보호대상자 모드 화면으로 이동한 후 질문 화면으로 이동
       navigator.pushNamedAndRemoveUntil('/home', (route) => false);
       await Future.delayed(const Duration(milliseconds: 300));
+      
+      // 보호대상자 모드 화면으로 이동
+      navigator.pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => const SubjectModeScreen(),
+        ),
+      );
+      
+      await Future.delayed(const Duration(milliseconds: 300));
+      
+      // 질문 화면으로 이동
       navigator.push(
         MaterialPageRoute(
           builder: (_) => QuestionScreen(timeSlot: timeSlot!),

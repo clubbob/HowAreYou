@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
-import '../services/mood_service.dart';
-import '../models/mood_response_model.dart';
+import '../services/mode_service.dart';
 import '../utils/button_styles.dart';
 import '../widgets/app_logo.dart';
-import 'question_screen.dart';
-import 'guardian_screen.dart';
-import 'guardian_dashboard_screen.dart';
+import 'subject_mode_screen.dart';
+import 'guardian_mode_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -17,18 +15,74 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final MoodService _moodService = MoodService();
+  String? _lastSelectedMode;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLastSelectedMode();
+  }
+
+  Future<void> _loadLastSelectedMode() async {
+    final mode = await ModeService.getLastSelectedMode();
+    if (mounted) {
+      setState(() {
+        _lastSelectedMode = mode;
+        _isLoading = false;
+      });
+      // 마지막 선택한 모드가 있으면 자동으로 해당 모드로 진입
+      if (mode != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _navigateToMode(mode, skipSave: true);
+        });
+      }
+    }
+  }
 
   Widget _buildAppBarTitle() {
     return const AppLogo(height: 32, fontSize: 18, fontWeight: FontWeight.w600);
   }
 
+  Future<void> _selectMode(String mode) async {
+    await ModeService.saveSelectedMode(mode);
+    _navigateToMode(mode);
+  }
+
+  void _navigateToMode(String mode, {bool skipSave = false}) {
+    if (!skipSave) {
+      ModeService.saveSelectedMode(mode);
+    }
+
+    if (mode == ModeService.modeSubject) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const SubjectModeScreen()),
+      );
+    } else if (mode == ModeService.modeGuardian) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const GuardianModeScreen()),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final authService = Provider.of<AuthService>(context);
-    final theme = Theme.of(context);
     const primaryColor = Color(0xFF5C6BC0);
     const surfaceColor = Color(0xFFF5F5F9);
+
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: surfaceColor,
+        appBar: AppBar(
+          title: _buildAppBarTitle(),
+          backgroundColor: Colors.white,
+          elevation: 0,
+          foregroundColor: Colors.black87,
+        ),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
 
     return Scaffold(
       backgroundColor: surfaceColor,
@@ -37,6 +91,7 @@ class _HomeScreenState extends State<HomeScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         foregroundColor: Colors.black87,
+        automaticallyImplyLeading: false, // 뒤로 가기 버튼 숨김 (최상위 화면)
         actions: [
           IconButton(
             icon: const Icon(Icons.logout_rounded),
@@ -51,89 +106,67 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(
-                '지금 어때?',
-                style: theme.textTheme.headlineLarge?.copyWith(
+              const Text(
+                '어떤 모드로 사용하시겠어요?',
+                style: TextStyle(
+                  fontSize: 24,
                   fontWeight: FontWeight.bold,
-                  fontSize: 36,
-                  letterSpacing: -0.5,
                   color: Colors.black87,
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 40),
+              const SizedBox(height: 48),
+              // 보호대상자 모드 버튼
               SizedBox(
                 width: double.infinity,
-                height: 88,
+                height: 120,
                 child: FilledButton.icon(
-                  onPressed: () => _navigateToQuestion(),
-                  icon: const Icon(Icons.sentiment_satisfied_rounded, size: 40),
-                  label: const Text('상태 알려주기'),
+                  onPressed: () => _selectMode(ModeService.modeSubject),
+                  icon: const Icon(Icons.person, size: 48),
+                  label: const Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('보호대상자 모드', style: TextStyle(fontSize: 20)),
+                      SizedBox(height: 4),
+                      Text('상태를 알려주는 모드', style: TextStyle(fontSize: 14)),
+                    ],
+                  ),
                   style: FilledButton.styleFrom(
                     backgroundColor: primaryColor,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 32),
+                    padding: const EdgeInsets.all(24),
                     elevation: 6,
                     shadowColor: primaryColor.withOpacity(0.5),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    textStyle: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1,
-                    ),
                   ),
                 ),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 24),
+              // 보호자 모드 버튼
               SizedBox(
                 width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                          builder: (_) => const GuardianScreen()),
-                    );
-                  },
-                  icon: const Icon(Icons.person_add_rounded, size: 22),
-                  label: const Text('보호자 지정'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: primaryColor,
-                    side: const BorderSide(color: primaryColor, width: 1.5),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    textStyle: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
+                height: 120,
+                child: FilledButton.icon(
+                  onPressed: () => _selectMode(ModeService.modeGuardian),
+                  icon: const Icon(Icons.visibility, size: 48),
+                  label: const Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('보호자 모드', style: TextStyle(fontSize: 20)),
+                      SizedBox(height: 4),
+                      Text('보호 대상을 확인하는 모드', style: TextStyle(fontSize: 14)),
+                    ],
                   ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                          builder: (_) => const GuardianDashboardScreen()),
-                    );
-                  },
-                  icon: const Icon(Icons.visibility_outlined, size: 22),
-                  label: const Text('보호자 확인'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: primaryColor,
-                    side: const BorderSide(color: primaryColor, width: 1.5),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: primaryColor,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.all(24),
+                    elevation: 6,
+                    shadowColor: primaryColor.withOpacity(0.5),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    textStyle: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                      borderRadius: BorderRadius.circular(20),
                     ),
                   ),
                 ),
@@ -145,41 +178,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Future<void> _navigateToQuestion() async {
-    final authService = Provider.of<AuthService>(context, listen: false);
-    final userId = authService.user?.uid;
-    
-    if (userId == null) return;
-
-    final currentSlot = await _moodService.getCurrentTimeSlot();
-    
-    if (currentSlot == null) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('현재는 질문 시간이 아닙니다.'),
-          ),
-        );
-      }
-      return;
-    }
-
-    final hasResponded = await _moodService.hasRespondedToday(
-      subjectId: userId,
-      slot: currentSlot,
-    );
-
-    if (mounted) {
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => QuestionScreen(
-            timeSlot: currentSlot,
-            alreadyResponded: hasResponded,
-          ),
-        ),
-      );
-    }
-  }
 
   /// 로그아웃 전 확인 다이얼로그 (노인 등 잘못 탭 방지)
   Future<void> _showLogoutConfirm(
