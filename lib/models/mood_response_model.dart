@@ -1,19 +1,85 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'package:flutter/material.dart';
+
 enum Mood {
-  good(emoji: '😊', label: '좋아', value: 1),
-  normal(emoji: '😐', label: '보통', value: 2),
-  bad(emoji: '😞', label: '안좋아', value: 3);
+  good(emoji: '😊', label: '좋아', value: 1, color: Colors.green),
+  normal(emoji: '😐', label: '보통', value: 2, color: Colors.orange),
+  bad(emoji: '😞', label: '안좋아', value: 3, color: Colors.red);
 
   final String emoji;
   final String label;
   final int value;
+  final Color color;
 
   const Mood({
     required this.emoji,
     required this.label,
     required this.value,
+    required this.color,
   });
+  
+  /// 색상이 있는 아이콘 위젯 생성 (상태 페이지용)
+  Widget buildColoredIcon({double size = 32}) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
+      ),
+      child: Center(
+        child: Text(
+          emoji,
+          style: TextStyle(
+            fontSize: size * 0.6,
+            // 이모지가 배경색 위에서 잘 보이도록 약간의 그림자 효과
+            shadows: [
+              Shadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 2,
+                offset: const Offset(0, 1),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+  
+  /// 큰 아이콘 (선택 화면용)
+  Widget buildLargeIcon({double size = 52}) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.3),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Center(
+        child: Text(
+          emoji,
+          style: TextStyle(
+            fontSize: size * 0.65,
+            shadows: [
+              Shadow(
+                color: Colors.black.withOpacity(0.15),
+                blurRadius: 3,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 enum TimeSlot {

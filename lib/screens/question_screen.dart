@@ -21,15 +21,8 @@ class QuestionScreen extends StatefulWidget {
 
 class _QuestionScreenState extends State<QuestionScreen> {
   Mood? _selectedMood;
-  final _noteController = TextEditingController();
   final MoodService _moodService = MoodService();
   bool _isSaving = false;
-
-  @override
-  void dispose() {
-    _noteController.dispose();
-    super.dispose();
-  }
 
   Future<void> _saveResponse() async {
     if (_selectedMood == null) return;
@@ -46,12 +39,11 @@ class _QuestionScreenState extends State<QuestionScreen> {
         throw Exception('사용자 인증이 필요합니다.');
       }
 
-      final noteText = _noteController.text.trim();
       await _moodService.saveMoodResponse(
         subjectId: userId,
         slot: widget.timeSlot,
         mood: _selectedMood!,
-        note: noteText.isEmpty ? null : noteText,
+        note: null, // 텍스트 입력 기능 제거
       );
 
       if (mounted) {
@@ -103,24 +95,22 @@ class _QuestionScreenState extends State<QuestionScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('상태 알려주기'),
-        leadingWidth: 72,
-        leading: Center(
-          child: InkWell(
-            onTap: () => Navigator.of(context).pop(),
-            borderRadius: BorderRadius.circular(24),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.arrow_back_ios_new, size: 20),
-                    const SizedBox(width: 4),
-                    const Text('뒤로', style: TextStyle(fontSize: 15)),
-                  ],
-                ),
-              ),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        foregroundColor: Colors.black87,
+        leadingWidth: 80,
+        leading: InkWell(
+          onTap: () => Navigator.of(context).pop(),
+          borderRadius: BorderRadius.circular(24),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.arrow_back_ios_new, size: 18),
+                const SizedBox(width: 4),
+                const Text('뒤로', style: TextStyle(fontSize: 16)),
+              ],
             ),
           ),
         ),
@@ -148,6 +138,31 @@ class _QuestionScreenState extends State<QuestionScreen> {
                       spacing: 16,
                       runSpacing: 16,
                       children: Mood.values.map((mood) {
+                        // 각 기분에 맞는 색상 정의
+                        Color backgroundColor;
+                        Color borderColor;
+                        Color textColor;
+                        
+                        switch (mood) {
+                          case Mood.good:
+                            backgroundColor = Colors.green.shade50;
+                            borderColor = Colors.green.shade300;
+                            textColor = Colors.green.shade800;
+                            break;
+                          case Mood.normal:
+                            backgroundColor = Colors.orange.shade50;
+                            borderColor = Colors.orange.shade300;
+                            textColor = Colors.orange.shade800;
+                            break;
+                          case Mood.bad:
+                            backgroundColor = Colors.red.shade50;
+                            borderColor = Colors.red.shade300;
+                            textColor = Colors.red.shade800;
+                            break;
+                        }
+                        
+                        final isSelected = _selectedMood == mood;
+                        
                         return GestureDetector(
                           onTap: () {
                             setState(() {
@@ -161,28 +176,40 @@ class _QuestionScreenState extends State<QuestionScreen> {
                               horizontal: 8,
                             ),
                             decoration: BoxDecoration(
-                              color: _selectedMood == mood
-                                  ? Colors.blue.withOpacity(0.2)
-                                  : Colors.transparent,
+                              color: isSelected
+                                  ? backgroundColor
+                                  : backgroundColor.withOpacity(0.3),
                               borderRadius: BorderRadius.circular(16),
-                              border: _selectedMood == mood
-                                  ? Border.all(color: Colors.blue, width: 2)
+                              border: Border.all(
+                                color: isSelected
+                                    ? borderColor
+                                    : borderColor.withOpacity(0.5),
+                                width: isSelected ? 3 : 2,
+                              ),
+                              boxShadow: isSelected
+                                  ? [
+                                      BoxShadow(
+                                        color: borderColor.withOpacity(0.3),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ]
                                   : null,
                             ),
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Text(
-                                  mood.emoji,
-                                  style: const TextStyle(fontSize: 52),
+                                mood.buildLargeIcon(
+                                  size: isSelected ? 56 : 52,
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
                                   mood.label,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 20,
                                     fontWeight: FontWeight.w600,
+                                    color: isSelected ? textColor : textColor.withOpacity(0.7),
                                   ),
                                 ),
                               ],
@@ -191,24 +218,6 @@ class _QuestionScreenState extends State<QuestionScreen> {
                         );
                       }).toList(),
                     ),
-                    if (_selectedMood != null) ...[
-                      const SizedBox(height: 24),
-                      TextField(
-                        controller: _noteController,
-                        decoration: const InputDecoration(
-                          labelText: '하고 싶은 말 (선택)',
-                          hintText: '입력 안 해도 돼요',
-                          border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 12,
-                          ),
-                        ),
-                        maxLines: 3,
-                        minLines: 1,
-                      ),
-                      const SizedBox(height: 16),
-                    ],
                   ],
                 ),
               ),

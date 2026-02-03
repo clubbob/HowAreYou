@@ -2,17 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../utils/button_styles.dart';
-import '../widgets/app_logo.dart';
 import 'guardian_dashboard_screen.dart';
 import 'home_screen.dart';
 
 /// 보호자 모드 화면 (보호 대상 확인)
 class GuardianModeScreen extends StatelessWidget {
   const GuardianModeScreen({super.key});
-
-  Widget _buildAppBarTitle() {
-    return const AppLogo(height: 32, fontSize: 18, fontWeight: FontWeight.w600);
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -23,19 +18,29 @@ class GuardianModeScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: surfaceColor,
       appBar: AppBar(
-        title: _buildAppBarTitle(),
+        title: const Text('보호자 모드'),
         backgroundColor: Colors.white,
         elevation: 0,
         foregroundColor: Colors.black87,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            // 홈 화면(역할 선택 화면)으로 돌아가기
+        leadingWidth: 80,
+        leading: InkWell(
+          onTap: () {
             Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (_) => const HomeScreen()),
+              MaterialPageRoute(builder: (_) => const HomeScreen(skipAutoNavigation: true)),
             );
           },
-          tooltip: '뒤로',
+          borderRadius: BorderRadius.circular(24),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.arrow_back_ios_new, size: 18),
+                const SizedBox(width: 4),
+                const Text('뒤로', style: TextStyle(fontSize: 16)),
+              ],
+            ),
+          ),
         ),
         actions: [
           IconButton(

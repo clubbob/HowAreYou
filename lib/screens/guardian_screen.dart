@@ -402,24 +402,22 @@ class _GuardianScreenState extends State<GuardianScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('보호자 지정'),
-        leadingWidth: 72,
-        leading: Center(
-          child: InkWell(
-            onTap: () => Navigator.of(context).pop(),
-            borderRadius: BorderRadius.circular(24),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.arrow_back_ios_new, size: 20),
-                    const SizedBox(width: 4),
-                    const Text('뒤로', style: TextStyle(fontSize: 15)),
-                  ],
-                ),
-              ),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        foregroundColor: Colors.black87,
+        leadingWidth: 80,
+        leading: InkWell(
+          onTap: () => Navigator.of(context).pop(),
+          borderRadius: BorderRadius.circular(24),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.arrow_back_ios_new, size: 18),
+                const SizedBox(width: 4),
+                const Text('뒤로', style: TextStyle(fontSize: 16)),
+              ],
             ),
           ),
         ),

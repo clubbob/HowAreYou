@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
-import '../widgets/app_logo.dart';
 import 'auth_screen.dart';
 import 'home_screen.dart';
 
@@ -31,7 +30,7 @@ class _SplashScreenState extends State<SplashScreen> {
 
     if (authService.isAuthenticated) {
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
+        MaterialPageRoute(builder: (_) => const HomeScreen(skipAutoNavigation: true)),
       );
     } else {
       Navigator.of(context).pushReplacement(
@@ -47,7 +46,13 @@ class _SplashScreenState extends State<SplashScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const AppLogo(height: 80, fontSize: 32),
+            const Text(
+              '지금 어때?',
+              style: TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
             const SizedBox(height: 20),
             const CircularProgressIndicator(),
           ],

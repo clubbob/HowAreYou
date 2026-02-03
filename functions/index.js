@@ -86,7 +86,17 @@ exports.onResponseCreated = functions.firestore
 
       const response = await admin.messaging().sendEachForMulticast(messagePayload);
       
-      console.log(`${subjectDisplayName}님 응답 알림: ${response.successCount}개 성공, ${response.failureCount}개 실패`);
+      console.log(`[응답 알림] ${subjectDisplayName}님 (${slotLabel}): ${response.successCount}개 성공, ${response.failureCount}개 실패`);
+      console.log(`[응답 알림] 보호자 수: ${guardianUids.length}명, FCM 토큰 수: ${guardianTokens.length}개`);
+      
+      // 실패한 토큰이 있으면 로그 출력
+      if (response.failureCount > 0) {
+        response.responses.forEach((resp, idx) => {
+          if (!resp.success) {
+            console.error(`[응답 알림] 토큰 ${idx} 실패: ${resp.error?.message || '알 수 없는 오류'}`);
+          }
+        });
+      }
       
       return null;
     } catch (error) {

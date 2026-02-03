@@ -48,6 +48,12 @@ app.*.map.json
 **/GoogleService-Info.plist
 firebase_options.dart
 
+# Cloud Functions
+functions/node_modules/
+functions/.eslintcache
+functions/lib/
+functions/.runtimeconfig.json
+
 # Android
 android/local.properties
 android/.gradle/

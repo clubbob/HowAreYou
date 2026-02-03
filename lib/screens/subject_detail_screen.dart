@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
-import 'package:fl_chart/fl_chart.dart';
 import '../services/guardian_service.dart';
 import '../services/mood_service.dart';
 import '../models/mood_response_model.dart';
 import '../utils/button_styles.dart';
 import '../utils/constants.dart';
+import '../widgets/status_display_widgets.dart';
 import 'no_response_screen.dart';
 
 class SubjectDetailScreen extends StatefulWidget {
@@ -223,30 +223,6 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
     }
   }
 
-  Widget _buildLegendItem(String label, Color color) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 16,
-          height: 16,
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(4),
-          ),
-        ),
-        const SizedBox(width: 6),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 11,
-            color: Colors.grey[700],
-          ),
-        ),
-      ],
-    );
-  }
-
   void _handleNoResponseTap(String subjectName, TimeSlot slot) {
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -259,233 +235,27 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
     );
   }
 
-  Widget _buildTrendChart() {
-    if (_historyResponses == null || _historyResponses!.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    // 날짜별 좋아/보통/안좋아 개수 계산
-    // 날짜를 정렬하여 오른쪽이 최근 날짜가 되도록 처리
-    final sortedEntries = _historyResponses!.entries.toList()
-      ..sort((a, b) => a.key.compareTo(b.key)); // 날짜 오름차순 정렬 (오래된 날짜부터)
-    
-    final chartData = <BarChartGroupData>[];
-    final xLabels = <String>[];
-    int index = 0;
-
-    // 정렬된 순서대로 순회 (왼쪽이 오래된 날짜, 오른쪽이 최근 날짜)
-    for (final entry in sortedEntries) {
-      final dateStr = entry.key;
-      final dayResponses = entry.value;
-      
-      // 각 기분별 개수 계산
-      int goodCount = 0;
-      int normalCount = 0;
-      int badCount = 0;
-      
-      for (final response in dayResponses.values) {
-        if (response != null) {
-          switch (response.mood) {
-            case Mood.good:
-              goodCount++;
-              break;
-            case Mood.normal:
-              normalCount++;
-              break;
-            case Mood.bad:
-              badCount++;
-              break;
-          }
-        }
-      }
-      
-      DateTime date;
-      try {
-        date = DateFormat('yyyy-MM-dd').parse(dateStr);
-      } catch (_) {
-        date = DateTime.now();
-      }
-      
-      final dateLabel = DateFormat('M/d', 'ko_KR').format(date);
-      xLabels.add(dateLabel);
-      
-      // 각 날짜에 좋아/보통/안좋아 막대를 나란히 표시
-      chartData.add(
-        BarChartGroupData(
-          x: index,
-          groupVertically: false,
-          barRods: [
-            // 좋아 (초록색)
-            BarChartRodData(
-              toY: goodCount.toDouble(),
-              color: Colors.green,
-              width: 12,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(4),
-              ),
-            ),
-            // 보통 (노란색)
-            BarChartRodData(
-              toY: normalCount.toDouble(),
-              color: Colors.orange,
-              width: 12,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(4),
-              ),
-            ),
-            // 안좋아 (빨간색)
-            BarChartRodData(
-              toY: badCount.toDouble(),
-              color: Colors.red,
-              width: 12,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(4),
-              ),
-            ),
-          ],
-        ),
-      );
-      index++;
-    }
-
-    return Container(
-      height: 200,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
-      ),
-      child: BarChart(
-        BarChartData(
-          alignment: BarChartAlignment.spaceAround,
-          maxY: 3,
-          barTouchData: BarTouchData(
-            enabled: true,
-            touchTooltipData: BarTouchTooltipData(
-              getTooltipColor: (_) => Colors.grey.shade800,
-              tooltipRoundedRadius: 8,
-              tooltipPadding: const EdgeInsets.all(8),
-              getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                final moodLabels = ['좋아', '보통', '안좋아'];
-                final moodLabel = rodIndex < moodLabels.length 
-                    ? moodLabels[rodIndex] 
-                    : '';
-                return BarTooltipItem(
-                  '$moodLabel: ${rod.toY.toInt()}개',
-                  const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
-                );
-              },
-            ),
-          ),
-          titlesData: FlTitlesData(
-            show: true,
-            bottomTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                getTitlesWidget: (value, meta) {
-                  if (value.toInt() >= 0 && value.toInt() < xLabels.length) {
-                    return Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: Text(
-                        xLabels[value.toInt()],
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.grey[700],
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    );
-                  }
-                  return const Text('');
-                },
-                reservedSize: 30,
-              ),
-            ),
-            leftTitles: AxisTitles(
-              axisNameWidget: const Text(
-                '응답 개수',
-                style: TextStyle(
-                  fontSize: 11,
-                  color: Colors.grey,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              sideTitles: SideTitles(
-                showTitles: true,
-                getTitlesWidget: (value, meta) {
-                  if (value.toInt() >= 0 && value.toInt() <= 3) {
-                    return Text(
-                      value.toInt().toString(),
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.grey[600],
-                      ),
-                    );
-                  }
-                  return const Text('');
-                },
-                reservedSize: 40,
-              ),
-            ),
-            topTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            rightTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-          ),
-          gridData: FlGridData(
-            show: true,
-            drawVerticalLine: false,
-            horizontalInterval: 1,
-            getDrawingHorizontalLine: (value) {
-              return FlLine(
-                color: Colors.grey.shade200,
-                strokeWidth: 1,
-              );
-            },
-          ),
-          borderData: FlBorderData(
-            show: true,
-            border: Border(
-              bottom: BorderSide(color: Colors.grey.shade300),
-              left: BorderSide(color: Colors.grey.shade300),
-            ),
-          ),
-          barGroups: chartData,
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('보호 대상 상세'),
-        leadingWidth: 72,
-        leading: Center(
-          child: InkWell(
-            onTap: () => Navigator.of(context).pop(),
-            borderRadius: BorderRadius.circular(24),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.arrow_back_ios_new, size: 20),
-                    const SizedBox(width: 4),
-                    const Text('뒤로', style: TextStyle(fontSize: 15)),
-                  ],
-                ),
-              ),
+        title: const Text('보호 대상 상태'),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        foregroundColor: Colors.black87,
+        leadingWidth: 80,
+        leading: InkWell(
+          onTap: () => Navigator.of(context).pop(),
+          borderRadius: BorderRadius.circular(24),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.arrow_back_ios_new, size: 18),
+                const SizedBox(width: 4),
+                const Text('뒤로', style: TextStyle(fontSize: 16)),
+              ],
             ),
           ),
         ),
@@ -529,213 +299,16 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                Text(
-                  '오늘 상태',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.grey[700],
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: TimeSlot.values.map((slot) {
-                    final response = _responses![slot];
-                    final hasResponse = response != null;
-                    final isNoResponse = !hasResponse;
-                    return Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        child: Material(
-                          color: isNoResponse
-                              ? Colors.orange.shade50
-                              : Colors.green.shade50,
-                          borderRadius: BorderRadius.circular(8),
-                          child: InkWell(
-                            onTap: isNoResponse
-                                ? () => _handleNoResponseTap(subjectName, slot)
-                                : null,
-                            borderRadius: BorderRadius.circular(8),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 10,
-                                horizontal: 6,
-                              ),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    slot.label,
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey[700],
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    hasResponse
-                                        ? response!.mood.emoji
-                                        : '—',
-                                    style: const TextStyle(fontSize: 32),
-                                  ),
-                                  Text(
-                                    hasResponse
-                                        ? '응답함'
-                                        : '회신 없음',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: isNoResponse
-                                          ? Colors.orange.shade800
-                                          : Colors.green.shade800,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  }).toList(),
+                TodayStatusWidget(
+                  responses: _responses,
+                  onNoResponseTap: (slot) => _handleNoResponseTap(subjectName, slot),
+                  noResponseSubjectName: subjectName,
                 ),
                 if (_historyResponses != null && _historyResponses!.isNotEmpty) ...[
                   const SizedBox(height: 24),
-                  Text(
-                    '최근 7일 추세',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey[700],
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '각 날짜별 좋아/보통/안좋아 응답 개수',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  _buildTrendChart(),
-                  const SizedBox(height: 8),
-                  // 범례
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _buildLegendItem('좋아', Colors.green),
-                      const SizedBox(width: 16),
-                      _buildLegendItem('보통', Colors.orange),
-                      const SizedBox(width: 16),
-                      _buildLegendItem('안좋아', Colors.red),
-                    ],
-                  ),
+                  StatusTrendChart(historyResponses: _historyResponses),
                   const SizedBox(height: 24),
-                  Text(
-                    '최근 7일 이력',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey[700],
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  // 테이블 헤더
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 6),
-                    child: Row(
-                      children: [
-                        SizedBox(
-                          width: 72,
-                          child: Text(
-                            '날짜',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.grey[800],
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          child: Row(
-                            children: TimeSlot.values.map((slot) {
-                              return Expanded(
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 2),
-                                  child: Text(
-                                    slot.label,
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.grey[800],
-                                    ),
-                                  ),
-                                ),
-                              );
-                            }).toList(),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  ..._historyResponses!.entries.map((entry) {
-                    final dateStr = entry.key;
-                    final dayResponses = entry.value;
-                    DateTime date;
-                    try {
-                      date = DateFormat('yyyy-MM-dd').parse(dateStr);
-                    } catch (_) {
-                      date = DateTime.now();
-                    }
-                    final dateLabel = DateFormat('M/d (E)', 'ko_KR').format(date);
-                    final isToday = dateStr == DateFormat('yyyy-MM-dd').format(DateTime.now());
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: Row(
-                        children: [
-                          SizedBox(
-                            width: 72,
-                            child: Text(
-                              dateLabel,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: isToday ? Colors.blue.shade700 : Colors.grey[700],
-                                fontWeight: isToday ? FontWeight.w600 : FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            child: Row(
-                              children: TimeSlot.values.map((slot) {
-                                final r = dayResponses[slot];
-                                final hasR = r != null;
-                                return Expanded(
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 2),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(vertical: 6),
-                                      decoration: BoxDecoration(
-                                        color: hasR ? Colors.green.shade50 : Colors.grey.shade100,
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      child: Text(
-                                        hasR ? r!.mood.emoji : '—',
-                                        textAlign: TextAlign.center,
-                                        style: const TextStyle(fontSize: 24),
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              }).toList(),
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }),
+                  StatusHistoryTable(historyResponses: _historyResponses),
                 ],
               ],
             ),

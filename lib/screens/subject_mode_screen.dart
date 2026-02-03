@@ -4,10 +4,10 @@ import '../services/auth_service.dart';
 import '../services/mood_service.dart';
 import '../models/mood_response_model.dart';
 import '../utils/button_styles.dart';
-import '../widgets/app_logo.dart';
 import 'question_screen.dart';
 import 'guardian_screen.dart';
 import 'home_screen.dart';
+import 'subject_my_status_screen.dart';
 
 /// 보호대상자 모드 화면 (상태 알려주기, 보호자 지정)
 class SubjectModeScreen extends StatefulWidget {
@@ -20,10 +20,6 @@ class SubjectModeScreen extends StatefulWidget {
 class _SubjectModeScreenState extends State<SubjectModeScreen> {
   final MoodService _moodService = MoodService();
 
-  Widget _buildAppBarTitle() {
-    return const AppLogo(height: 32, fontSize: 18, fontWeight: FontWeight.w600);
-  }
-
   @override
   Widget build(BuildContext context) {
     final authService = Provider.of<AuthService>(context);
@@ -34,19 +30,29 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> {
     return Scaffold(
       backgroundColor: surfaceColor,
       appBar: AppBar(
-        title: _buildAppBarTitle(),
+        title: const Text('보호대상자 모드'),
         backgroundColor: Colors.white,
         elevation: 0,
         foregroundColor: Colors.black87,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            // 홈 화면(역할 선택 화면)으로 돌아가기
+        leadingWidth: 80,
+        leading: InkWell(
+          onTap: () {
             Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (_) => const HomeScreen()),
+              MaterialPageRoute(builder: (_) => const HomeScreen(skipAutoNavigation: true)),
             );
           },
-          tooltip: '뒤로',
+          borderRadius: BorderRadius.circular(24),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.arrow_back_ios_new, size: 18),
+                const SizedBox(width: 4),
+                const Text('뒤로', style: TextStyle(fontSize: 16)),
+              ],
+            ),
+          ),
         ),
         actions: [
           IconButton(
@@ -97,7 +103,37 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    final userId = authService.user?.uid;
+                    if (userId != null) {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => SubjectMyStatusScreen(subjectId: userId),
+                        ),
+                      );
+                    }
+                  },
+                  icon: const Icon(Icons.history_rounded, size: 22),
+                  label: const Text('내 상태 보기'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: primaryColor,
+                    side: const BorderSide(color: primaryColor, width: 1.5),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    textStyle: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(

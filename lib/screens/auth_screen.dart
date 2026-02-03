@@ -6,7 +6,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../utils/button_styles.dart';
-import '../widgets/app_logo.dart';
 import 'home_screen.dart';
 
 class AuthScreen extends StatefulWidget {
@@ -81,7 +80,7 @@ class _AuthScreenState extends State<AuthScreen> {
           await authService.verifyOTP('', credential.smsCode ?? '');
           if (mounted) {
             Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (_) => const HomeScreen()),
+              MaterialPageRoute(builder: (_) => const HomeScreen(skipAutoNavigation: true)),
             );
           }
         },
@@ -148,7 +147,7 @@ class _AuthScreenState extends State<AuthScreen> {
         
         if (error == null) {
           Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const HomeScreen()),
+            MaterialPageRoute(builder: (_) => const HomeScreen(skipAutoNavigation: true)),
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -180,8 +179,12 @@ class _AuthScreenState extends State<AuthScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Center(
-              child: AppLogo(height: 80, fontSize: 32),
+            const Text(
+              '지금 어때?',
+              style: TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 48),
             if (!_codeSent) ...[

@@ -3,12 +3,13 @@ import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../services/mode_service.dart';
 import '../utils/button_styles.dart';
-import '../widgets/app_logo.dart';
 import 'subject_mode_screen.dart';
 import 'guardian_mode_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final bool skipAutoNavigation;
+  
+  const HomeScreen({super.key, this.skipAutoNavigation = false});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -31,8 +32,9 @@ class _HomeScreenState extends State<HomeScreen> {
         _lastSelectedMode = mode;
         _isLoading = false;
       });
-      // 마지막 선택한 모드가 있으면 자동으로 해당 모드로 진입
-      if (mode != null) {
+      // skipAutoNavigation이 false이고 마지막 선택한 모드가 있으면 자동으로 해당 모드로 진입
+      // (로그인 직후에는 skipAutoNavigation=true로 설정하여 역할 선택 화면을 보여줌)
+      if (!widget.skipAutoNavigation && mode != null) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           _navigateToMode(mode, skipSave: true);
         });
@@ -40,9 +42,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Widget _buildAppBarTitle() {
-    return const AppLogo(height: 32, fontSize: 18, fontWeight: FontWeight.w600);
-  }
 
   Future<void> _selectMode(String mode) async {
     await ModeService.saveSelectedMode(mode);
@@ -75,7 +74,7 @@ class _HomeScreenState extends State<HomeScreen> {
       return Scaffold(
         backgroundColor: surfaceColor,
         appBar: AppBar(
-          title: _buildAppBarTitle(),
+          title: const Text('지금 어때?'),
           backgroundColor: Colors.white,
           elevation: 0,
           foregroundColor: Colors.black87,
@@ -87,7 +86,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: surfaceColor,
       appBar: AppBar(
-        title: _buildAppBarTitle(),
+        title: const Text('지금 어때?'),
         backgroundColor: Colors.white,
         elevation: 0,
         foregroundColor: Colors.black87,
