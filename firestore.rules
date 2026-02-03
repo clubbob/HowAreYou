@@ -6,14 +6,24 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
     
-    // 보호대상 문서
-    match /subjects/{subjectId} {
-      // 본인은 읽기/쓰기 가능
-      allow read, write: if request.auth != null && request.auth.uid == subjectId;
+    // 보호대상 문서 (subjectId = uid로 통일)
+    match /subjects/{subjectUid} {
+      // 보호 대상자 본인: 읽기/쓰기 가능
+      function isSubject() {
+        return request.auth != null && request.auth.uid == subjectUid;
+      }
       
-      // 지정자는 읽기만 가능 (응답 내역은 볼 수 없음)
-      allow read: if request.auth != null && 
-        request.auth.uid in resource.data.pairedGuardianUids;
+      // 보호자: 연결된 경우에만 읽기 가능
+      function isGuardian() {
+        return request.auth != null
+          && request.auth.uid in resource.data.pairedGuardianUids;
+      }
+      
+      // 보호 대상자 본인은 읽기/쓰기 가능
+      allow read, write: if isSubject();
+      
+      // 보호자는 읽기만 가능 (B안: 가족 공유형 - 상태 공유 허용)
+      allow read: if isGuardian();
       
       // 알림 문서
       match /alerts/{alertId} {
@@ -21,9 +31,13 @@ service cloud.firestore {
           request.auth.uid in resource.data.guardianUids;
       }
       
-      // 응답 문서 (prompts) - 지정자는 접근 불가
+      // 응답 문서 (prompts) - B안: 보호 대상자와 보호자 모두 읽기 가능
       match /prompts/{promptId} {
-        allow read, write: if request.auth != null && request.auth.uid == subjectId;
+        // 보호 대상자 본인: 읽기/쓰기 가능
+        allow read, write: if isSubject();
+        
+        // 보호자: 읽기만 가능 (최근 7일 상태 공유)
+        allow read: if isGuardian();
       }
     }
     

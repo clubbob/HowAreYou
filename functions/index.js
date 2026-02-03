@@ -4,6 +4,66 @@ const admin = require('firebase-admin');
 admin.initializeApp();
 
 /**
+ * 보호자에게 FCM 알림 발송 및 invalid 토큰 정리
+ * @param {string} guardianUid 보호자 UID
+ * @param {object} payload FCM 메시지 페이로드 (tokens 제외)
+ * @returns {Promise<{successCount: number, failureCount: number}>}
+ */
+async function sendToGuardian(guardianUid, payload) {
+  try {
+    // 보호자 문서에서 FCM 토큰 조회
+    const userDoc = await admin.firestore().collection('users').doc(guardianUid).get();
+    if (!userDoc.exists) {
+      return { successCount: 0, failureCount: 0 };
+    }
+
+    const userData = userDoc.data();
+    const tokens = (userData?.fcmTokens || []).filter(Boolean);
+    
+    if (tokens.length === 0) {
+      return { successCount: 0, failureCount: 0 };
+    }
+
+    // FCM 메시지 발송
+    const messagePayload = {
+      ...payload,
+      tokens: tokens,
+    };
+
+    const response = await admin.messaging().sendEachForMulticast(messagePayload);
+
+    // Invalid 토큰 정리
+    const invalidTokenErrors = new Set([
+      'messaging/registration-token-not-registered',
+      'messaging/invalid-registration-token',
+    ]);
+
+    const invalidTokens = [];
+    response.responses.forEach((resp, idx) => {
+      if (!resp.success && invalidTokenErrors.has(resp.error?.code)) {
+        invalidTokens.push(tokens[idx]);
+      }
+    });
+
+    // Invalid 토큰 제거
+    if (invalidTokens.length > 0) {
+      await admin.firestore().collection('users').doc(guardianUid).update({
+        fcmTokens: admin.firestore.FieldValue.arrayRemove(...invalidTokens),
+      });
+      console.log(`[FCM 토큰 정리] ${guardianUid}: ${invalidTokens.length}개 제거`);
+    }
+
+    return {
+      successCount: response.successCount,
+      failureCount: response.failureCount,
+    };
+  } catch (error) {
+    console.error(`[FCM 발송 오류] ${guardianUid}:`, error);
+    return { successCount: 0, failureCount: 0 };
+  }
+}
+
+/**
  * 응답 저장 시 보호자에게 알림 발송 (최적화: notification_requests 제거)
  * prompts 컬렉션에 새 문서가 생성되면 실행
  */
@@ -36,67 +96,43 @@ exports.onResponseCreated = functions.firestore
       else if (slot === 'noon') slotLabel = '점심';
       else if (slot === 'evening') slotLabel = '저녁';
 
-      // 보호자들의 FCM 토큰 조회 (병렬 처리)
-      const tokenPromises = guardianUids.map(async (guardianUid) => {
-        const userDoc = await admin.firestore().collection('users').doc(guardianUid).get();
-        if (userDoc.exists) {
-          const userData = userDoc.data();
-          return userData?.fcmTokens || [];
-        }
-        return [];
-      });
-
-      const tokenArrays = await Promise.all(tokenPromises);
-      const guardianTokens = tokenArrays.flat();
-
-      if (guardianTokens.length === 0) {
-        console.log('보호자 FCM 토큰이 없습니다.');
-        return null;
-      }
-
-      // FCM 메시지 발송
-      const messagePayload = {
-        notification: {
-          title: '상태 확인 알림',
-          body: `${subjectDisplayName}님이 ${slotLabel} 상태를 확인했습니다`,
-        },
-        data: {
-          type: 'RESPONSE_RECEIVED',
-          subjectId: subjectId,
-          subjectDisplayName: subjectDisplayName,
-          click_action: 'FLUTTER_NOTIFICATION_CLICK',
-        },
-        android: {
-          priority: 'high',
+      // 보호자별로 알림 발송 (FCM 토큰 정리 포함)
+      const sendPromises = guardianUids.map(async (guardianUid) => {
+        return await sendToGuardian(guardianUid, {
           notification: {
-            sound: 'default',
-            channelId: 'guardian_notifications',
+            title: '상태 확인 알림',
+            body: `${subjectDisplayName}님이 ${slotLabel} 상태를 확인했습니다`,
           },
-        },
-        apns: {
-          payload: {
-            aps: {
+          data: {
+            type: 'RESPONSE_RECEIVED',
+            subjectId: subjectId,
+            subjectDisplayName: subjectDisplayName,
+            click_action: 'FLUTTER_NOTIFICATION_CLICK',
+          },
+          android: {
+            priority: 'high',
+            notification: {
               sound: 'default',
-              badge: 1,
+              channelId: 'guardian_notifications',
             },
           },
-        },
-        tokens: guardianTokens,
-      };
-
-      const response = await admin.messaging().sendEachForMulticast(messagePayload);
-      
-      console.log(`[응답 알림] ${subjectDisplayName}님 (${slotLabel}): ${response.successCount}개 성공, ${response.failureCount}개 실패`);
-      console.log(`[응답 알림] 보호자 수: ${guardianUids.length}명, FCM 토큰 수: ${guardianTokens.length}개`);
-      
-      // 실패한 토큰이 있으면 로그 출력
-      if (response.failureCount > 0) {
-        response.responses.forEach((resp, idx) => {
-          if (!resp.success) {
-            console.error(`[응답 알림] 토큰 ${idx} 실패: ${resp.error?.message || '알 수 없는 오류'}`);
-          }
+          apns: {
+            payload: {
+              aps: {
+                sound: 'default',
+                badge: 1,
+              },
+            },
+          },
         });
-      }
+      });
+
+      const results = await Promise.all(sendPromises);
+      const totalSuccess = results.reduce((sum, r) => sum + (r?.successCount || 0), 0);
+      const totalFailure = results.reduce((sum, r) => sum + (r?.failureCount || 0), 0);
+      
+      console.log(`[응답 알림] ${subjectDisplayName}님 (${slotLabel}): ${totalSuccess}개 성공, ${totalFailure}개 실패`);
+      console.log(`[응답 알림] 보호자 수: ${guardianUids.length}명`);
       
       return null;
     } catch (error) {
@@ -154,22 +190,9 @@ exports.checkUnreachableSubjects = functions.pubsub
           // 미회신 조건 충족 → 직접 알림 발송 (notification_requests 제거)
           const subjectDisplayName = subjectData.displayName || '보호 대상';
           
-          // 보호자들의 FCM 토큰 조회 (병렬 처리)
-          const tokenPromises = guardianUids.map(async (guardianUid) => {
-            const userDoc = await db.collection('users').doc(guardianUid).get();
-            if (userDoc.exists) {
-              const userData = userDoc.data();
-              return userData?.fcmTokens || [];
-            }
-            return [];
-          });
-
-          const tokenArrays = await Promise.all(tokenPromises);
-          const guardianTokens = tokenArrays.flat();
-
-          if (guardianTokens.length > 0) {
-            // FCM 메시지 발송
-            const messagePayload = {
+          // 보호자별로 알림 발송 (FCM 토큰 정리 포함)
+          const sendPromises = guardianUids.map(async (guardianUid) => {
+            return await sendToGuardian(guardianUid, {
               notification: {
                 title: '연락 불가 알림',
                 body: `${subjectDisplayName}님이 상태를 확인하지 않고 있습니다`,
@@ -195,12 +218,12 @@ exports.checkUnreachableSubjects = functions.pubsub
                   },
                 },
               },
-              tokens: guardianTokens,
-            };
+            });
+          });
 
-            const response = await admin.messaging().sendEachForMulticast(messagePayload);
-            console.log(`미회신 알림 발송: ${subjectId} (${subjectDisplayName}) - ${response.successCount}개 성공`);
-          }
+          const results = await Promise.all(sendPromises);
+          const totalSuccess = results.reduce((sum, r) => sum + (r?.successCount || 0), 0);
+          console.log(`미회신 알림 발송: ${subjectId} (${subjectDisplayName}) - ${totalSuccess}개 성공`);
         }
 
         return null;

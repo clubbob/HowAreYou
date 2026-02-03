@@ -191,22 +191,51 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
           ),
         ),
       ),
-      body: FutureBuilder<List<String>>(
-        future: _subjectIdsFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError || !snapshot.hasData) {
-            return Center(
-              child: Text(
-                snapshot.hasError
-                    ? '오류: ${snapshot.error}'
-                    : '보호 대상 목록을 불러올 수 없습니다.',
-              ),
-            );
-          }
-          final subjectIds = snapshot.data!;
+      body: Column(
+        children: [
+          // 안내 문구 (B안: 가족 공유형 - 상태 공유 허용, 하지만 감시 아님)
+          Container(
+            padding: const EdgeInsets.all(12),
+            margin: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.blue[50],
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.blue[200]!),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline, size: 16, color: Colors.blue[700]),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '이 앱은 응답 "내용"은 공유하지 않으며, 안부 확인 여부만 알려줍니다.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.blue[900],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // 보호 대상 목록
+          Expanded(
+            child: FutureBuilder<List<String>>(
+              future: _subjectIdsFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError || !snapshot.hasData) {
+                  return Center(
+                    child: Text(
+                      snapshot.hasError
+                          ? '오류: ${snapshot.error}'
+                          : '보호 대상 목록을 불러올 수 없습니다.',
+                    ),
+                  );
+                }
+                final subjectIds = snapshot.data!;
           if (subjectIds.isEmpty) {
             return Center(
               child: Padding(
