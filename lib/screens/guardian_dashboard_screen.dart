@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
 import '../services/guardian_service.dart';
 import '../services/mood_service.dart';
+import '../services/fcm_service.dart';
 import '../models/mood_response_model.dart';
 import '../utils/button_styles.dart';
 import '../utils/constants.dart';
@@ -190,34 +191,22 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
             ),
           ),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const GuardianSettingsScreen(),
+                ),
+              );
+            },
+            tooltip: '설정',
+          ),
+        ],
       ),
       body: Column(
         children: [
-          // 안내 문구 (B안: 가족 공유형 - 상태 공유 허용, 하지만 감시 아님)
-          Container(
-            padding: const EdgeInsets.all(12),
-            margin: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.blue[50],
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.blue[200]!),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.info_outline, size: 16, color: Colors.blue[700]),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    '이 앱은 응답 "내용"은 공유하지 않으며, 안부 확인 여부만 알려줍니다.',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.blue[900],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
           // 보호 대상 목록
           Expanded(
             child: FutureBuilder<List<String>>(
@@ -236,88 +225,91 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
                   );
                 }
                 final subjectIds = snapshot.data!;
-          if (subjectIds.isEmpty) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.people_outline, size: 64, color: Colors.grey[400]),
-                    const SizedBox(height: 16),
-                    Text(
-                      '등록된 보호 대상이 없습니다.',
-                      style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 24),
-                    FilledButton.icon(
-                      onPressed: () => _showAddSubjectDialog(context, userId),
-                      icon: const Icon(Icons.person_add, size: 22),
-                      label: const Text('보호 대상 추가'),
-                      style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 16,
-                        ),
+                if (subjectIds.isEmpty) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.people_outline, size: 64, color: Colors.grey[400]),
+                          const SizedBox(height: 16),
+                          Text(
+                            '등록된 보호 대상이 없습니다.',
+                            style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 24),
+                          FilledButton.icon(
+                            onPressed: () => _showAddSubjectDialog(context, userId),
+                            icon: const Icon(Icons.person_add, size: 22),
+                            label: const Text('보호 대상 추가'),
+                            style: FilledButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                                vertical: 16,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ],
-                ),
-              ),
-            );
-          }
+                  );
+                }
 
-          // 보호 대상이 1명 이상이면 목록 표시 (선택 시 상세 화면으로 이동)
-          return ListView(
-            padding: const EdgeInsets.all(24),
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Text(
-                    '보호 대상 (${subjectIds.length}명)',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  FilledButton.icon(
-                    onPressed: () => _showAddSubjectDialog(context, userId),
-                    icon: const Icon(Icons.person_add, size: 22),
-                    label: const Text('보호 대상 추가'),
-                    style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              ...subjectIds.map((subjectId) {
-                return _SubjectListItem(
-                  subjectId: subjectId,
-                  guardianUid: userId,
-                  guardianService: _guardianService,
-                  moodService: _moodService,
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => SubjectDetailScreen(
-                          subjectId: subjectId,
-                          guardianUid: userId,
-                          guardianService: _guardianService,
-                          moodService: _moodService,
+                // 보호 대상이 1명 이상이면 목록 표시 (선택 시 상세 화면으로 이동)
+                return ListView(
+                  padding: const EdgeInsets.all(24),
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Text(
+                          '보호 대상 (${subjectIds.length}명)',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ),
-                    );
-                  },
+                        FilledButton.icon(
+                          onPressed: () => _showAddSubjectDialog(context, userId),
+                          icon: const Icon(Icons.person_add, size: 22),
+                          label: const Text('보호 대상 추가'),
+                          style: FilledButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    ...subjectIds.map((subjectId) {
+                      return _SubjectListItem(
+                        subjectId: subjectId,
+                        guardianUid: userId,
+                        guardianService: _guardianService,
+                        moodService: _moodService,
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => SubjectDetailScreen(
+                                subjectId: subjectId,
+                                guardianUid: userId,
+                                guardianService: _guardianService,
+                                moodService: _moodService,
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    }),
+                  ],
                 );
-              }),
-            ],
-          );
-        },
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -428,6 +420,88 @@ class _SubjectListItemState extends State<_SubjectListItem> {
           ),
         );
       },
+    );
+  }
+}
+
+/// 보호자 설정 화면
+class GuardianSettingsScreen extends StatefulWidget {
+  const GuardianSettingsScreen({super.key});
+
+  @override
+  State<GuardianSettingsScreen> createState() => _GuardianSettingsScreenState();
+}
+
+class _GuardianSettingsScreenState extends State<GuardianSettingsScreen> {
+  bool _notificationSoundEnabled = true;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSettings();
+  }
+
+  Future<void> _loadSettings() async {
+    final enabled = await FCMService.instance.getNotificationSoundEnabled();
+    if (mounted) {
+      setState(() {
+        _notificationSoundEnabled = enabled;
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _toggleNotificationSound(bool value) async {
+    setState(() {
+      _notificationSoundEnabled = value;
+    });
+    await FCMService.instance.setNotificationSoundEnabled(value);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('설정'),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        foregroundColor: Colors.black87,
+        leadingWidth: 80,
+        leading: InkWell(
+          onTap: () => Navigator.of(context).pop(),
+          borderRadius: BorderRadius.circular(24),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.arrow_back_ios_new, size: 18),
+                const SizedBox(width: 4),
+                const Text('뒤로', style: TextStyle(fontSize: 16)),
+              ],
+            ),
+          ),
+        ),
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.notifications_active),
+                    title: const Text('알림 소리'),
+                    subtitle: const Text('보호 대상 상태 알림 소리 재생'),
+                    trailing: Switch(
+                      value: _notificationSoundEnabled,
+                      onChanged: _toggleNotificationSound,
+                    ),
+                  ),
+                ),
+              ],
+            ),
     );
   }
 }

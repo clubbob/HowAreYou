@@ -91,13 +91,7 @@ class _HomeScreenState extends State<HomeScreen> {
         elevation: 0,
         foregroundColor: Colors.black87,
         automaticallyImplyLeading: false, // 뒤로 가기 버튼 숨김 (최상위 화면)
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout_rounded),
-            tooltip: '로그아웃',
-            onPressed: () => _showLogoutConfirm(context, authService),
-          ),
-        ],
+        actions: const [], // 로그아웃 버튼 제거: 한 번 로그인하면 앱 삭제 전까지 자동 로그인 유지 (비용 절감)
       ),
       body: SafeArea(
         child: Padding(
@@ -175,35 +169,5 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
     );
-  }
-
-
-  /// 로그아웃 전 확인 다이얼로그 (노인 등 잘못 탭 방지)
-  Future<void> _showLogoutConfirm(
-      BuildContext context, AuthService authService) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('로그아웃'),
-        content: const Text('로그아웃 하시겠습니까?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('취소'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: AppButtonStyles.primaryFilled,
-            child: const Text('로그아웃'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed == true && mounted) {
-      await authService.signOut();
-      if (mounted) {
-        Navigator.of(context).pushReplacementNamed('/auth');
-      }
-    }
   }
 }

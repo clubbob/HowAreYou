@@ -64,12 +64,10 @@ async function sendToGuardian(guardianUid, payload) {
 }
 
 /**
- * 응답 저장 시 보호자에게 알림 발송 (최적화: notification_requests 제거)
- * prompts 컬렉션에 새 문서가 생성되면 실행
+ * 응답 저장/업데이트 시 보호자에게 알림 발송
+ * prompts 컬렉션에 새 문서가 생성되거나 업데이트되면 실행
  */
-exports.onResponseCreated = functions.firestore
-  .document('subjects/{subjectId}/prompts/{promptId}')
-  .onCreate(async (snap, context) => {
+async function sendResponseNotification(snap, context) {
     const { subjectId } = context.params;
     const promptData = snap.data();
     
@@ -139,6 +137,25 @@ exports.onResponseCreated = functions.firestore
       console.error('응답 알림 발송 오류:', error);
       return null; // 오류 발생해도 응답 저장은 이미 완료되었으므로 무시
     }
+}
+
+/**
+ * 응답 생성 시 알림 발송
+ */
+exports.onResponseCreated = functions.firestore
+  .document('subjects/{subjectId}/prompts/{promptId}')
+  .onCreate(async (snap, context) => {
+    return await sendResponseNotification(snap, context);
+  });
+
+/**
+ * 응답 업데이트 시에도 알림 발송 (같은 시간대에 다시 응답한 경우)
+ */
+exports.onResponseUpdated = functions.firestore
+  .document('subjects/{subjectId}/prompts/{promptId}')
+  .onUpdate(async (change, context) => {
+    // 업데이트된 문서 사용
+    return await sendResponseNotification(change.after, context);
   });
 
 /**

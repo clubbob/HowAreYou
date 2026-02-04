@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -299,6 +300,18 @@ class _GuardianScreenState extends State<GuardianScreen> {
       final guardianPhone = guardianData['phone'] is String
           ? (guardianData['phone'] as String)
           : '';
+
+      // 본인 체크: 프로덕션 모드에서는 본인을 보호자로 추가할 수 없음
+      // 개발 모드(kDebugMode)에서는 테스트를 위해 허용
+      if (guardianId == userId) {
+        if (kDebugMode) {
+          // 개발 모드: 허용 (테스트 편의)
+          debugPrint('[개발 모드] 본인을 보호자로 추가합니다. (프로덕션에서는 차단됨)');
+        } else {
+          // 프로덕션 모드: 차단
+          throw Exception('본인 전화번호는 추가할 수 없습니다.');
+        }
+      }
 
       final docRef = _firestore.collection('subjects').doc(userId);
       // 기존 데이터를 먼저 읽어서 중복 확인

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../utils/constants.dart';
 
@@ -59,8 +60,17 @@ class GuardianService {
     }
     final subjectDoc = usersQuery.docs.first;
     final subjectId = subjectDoc.id;
+    
+    // 본인 체크: 프로덕션 모드에서는 본인을 보호대상으로 추가할 수 없음
+    // 개발 모드(kDebugMode)에서는 테스트를 위해 허용
     if (subjectId == guardianUid) {
-      throw Exception('본인 전화번호는 추가할 수 없습니다. 보호할 분(대상자)의 전화번호를 입력해 주세요.');
+      if (kDebugMode) {
+        // 개발 모드: 허용 (테스트 편의)
+        debugPrint('[개발 모드] 본인을 보호대상으로 추가합니다. (프로덕션에서는 차단됨)');
+      } else {
+        // 프로덕션 모드: 차단
+        throw Exception('본인 전화번호는 추가할 수 없습니다. 보호할 분(대상자)의 전화번호를 입력해 주세요.');
+      }
     }
 
     final docRef = _firestore

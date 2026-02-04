@@ -42,13 +42,7 @@ class GuardianModeScreen extends StatelessWidget {
             ),
           ),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout_rounded),
-            tooltip: '로그아웃',
-            onPressed: () => _showLogoutConfirm(context, authService),
-          ),
-        ],
+        actions: const [], // 로그아웃 버튼 제거: 한 번 로그인하면 앱 삭제 전까지 자동 로그인 유지 (비용 절감)
       ),
       body: SafeArea(
         child: Padding(
@@ -111,34 +105,5 @@ class GuardianModeScreen extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  /// 로그아웃 전 확인 다이얼로그
-  static Future<void> _showLogoutConfirm(
-      BuildContext context, AuthService authService) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('로그아웃'),
-        content: const Text('로그아웃 하시겠습니까?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('취소'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: AppButtonStyles.primaryFilled,
-            child: const Text('로그아웃'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed == true && context.mounted) {
-      await authService.signOut();
-      if (context.mounted) {
-        Navigator.of(context).pushReplacementNamed('/auth');
-      }
-    }
   }
 }
