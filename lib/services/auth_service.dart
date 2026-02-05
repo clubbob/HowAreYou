@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
 import 'fcm_service.dart';
 
@@ -23,12 +24,18 @@ class AuthService extends ChangeNotifier {
   AuthService() {
     _auth.authStateChanges().listen((User? user) {
       if (!_authReadyCompleter.isCompleted) _authReadyCompleter.complete();
+      final wasAuthenticated = _user != null;
       _user = user;
       if (user != null) {
         _loadUserData(user.uid);
       } else {
         _userModel = null;
         notifyListeners();
+        // 로그아웃 시에만 자동으로 AuthScreen으로 이동 (로그인 시에는 수동 처리)
+        if (wasAuthenticated) {
+          // 로그아웃이 감지되었을 때만 처리
+          // Navigator는 각 화면에서 처리하므로 여기서는 처리하지 않음
+        }
       }
     });
   }
@@ -84,8 +91,11 @@ class AuthService extends ChangeNotifier {
       final user = userCredential.user;
       
       if (user != null) {
+        final phoneNumber = user.phoneNumber ?? '';
         // 사용자 문서가 없으면 생성
-        await _ensureUserDocument(user.uid, user.phoneNumber ?? '');
+        await _ensureUserDocument(user.uid, phoneNumber);
+        // 마지막 로그인 전화번호 저장
+        await _saveLastLoginPhone(phoneNumber);
         // FCM 서비스 초기화
         await FCMService.instance.initialize(user.uid);
       }
@@ -93,6 +103,27 @@ class AuthService extends ChangeNotifier {
       return null;
     } catch (e) {
       return e.toString();
+    }
+  }
+  
+  /// 마지막 로그인 전화번호 저장
+  Future<void> _saveLastLoginPhone(String phoneNumber) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('last_login_phone', phoneNumber);
+    } catch (e) {
+      debugPrint('마지막 로그인 번호 저장 실패: $e');
+    }
+  }
+  
+  /// 마지막 로그인 전화번호 가져오기
+  Future<String?> getLastLoginPhone() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString('last_login_phone');
+    } catch (e) {
+      debugPrint('마지막 로그인 번호 읽기 실패: $e');
+      return null;
     }
   }
 

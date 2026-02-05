@@ -18,7 +18,20 @@
       "problemMatcher": []
     },
     {
-      "label": "Flutter Run (일반)",
+      "label": "Flutter Run (에뮬레이터 선택)",
+      "type": "shell",
+      "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"${workspaceFolder}\\run-select-device.ps1\"",
+      "args": [],
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "focus": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Flutter Run (일반 - EGL 로그 포함)",
       "type": "shell",
       "command": "flutter",
       "args": ["run"],

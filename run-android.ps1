@@ -3,13 +3,49 @@
 # 사용: .\run-android.ps1   또는   .\run-android.ps1 -d emulator-5554
 
 $ErrorActionPreference = "Stop"
-# D/EGL_emulation, app_time_stats 포함 줄 제거
-$filterPattern = 'EGL_emulation|app_time_stats'
+
+# 필터링할 패턴들 (더 강력한 필터링)
+$filterPatterns = @(
+    'EGL_emulation',
+    'app_time_stats',
+    'FrameTracker',
+    'PRIMARY FOCUS',
+    'FocusScopeNode',
+    'FocusNode',
+    'FocusManager',
+    'Root Focus Scope',
+    '_ModalScopeState',
+    'IME_INSETS_ANIMATION',
+    'force finish'
+)
 
 function Filter-EGLLogs {
     process {
-        if ($_ -notmatch $filterPattern) { $_ }
+        $line = $_
+        if ([string]::IsNullOrWhiteSpace($line)) {
+            return
+        }
+        
+        # EGL 관련 로그 완전 차단
+        if ($line -match 'EGL_emulation|app_time_stats') {
+            return  # 즉시 필터링
+        }
+        
+        $shouldFilter = $false
+        
+        foreach ($pattern in $filterPatterns) {
+            if ($line -match $pattern) {
+                $shouldFilter = $true
+                break
+            }
+        }
+        
+        if (-not $shouldFilter) {
+            $_
+        }
     }
 }
+
+Write-Host "`n앱 실행 중 (EGL 로그 필터링)...`n" -ForegroundColor Cyan
 
 flutter run @args 2>&1 | Filter-EGLLogs

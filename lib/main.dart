@@ -1,6 +1,7 @@
 import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode;
+import 'package:flutter/rendering.dart' show debugPaintSizeEnabled;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz_data;
@@ -15,6 +16,33 @@ import 'screens/splash_screen.dart';
 import 'screens/auth_screen.dart';
 import 'screens/home_screen.dart';
 
+// 디버그 시각적 도구 비활성화
+void _disableDebugVisuals() {
+  if (kDebugMode) {
+    // 파란색 위젯 아웃라인 비활성화
+    debugPaintSizeEnabled = false;
+    
+    // 원본 debugPrint 저장
+    final originalDebugPrint = debugPrint;
+    
+    // Flutter의 포커스 관련 디버그 출력을 필터링
+    debugPrint = (String? message, {int? wrapWidth}) {
+      // Focus 관련 디버그 출력 필터링
+      if (message != null && 
+          (message.contains('FocusScopeNode') || 
+           message.contains('FocusNode') || 
+           message.contains('FocusManager') ||
+           message.contains('PRIMARY FOCUS') ||
+           message.contains('Root Focus Scope') ||
+           message.contains('_ModalScopeState'))) {
+        return; // 출력하지 않음
+      }
+      // 다른 디버그 출력은 정상적으로 출력
+      originalDebugPrint(message, wrapWidth: wrapWidth);
+    };
+  }
+}
+
 // 백그라운드 메시지 핸들러
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -26,6 +54,9 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // 디버그 시각적 도구 및 출력 비활성화
+  _disableDebugVisuals();
 
   // 한국 시간 사용을 위해 timezone 초기화 (MoodService 등에서 사용)
   tz_data.initializeTimeZones();
@@ -81,8 +112,74 @@ class MyApp extends StatelessWidget {
         navigatorKey: navigatorKey,
         title: '지금 어때?',
         theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
           useMaterial3: true,
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: const Color(0xFF4285F4), // Google Blue (Pixel 6)
+            brightness: Brightness.light,
+          ),
+          scaffoldBackgroundColor: const Color(0xFFF5F5F5), // Pixel 6 background
+          appBarTheme: const AppBarTheme(
+            elevation: 0,
+            centerTitle: true,
+            backgroundColor: Colors.white,
+            foregroundColor: Color(0xFF202124), // Pixel 6 text color
+            titleTextStyle: TextStyle(
+              color: Color(0xFF202124),
+              fontSize: 20,
+              fontWeight: FontWeight.w500,
+              letterSpacing: 0.15,
+            ),
+          ),
+          inputDecorationTheme: InputDecorationTheme(
+            filled: true,
+            fillColor: Colors.white,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(color: Colors.grey.shade300),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(color: Colors.grey.shade300),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: const BorderSide(color: Color(0xFF4285F4), width: 2),
+            ),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            labelStyle: const TextStyle(
+              color: Color(0xFF5F6368),
+              fontSize: 16,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+          elevatedButtonTheme: ElevatedButtonThemeData(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF4285F4),
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shadowColor: Colors.transparent,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              minimumSize: const Size(double.infinity, 56),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(28), // Pixel 6 style rounded corners
+              ),
+              textStyle: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
+          textButtonTheme: TextButtonThemeData(
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFF4285F4),
+              textStyle: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                letterSpacing: 0.1,
+              ),
+            ),
+          ),
         ),
         home: const SplashScreen(),
         routes: {

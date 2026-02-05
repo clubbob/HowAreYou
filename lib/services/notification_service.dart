@@ -9,6 +9,7 @@ import '../models/mood_response_model.dart';
 import '../services/mood_service.dart';
 import '../services/mode_service.dart';
 import '../screens/subject_mode_screen.dart';
+import '../utils/permission_helper.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -39,7 +40,7 @@ class NotificationService {
       onDidReceiveNotificationResponse: _onNotificationTapped,
     );
 
-    // 알림 권한 요청
+    // 알림 권한 요청 (BuildContext가 있는 경우에만 한글 다이얼로그 표시)
     await _requestPermissions();
     
     // 보호자 알림 채널 생성 (Android)
@@ -47,6 +48,15 @@ class NotificationService {
     
     // 일일 알림 스케줄 설정
     await scheduleDailyNotifications();
+  }
+  
+  /// 권한 요청 (BuildContext가 있는 경우 한글 다이얼로그 표시)
+  Future<void> requestPermissionsWithDialog(BuildContext? context) async {
+    if (context != null) {
+      await PermissionHelper.requestNotificationPermission(context);
+    } else {
+      await _requestPermissions();
+    }
   }
 
   /// 보호자 알림 채널 생성 (Android)
@@ -68,9 +78,19 @@ class NotificationService {
   }
 
   Future<void> _requestPermissions() async {
-    final androidPlugin = _notifications.resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin>();
-    await androidPlugin?.requestNotificationsPermission();
+    // BuildContext를 사용할 수 있는 경우 한글 다이얼로그 표시
+    final navigator = MyApp.navigatorKey.currentState;
+    final context = navigator?.context;
+    
+    if (context != null) {
+      // 한글 커스텀 다이얼로그를 표시한 후 권한 요청
+      await PermissionHelper.requestNotificationPermission(context);
+    } else {
+      // BuildContext가 없는 경우 기본 권한 요청
+      final androidPlugin = _notifications.resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>();
+      await androidPlugin?.requestNotificationsPermission();
+    }
   }
 
   Future<void> scheduleDailyNotifications() async {

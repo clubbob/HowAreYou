@@ -41,6 +41,7 @@ class _GuardianScreenState extends State<GuardianScreen> {
     final result = await showDialog<String>(
       context: context,
       barrierDismissible: false,
+      useSafeArea: true,
       builder: (ctx) => _GuardianNameDialog(initialName: initialName),
     );
 
@@ -728,9 +729,29 @@ class _GuardianNameDialogState extends State<_GuardianNameDialog> {
     super.initState();
     _controller = TextEditingController(text: widget.initialName);
     _focusNode = FocusNode();
-    // 다이얼로그가 뜬 뒤 한 프레임 지나서 포커스 요청 (키보드·입력 확실히 동작)
+    
+    // 다이얼로그가 완전히 렌더링된 후 포커스 요청 (여러 번 시도)
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _focusNode.requestFocus();
+      // 즉시 포커스 요청
+      if (mounted && _focusNode.canRequestFocus) {
+        _focusNode.requestFocus();
+      }
+      // 추가 지연 후 포커스 요청
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (mounted && _focusNode.canRequestFocus && !_focusNode.hasFocus) {
+          _focusNode.requestFocus();
+        }
+      });
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (mounted && _focusNode.canRequestFocus && !_focusNode.hasFocus) {
+          _focusNode.requestFocus();
+        }
+      });
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted && _focusNode.canRequestFocus && !_focusNode.hasFocus) {
+          _focusNode.requestFocus();
+        }
+      });
     });
   }
 
@@ -745,26 +766,66 @@ class _GuardianNameDialogState extends State<_GuardianNameDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: const Text('보호자 이름'),
-      content: TextField(
-        controller: _controller,
-        focusNode: _focusNode,
-        decoration: const InputDecoration(
-          labelText: '이름(별칭)',
-          hintText: '예: 와이프, 엄마',
-          border: OutlineInputBorder(),
-        ),
-        keyboardType: TextInputType.text,
-        textInputAction: TextInputAction.done,
+      contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
+      scrollable: false,
+      barrierDismissible: false,
+      content: FocusScope(
         autofocus: true,
-        onSubmitted: (value) => Navigator.of(context).pop(value),
+        child: SizedBox(
+          width: double.maxFinite,
+          child: TextField(
+            controller: _controller,
+            focusNode: _focusNode,
+            decoration: const InputDecoration(
+              labelText: '이름(별칭)',
+              hintText: '예: 와이프, 엄마',
+              border: OutlineInputBorder(),
+              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+            ),
+            keyboardType: TextInputType.text,
+            textInputAction: TextInputAction.done,
+            textCapitalization: TextCapitalization.words,
+            autofocus: true,
+            enabled: true,
+            readOnly: false,
+            canRequestFocus: true,
+            enableInteractiveSelection: true,
+            onTap: () {
+              // 탭 시 명시적으로 포커스 요청
+              if (!_focusNode.hasFocus) {
+                _focusNode.requestFocus();
+              }
+            },
+            onChanged: (value) {
+              // 입력이 변경될 때 포커스 확인 및 유지
+              if (mounted) {
+                if (!_focusNode.hasFocus) {
+                  _focusNode.requestFocus();
+                }
+                setState(() {});
+              }
+            },
+            onSubmitted: (value) {
+              if (mounted) {
+                Navigator.of(context).pop(value.trim());
+              }
+            },
+          ),
+        ),
       ),
+      actionsPadding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('취소'),
         ),
         FilledButton(
-          onPressed: () => Navigator.of(context).pop(_controller.text.trim()),
+          onPressed: () {
+            if (mounted) {
+              Navigator.of(context).pop(_controller.text.trim());
+            }
+          },
           style: AppButtonStyles.primaryFilled,
           child: const Text('확인'),
         ),

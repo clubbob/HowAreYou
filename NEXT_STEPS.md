@@ -30,7 +30,10 @@ C:\src\flutter\bin\flutter pub get
 C:\src\flutter\bin\flutter run
 ```
 - **에뮬레이터를 먼저 실행한 뒤** `flutter run` 실행 (또는 Android 기기 USB 연결)
-- 테스트 전화번호: `010-6391-4520`, 인증 코드: `123456`
+- 테스트 전화번호:
+  - 보호자: `010-1111-2222`, 인증 코드: `111111`
+  - 보호 대상자: `010-3333-4444`, 인증 코드: `333333`
+- 자세한 설정: `docs/테스트-전화번호-설정.md` 참고
 
 ### 4. (선택) Cloud Messaging
 - Firebase Console → 프로젝트 설정 → Cloud Messaging

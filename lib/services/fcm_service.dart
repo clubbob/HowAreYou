@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../main.dart';
+import '../utils/permission_helper.dart';
 
 class FCMService {
   static final FCMService _instance = FCMService._internal();
@@ -18,8 +19,14 @@ class FCMService {
 
   String? get fcmToken => _fcmToken;
 
-  Future<void> initialize(String userId) async {
-    // 알림 권한 요청
+  Future<void> initialize(String userId, {BuildContext? context}) async {
+    // Android에서는 한글 커스텀 다이얼로그를 표시한 후 권한 요청
+    if (context != null) {
+      // 한글 커스텀 다이얼로그를 표시한 후 권한 요청
+      await PermissionHelper.requestNotificationPermission(context);
+    }
+    
+    // iOS용 알림 권한 요청 (Firebase Messaging)
     NotificationSettings settings = await _messaging.requestPermission(
       alert: true,
       announcement: false,
@@ -60,6 +67,13 @@ class FCMService {
 
     // 백그라운드 메시지 핸들러 (앱이 열린 상태에서 알림 탭)
     FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);
+  }
+  
+  /// 권한 요청 (BuildContext가 있는 경우 한글 다이얼로그 표시)
+  Future<void> requestPermissionWithDialog(BuildContext? context) async {
+    if (context != null) {
+      await PermissionHelper.requestNotificationPermission(context);
+    }
   }
 
   /// 보호자 알림 채널 생성 (Android)

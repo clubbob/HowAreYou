@@ -5,6 +5,32 @@ import '../utils/constants.dart';
 /// 보호자가 담당하는 대상자(subject) 목록·이름 조회 및 보호 대상 추가
 class GuardianService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  
+  /// 보호 대상자에게 보호자가 지정되어 있는지 확인
+  Future<bool> hasGuardian(String subjectId) async {
+    try {
+      final subjectDoc = await _firestore
+          .collection(AppConstants.subjectsCollection)
+          .doc(subjectId)
+          .get();
+      
+      if (!subjectDoc.exists) {
+        return false;
+      }
+      
+      final data = subjectDoc.data();
+      final pairedGuardianUids = data?['pairedGuardianUids'];
+      
+      if (pairedGuardianUids is List) {
+        return pairedGuardianUids.isNotEmpty;
+      }
+      
+      return false;
+    } catch (e) {
+      debugPrint('보호자 확인 오류: $e');
+      return false;
+    }
+  }
 
   static String _toE164(String input) {
     final digits = input.replaceAll(RegExp(r'[^\d]'), '');

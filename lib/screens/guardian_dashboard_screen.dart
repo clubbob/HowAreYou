@@ -8,7 +8,9 @@ import '../services/fcm_service.dart';
 import '../models/mood_response_model.dart';
 import '../utils/button_styles.dart';
 import '../utils/constants.dart';
+import '../main.dart';
 import 'subject_detail_screen.dart';
+import 'auth_screen.dart';
 
 class GuardianDashboardScreen extends StatefulWidget {
   const GuardianDashboardScreen({super.key});
@@ -192,16 +194,41 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
           ),
         ),
         actions: [
+          // 로그아웃 버튼 (테스트용)
           IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => const GuardianSettingsScreen(),
+            icon: const Icon(Icons.logout),
+            tooltip: '로그아웃',
+            onPressed: () async {
+              final confirmed = await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('로그아웃'),
+                  content: const Text('로그아웃하시겠습니까?'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(false),
+                      child: const Text('취소'),
+                    ),
+                    ElevatedButton(
+                      onPressed: () => Navigator.of(context).pop(true),
+                      child: const Text('로그아웃'),
+                    ),
+                  ],
                 ),
               );
+              
+              if (confirmed == true && context.mounted) {
+                final authService = Provider.of<AuthService>(context, listen: false);
+                await authService.signOut();
+                // 전역 Navigator를 사용하여 모든 화면을 제거하고 AuthScreen으로 이동
+                if (MyApp.navigatorKey.currentContext != null) {
+                  Navigator.of(MyApp.navigatorKey.currentContext!).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (_) => const AuthScreen()),
+                    (route) => false,
+                  );
+                }
+              }
             },
-            tooltip: '설정',
           ),
         ],
       ),

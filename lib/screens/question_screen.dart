@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../services/mood_service.dart';
+import '../services/guardian_service.dart';
 import '../models/mood_response_model.dart';
 import '../utils/button_styles.dart';
 
@@ -22,7 +23,9 @@ class QuestionScreen extends StatefulWidget {
 class _QuestionScreenState extends State<QuestionScreen> {
   Mood? _selectedMood;
   final MoodService _moodService = MoodService();
+  final GuardianService _guardianService = GuardianService();
   bool _isSaving = false;
+
 
   Future<void> _saveResponse() async {
     if (_selectedMood == null) return;
@@ -37,6 +40,16 @@ class _QuestionScreenState extends State<QuestionScreen> {
 
       if (userId == null) {
         throw Exception('사용자 인증이 필요합니다.');
+      }
+
+      // 보호자 지정 여부 확인
+      final hasGuardian = await _guardianService.hasGuardian(userId);
+      if (!hasGuardian) {
+        if (mounted) {
+          Navigator.of(context).pop();
+          _showNoGuardianDialog();
+        }
+        return;
       }
 
       await _moodService.saveMoodResponse(
@@ -63,6 +76,27 @@ class _QuestionScreenState extends State<QuestionScreen> {
         });
       }
     }
+  }
+
+  void _showNoGuardianDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('보호자 지정 필요'),
+          content: const Text(
+            '상태를 알려주려면 먼저 보호자를 지정해주세요.\n\n보호 대상자 모드에서 "보호자 지정" 메뉴를 이용해주세요.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('확인'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void _showThankYouDialog() {

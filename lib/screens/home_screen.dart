@@ -2,9 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../services/mode_service.dart';
+import '../services/fcm_service.dart';
 import '../utils/button_styles.dart';
+import '../utils/permission_helper.dart';
+import '../main.dart';
 import 'subject_mode_screen.dart';
 import 'guardian_mode_screen.dart';
+import 'auth_screen.dart';
+import 'dart:io' show Platform;
 
 class HomeScreen extends StatefulWidget {
   final bool skipAutoNavigation;
@@ -23,6 +28,28 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _loadLastSelectedMode();
+    // Android에서 알림 권한 요청 (한글 다이얼로그 표시)
+    if (Platform.isAndroid) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _requestNotificationPermission();
+      });
+    }
+  }
+  
+  Future<void> _requestNotificationPermission() async {
+    if (!mounted) return;
+    
+    // 권한이 이미 허용되었는지 확인
+    final isGranted = await PermissionHelper.isNotificationPermissionGranted();
+    if (!isGranted) {
+      // 한글 커스텀 다이얼로그를 표시한 후 권한 요청
+      await PermissionHelper.requestNotificationPermission(context);
+      // FCM 서비스도 다시 초기화 (권한이 허용된 경우)
+      final authService = Provider.of<AuthService>(context, listen: false);
+      if (authService.user != null) {
+        await FCMService.instance.initialize(authService.user!.uid, context: context);
+      }
+    }
   }
 
   Future<void> _loadLastSelectedMode() async {
@@ -91,7 +118,44 @@ class _HomeScreenState extends State<HomeScreen> {
         elevation: 0,
         foregroundColor: Colors.black87,
         automaticallyImplyLeading: false, // 뒤로 가기 버튼 숨김 (최상위 화면)
-        actions: const [], // 로그아웃 버튼 제거: 한 번 로그인하면 앱 삭제 전까지 자동 로그인 유지 (비용 절감)
+        actions: [
+          // 로그아웃 버튼 (테스트용)
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: '로그아웃',
+            onPressed: () async {
+              final confirmed = await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('로그아웃'),
+                  content: const Text('로그아웃하시겠습니까?'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(false),
+                      child: const Text('취소'),
+                    ),
+                    ElevatedButton(
+                      onPressed: () => Navigator.of(context).pop(true),
+                      child: const Text('로그아웃'),
+                    ),
+                  ],
+                ),
+              );
+              
+              if (confirmed == true && context.mounted) {
+                final authService = Provider.of<AuthService>(context, listen: false);
+                await authService.signOut();
+                // 전역 Navigator를 사용하여 모든 화면을 제거하고 AuthScreen으로 이동
+                if (MyApp.navigatorKey.currentContext != null) {
+                  Navigator.of(MyApp.navigatorKey.currentContext!).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (_) => const AuthScreen()),
+                    (route) => false,
+                  );
+                }
+              }
+            },
+          ),
+        ],
       ),
       body: SafeArea(
         child: Padding(

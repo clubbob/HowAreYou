@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../utils/button_styles.dart';
+import '../main.dart';
 import 'guardian_dashboard_screen.dart';
 import 'home_screen.dart';
+import 'auth_screen.dart';
 
 /// 보호자 모드 화면 (보호 대상 확인)
 class GuardianModeScreen extends StatelessWidget {
@@ -42,7 +44,44 @@ class GuardianModeScreen extends StatelessWidget {
             ),
           ),
         ),
-        actions: const [], // 로그아웃 버튼 제거: 한 번 로그인하면 앱 삭제 전까지 자동 로그인 유지 (비용 절감)
+        actions: [
+          // 로그아웃 버튼 (테스트용)
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: '로그아웃',
+            onPressed: () async {
+              final confirmed = await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('로그아웃'),
+                  content: const Text('로그아웃하시겠습니까?'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(false),
+                      child: const Text('취소'),
+                    ),
+                    ElevatedButton(
+                      onPressed: () => Navigator.of(context).pop(true),
+                      child: const Text('로그아웃'),
+                    ),
+                  ],
+                ),
+              );
+              
+              if (confirmed == true && context.mounted) {
+                final authService = Provider.of<AuthService>(context, listen: false);
+                await authService.signOut();
+                // 전역 Navigator를 사용하여 모든 화면을 제거하고 AuthScreen으로 이동
+                if (MyApp.navigatorKey.currentContext != null) {
+                  Navigator.of(MyApp.navigatorKey.currentContext!).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (_) => const AuthScreen()),
+                    (route) => false,
+                  );
+                }
+              }
+            },
+          ),
+        ],
       ),
       body: SafeArea(
         child: Padding(
