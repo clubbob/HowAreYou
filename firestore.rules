@@ -16,7 +16,27 @@ service cloud.firestore {
       // 보호자: 연결된 경우에만 읽기 가능
       function isGuardian() {
         return request.auth != null
+          && resource.data.pairedGuardianUids != null
           && request.auth.uid in resource.data.pairedGuardianUids;
+      }
+      
+      // 보호자가 자신을 pairedGuardianUids에 추가하는 경우 허용
+      // 조건: 본인이 아니고, 자신의 UID를 pairedGuardianUids에 추가하는 경우
+      function canAddSelfAsGuardian() {
+        return request.auth != null
+          && request.auth.uid != subjectUid  // 본인 문서가 아님
+          && (
+            // 새 문서 생성 시
+            (!resource.exists 
+             && request.resource.data.pairedGuardianUids != null 
+             && request.auth.uid in request.resource.data.pairedGuardianUids)
+            // 기존 문서 업데이트 시 - pairedGuardianUids에 자신이 추가되는 경우
+            || (resource.exists 
+                && request.resource.data.pairedGuardianUids != null 
+                && request.auth.uid in request.resource.data.pairedGuardianUids
+                && (resource.data.pairedGuardianUids == null 
+                    || !(request.auth.uid in resource.data.pairedGuardianUids)))
+          );
       }
       
       // 보호 대상자 본인은 읽기/쓰기 가능
@@ -24,6 +44,21 @@ service cloud.firestore {
       
       // 보호자는 읽기만 가능 (B안: 가족 공유형 - 상태 공유 허용)
       allow read: if isGuardian();
+      
+      // 보호자가 자신을 pairedGuardianUids에 추가하는 경우 쓰기 허용
+      // 변경 가능한 필드: pairedGuardianUids, guardianInfos, displayName, phone만 허용
+      allow write: if canAddSelfAsGuardian()
+        && (
+          !resource.exists  // 문서가 없으면 모든 필드 허용
+          || request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['pairedGuardianUids', 'guardianInfos'])  // update() 사용 시 이 두 필드만 업데이트
+            || request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['pairedGuardianUids', 'guardianInfos', 'displayName'])
+            || request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['pairedGuardianUids', 'guardianInfos', 'phone'])
+            || request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['pairedGuardianUids', 'guardianInfos', 'displayName', 'phone'])
+        );
       
       // 알림 문서
       match /alerts/{alertId} {

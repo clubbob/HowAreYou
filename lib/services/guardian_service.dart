@@ -86,6 +86,7 @@ class GuardianService {
     }
     final subjectDoc = usersQuery.docs.first;
     final subjectId = subjectDoc.id;
+    final subjectData = subjectDoc.data() as Map<String, dynamic>? ?? {};
     
     // 본인 체크: 프로덕션 모드에서는 본인을 보호대상으로 추가할 수 없음
     // 개발 모드(kDebugMode)에서는 테스트를 위해 허용
@@ -121,10 +122,38 @@ class GuardianService {
       'displayName': guardianDisplayName?.trim() ?? '',
     };
 
-    await docRef.set({
-      'pairedGuardianUids': FieldValue.arrayUnion([guardianUid]),
-      'guardianInfos': existingInfos,
-    }, SetOptions(merge: true));
+    // pairedGuardianUids에 보호자 UID 추가 (명시적으로 배열 구성)
+    paired.add(guardianUid);
+    
+    // 보호 대상자 정보 가져오기 (displayName, phone)
+    final subjectDisplayName = subjectData['displayName'] is String
+        ? (subjectData['displayName'] as String).trim()
+        : '';
+    final subjectPhoneNormalized = subjectData['phone'] is String
+        ? (subjectData['phone'] as String).trim()
+        : subjectPhone.trim();
+    
+    // 문서가 존재하면 update 사용, 없으면 set 사용
+    // update() 사용 시에도 규칙이 작동하도록 항상 pairedGuardianUids와 guardianInfos만 업데이트
+    if (docSnap.exists) {
+      await docRef.update({
+        'pairedGuardianUids': paired,
+        'guardianInfos': existingInfos,
+      });
+    } else {
+      // 새 문서 생성 시에는 모든 필드 포함
+      final newData = <String, dynamic>{
+        'pairedGuardianUids': paired,
+        'guardianInfos': existingInfos,
+      };
+      if (subjectDisplayName.isNotEmpty) {
+        newData['displayName'] = subjectDisplayName;
+      }
+      if (subjectPhoneNormalized.isNotEmpty) {
+        newData['phone'] = subjectPhoneNormalized;
+      }
+      await docRef.set(newData);
+    }
     return subjectId;
   }
 

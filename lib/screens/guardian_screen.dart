@@ -769,7 +769,6 @@ class _GuardianNameDialogState extends State<_GuardianNameDialog> {
       contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
       insetPadding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
       scrollable: false,
-      barrierDismissible: false,
       content: FocusScope(
         autofocus: true,
         child: SizedBox(

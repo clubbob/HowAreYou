@@ -114,8 +114,14 @@ class _SubjectMyStatusScreenState extends State<SubjectMyStatusScreen> {
               if (confirmed == true && context.mounted) {
                 final authService = Provider.of<AuthService>(context, listen: false);
                 await authService.signOut();
-                // 전역 Navigator를 사용하여 모든 화면을 제거하고 AuthScreen으로 이동
-                if (MyApp.navigatorKey.currentContext != null) {
+                // 로그아웃 후 AuthScreen으로 이동
+                if (context.mounted) {
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (_) => const AuthScreen()),
+                    (route) => false,
+                  );
+                } else if (MyApp.navigatorKey.currentContext != null) {
+                  // context가 없으면 전역 Navigator 사용
                   Navigator.of(MyApp.navigatorKey.currentContext!).pushAndRemoveUntil(
                     MaterialPageRoute(builder: (_) => const AuthScreen()),
                     (route) => false,

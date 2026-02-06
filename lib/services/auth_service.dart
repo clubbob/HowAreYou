@@ -167,12 +167,26 @@ class AuthService extends ChangeNotifier {
   }
 
   Future<void> signOut() async {
-    if (_user != null) {
-      await FCMService.instance.removeToken(_user!.uid);
+    try {
+      if (_user != null) {
+        await FCMService.instance.removeToken(_user!.uid);
+      }
+      await _auth.signOut();
+      _user = null;
+      _userModel = null;
+      
+      // SharedPreferences 초기화 (선택적 - 필요시 주석 해제)
+      // final prefs = await SharedPreferences.getInstance();
+      // await prefs.remove('last_login_phone');
+      
+      notifyListeners();
+    } catch (e) {
+      debugPrint('로그아웃 오류: $e');
+      // 오류가 발생해도 상태는 초기화
+      _user = null;
+      _userModel = null;
+      notifyListeners();
+      rethrow;
     }
-    await _auth.signOut();
-    _user = null;
-    _userModel = null;
-    notifyListeners();
   }
 }
