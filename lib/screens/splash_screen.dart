@@ -3,8 +3,14 @@ import 'package:provider/provider.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import '../main.dart';
 import '../services/auth_service.dart';
+import '../services/invite_pending_service.dart';
+import '../services/guardian_service.dart';
 import 'auth_screen.dart';
 import 'home_screen.dart';
+import 'invited_subject_welcome_screen.dart';
+import 'invited_guardian_welcome_screen.dart';
+import 'subject_mode_screen.dart';
+import 'guardian_mode_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -42,20 +48,69 @@ class _SplashScreenState extends State<SplashScreen> {
       final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
       final data = initialMessage?.data;
       final type = data?['type'];
+      final pendingInviterId = await InvitePendingService.getPendingInviterId();
+      final pendingSubjectId = await InvitePendingService.getPendingSubjectId();
       if (!mounted) return;
       if (type == 'RESPONSE_RECEIVED' || type == 'UNREACHABLE') {
         Navigator.of(context).pushReplacementNamed('/guardian');
       } else if (type == 'REMIND_RESPONSE') {
         Navigator.of(context).pushReplacementNamed('/question');
+      } else if (pendingInviterId != null && pendingInviterId.isNotEmpty) {
+        final user = authService.user;
+        if (user != null) {
+          try {
+            await GuardianService().acceptInviteAsSubject(
+              subjectUid: user.uid,
+              subjectPhone: user.phoneNumber ?? '',
+              subjectDisplayName: user.displayName,
+              guardianUid: pendingInviterId,
+            );
+            await InvitePendingService.clearPendingInviterId();
+          } catch (_) {}
+        }
+        if (!mounted) return;
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const SubjectModeScreen()),
+        );
+      } else if (pendingSubjectId != null && pendingSubjectId.isNotEmpty) {
+        final user = authService.user;
+        if (user != null) {
+          try {
+            await GuardianService().acceptInviteAsGuardian(
+              guardianUid: user.uid,
+              guardianPhone: user.phoneNumber ?? '',
+              guardianDisplayName: user.displayName,
+              subjectId: pendingSubjectId,
+            );
+            await InvitePendingService.clearPendingSubjectId();
+          } catch (_) {}
+        }
+        if (!mounted) return;
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const GuardianModeScreen()),
+        );
       } else {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const HomeScreen(skipAutoNavigation: true)),
         );
       }
     } else {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const AuthScreen()),
-      );
+      final pendingInviterId = await InvitePendingService.getPendingInviterId();
+      final pendingSubjectId = await InvitePendingService.getPendingSubjectId();
+      if (!mounted) return;
+      if (pendingInviterId != null && pendingInviterId.isNotEmpty) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const InvitedSubjectWelcomeScreen()),
+        );
+      } else if (pendingSubjectId != null && pendingSubjectId.isNotEmpty) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const InvitedGuardianWelcomeScreen()),
+        );
+      } else {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const AuthScreen()),
+        );
+      }
     }
   }
 

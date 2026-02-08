@@ -1,5 +1,6 @@
 import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show MethodChannel;
 import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode;
 import 'package:flutter/rendering.dart' show debugPaintSizeEnabled;
 import 'package:firebase_core/firebase_core.dart';
@@ -8,7 +9,9 @@ import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:app_links/app_links.dart';
 import 'firebase_options.dart';
+import 'services/invite_pending_service.dart';
 import 'services/auth_service.dart';
 import 'services/notification_service.dart';
 import 'services/fcm_service.dart';
@@ -98,8 +101,68 @@ void main() async {
       debugPrint('데스크톱에서는 Firebase 기능이 제한될 수 있습니다.');
     }
   }
-  
+
+  // 초대 링크로 앱이 열렸는지 확인 (딥링크 g= 보호자 UID, s= 보호대상자 UID)
+  try {
+    final appLinks = AppLinks();
+    final uri = await appLinks.getInitialLink();
+    if (uri != null) {
+      final g = uri.queryParameters['g'];
+      if (g != null && g.isNotEmpty) {
+        await InvitePendingService.setPendingInviterId(g);
+      }
+      final s = uri.queryParameters['s'];
+      if (s != null && s.isNotEmpty) {
+        await InvitePendingService.setPendingSubjectId(s);
+      }
+    }
+  } catch (_) {}
+
+  // 미설치 → 스토어 설치 → 앱 첫 실행: Install Referrer에서 inviterId/subjectId 복원
+  if (!kIsWeb && Platform.isAndroid) {
+    try {
+      const channel = MethodChannel('howareyou/install_referrer');
+      final referrer = await channel.invokeMethod<String>('getInstallReferrer');
+      if (referrer != null && referrer.isNotEmpty) {
+        final inviterId = _parseInviterIdFromReferrer(referrer);
+        if (inviterId != null && inviterId.isNotEmpty) {
+          await InvitePendingService.setPendingInviterId(inviterId);
+        }
+        final subjectId = _parseSubjectIdFromReferrer(referrer);
+        if (subjectId != null && subjectId.isNotEmpty) {
+          await InvitePendingService.setPendingSubjectId(subjectId);
+        }
+      }
+    } catch (_) {}
+  }
+
   runApp(const MyApp());
+}
+
+/// Play Install Referrer 문자열에서 inviterId 추출 (예: inviterId=uid 또는 inviterId%3Duid)
+String? _parseInviterIdFromReferrer(String referrer) {
+  return _parseReferrerParam(referrer, 'inviterId');
+}
+
+/// Play Install Referrer 문자열에서 subjectId 추출 (보호대상자 → 보호자 초대 링크)
+String? _parseSubjectIdFromReferrer(String referrer) {
+  return _parseReferrerParam(referrer, 'subjectId');
+}
+
+String? _parseReferrerParam(String referrer, String paramKey) {
+  try {
+    final parts = referrer.split('&');
+    for (final part in parts) {
+      final idx = part.indexOf('=');
+      if (idx <= 0) continue;
+      final key = Uri.decodeComponent(part.substring(0, idx).trim());
+      final value = part.substring(idx + 1).trim();
+      if (key == paramKey && value.isNotEmpty) {
+        return Uri.decodeComponent(value);
+      }
+    }
+  } catch (_) {}
+  return null;
 }
 
 class MyApp extends StatelessWidget {

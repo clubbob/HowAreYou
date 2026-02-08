@@ -32,6 +32,8 @@ dependencies:
   fl_chart: ^0.69.0
   
   cupertino_icons: ^1.0.8
+  share_plus: ^10.0.2
+  app_links: ^6.3.2
 
 dev_dependencies:
   flutter_test:

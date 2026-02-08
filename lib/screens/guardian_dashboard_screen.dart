@@ -10,6 +10,7 @@ import '../services/fcm_service.dart';
 import '../models/mood_response_model.dart';
 import '../utils/button_styles.dart';
 import '../utils/constants.dart';
+import '../utils/invite_link_helper.dart';
 import '../main.dart';
 import 'subject_detail_screen.dart';
 import 'auth_screen.dart';
@@ -185,6 +186,15 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
     }
   }
 
+  void _shareInviteLink(BuildContext context, String userId) {
+    InviteLinkHelper.shareInvite(userId);
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('초대 링크를 공유했습니다. 링크를 받은 분이 설치 후 열면 자동으로 보호 대상으로 연결됩니다.')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final authService = Provider.of<AuthService>(context);
@@ -309,15 +319,21 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
                           ),
                           const SizedBox(height: 24),
                           FilledButton.icon(
-                            onPressed: () => _showAddSubjectDialog(context, userId),
-                            icon: const Icon(Icons.person_add, size: 22),
-                            label: const Text('보호 대상 추가'),
+                            onPressed: () => _shareInviteLink(context, userId),
+                            icon: const Icon(Icons.link, size: 22),
+                            label: const Text('초대 링크 보내기'),
                             style: FilledButton.styleFrom(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 24,
                                 vertical: 16,
                               ),
                             ),
+                          ),
+                          const SizedBox(height: 12),
+                          TextButton.icon(
+                            onPressed: () => _showAddSubjectDialog(context, userId),
+                            icon: const Icon(Icons.person_add, size: 20),
+                            label: const Text('전화번호로 보호 대상 추가'),
                           ),
                         ],
                       ),
@@ -340,14 +356,28 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        FilledButton.icon(
-                          onPressed: () => _showAddSubjectDialog(context, userId),
-                          icon: const Icon(Icons.person_add, size: 22),
-                          label: const Text('보호 대상 추가'),
-                          style: FilledButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                            textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-                          ),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            OutlinedButton.icon(
+                              onPressed: () => _shareInviteLink(context, userId),
+                              icon: const Icon(Icons.link, size: 20),
+                              label: const Text('초대 링크'),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            FilledButton.icon(
+                              onPressed: () => _showAddSubjectDialog(context, userId),
+                              icon: const Icon(Icons.person_add, size: 22),
+                              label: const Text('보호 대상 추가'),
+                              style: FilledButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),

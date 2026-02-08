@@ -193,6 +193,16 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 textAlign: TextAlign.center,
               ),
+              const SizedBox(height: 12),
+              Text(
+                '부모님과 떨어져 살다 보니\n괜히 마음 쓰이는 순간을 위한 앱입니다.',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey.shade600,
+                  height: 1.4,
+                ),
+                textAlign: TextAlign.center,
+              ),
               const SizedBox(height: 48),
               // 보호대상자 모드 버튼 (파란색)
               SizedBox(

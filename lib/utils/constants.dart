@@ -1,4 +1,7 @@
 class AppConstants {
+  /// 보호대상자 초대 링크 베이스 (딥링크 + 미설치 시 웹에서 Play Store 유도)
+  static const String inviteBaseUrl = 'https://howareyou-1c5de.web.app/invite';
+
   // 알림 채널 ID
   static const String dailyMoodCheckChannelId = 'daily_mood_check';
   static const String dailyMoodCheckChannelName = '일일 상태 확인';

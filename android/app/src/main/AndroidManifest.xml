@@ -26,6 +26,13 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- 초대 링크: https://howareyou-1c5de.web.app/invite?g=보호자UID -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="https" android:host="howareyou-1c5de.web.app" android:pathPrefix="/invite"/>
+            </intent-filter>
         </activity>
         <meta-data
             android:name="flutterEmbedding"

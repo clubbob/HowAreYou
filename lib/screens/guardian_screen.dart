@@ -7,6 +7,7 @@ import '../services/auth_service.dart';
 import '../services/guardian_service.dart';
 import '../utils/constants.dart';
 import '../utils/button_styles.dart';
+import '../utils/invite_link_helper.dart';
 
 class GuardianScreen extends StatefulWidget {
   const GuardianScreen({super.key});
@@ -422,6 +423,43 @@ class _GuardianScreenState extends State<GuardianScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      const Text(
+                        '링크로 보호자 초대',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        '링크를 보내면 보호자는 앱이 없어도 설치 후 자동 연결됩니다.',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.black54,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        height: _inputMinHeight,
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            if (userId != null) {
+                              InviteLinkHelper.shareGuardianInvite(userId);
+                            }
+                          },
+                          icon: const Icon(Icons.link, size: 22),
+                          label: const Text('보호자에게 초대 링크 보내기'),
+                          style: OutlinedButton.styleFrom(
+                            padding: _inputPadding,
+                            alignment: Alignment.centerLeft,
+                            minimumSize: const Size(double.infinity, _inputMinHeight),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(_inputRadius),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 28),
                       const Text(
                         '보호자 추가',
                         style: TextStyle(

@@ -211,6 +211,92 @@ class GuardianService {
     }
   }
 
+  /// 초대 링크로 들어온 보호자가 로그인 후 보호대상자와 연결 (보호자로 등록)
+  /// 보호대상자가 링크를 보냈을 때, 링크를 연 보호자 측에서 호출.
+  Future<void> acceptInviteAsGuardian({
+    required String guardianUid,
+    required String guardianPhone,
+    String? guardianDisplayName,
+    required String subjectId,
+  }) async {
+    if (guardianUid == subjectId) return;
+    final docRef = _firestore.collection(AppConstants.subjectsCollection).doc(subjectId);
+    final docSnap = await docRef.get();
+    final existingData = docSnap.data() as Map<String, dynamic>?;
+    final existingInfosRaw = existingData?['guardianInfos'];
+    final existingInfos = existingInfosRaw is Map
+        ? Map<String, dynamic>.from(
+            (existingInfosRaw as Map).map((k, v) => MapEntry(
+                  k.toString(),
+                  v is Map ? Map<String, dynamic>.from(v) : v,
+                )))
+        : <String, dynamic>{};
+    final paired = List<String>.from(existingData?['pairedGuardianUids'] ?? []);
+    if (paired.contains(guardianUid)) return;
+    existingInfos[guardianUid] = {
+      'phone': guardianPhone,
+      'displayName': guardianDisplayName?.trim() ?? '',
+    };
+    paired.add(guardianUid);
+    if (docSnap.exists) {
+      await docRef.update({'pairedGuardianUids': paired, 'guardianInfos': existingInfos});
+    } else {
+      await docRef.set({
+        'pairedGuardianUids': paired,
+        'guardianInfos': existingInfos,
+      });
+    }
+  }
+
+  /// 초대 링크로 들어온 사용자가 로그인 후 보호자와 연결 (보호대상자로 등록)
+  Future<void> acceptInviteAsSubject({
+    required String subjectUid,
+    required String subjectPhone,
+    String? subjectDisplayName,
+    required String guardianUid,
+  }) async {
+    if (subjectUid == guardianUid) return;
+    final guardianDoc = await _firestore.collection(AppConstants.usersCollection).doc(guardianUid).get();
+    final guardianData = guardianDoc.data();
+    final guardianPhone = (guardianData?['phone'] as String?)?.trim() ?? '';
+    final guardianDisplayName = (guardianData?['displayName'] as String?)?.trim() ?? '';
+
+    final docRef = _firestore.collection(AppConstants.subjectsCollection).doc(subjectUid);
+    final docSnap = await docRef.get();
+    final existingData = docSnap.data() as Map<String, dynamic>?;
+    final existingInfosRaw = existingData?['guardianInfos'];
+    final existingInfos = existingInfosRaw is Map
+        ? Map<String, dynamic>.from(
+            (existingInfosRaw as Map).map((k, v) => MapEntry(
+                  k.toString(),
+                  v is Map ? Map<String, dynamic>.from(v) : v,
+                )))
+        : <String, dynamic>{};
+    final paired = List<String>.from(existingData?['pairedGuardianUids'] ?? []);
+    if (paired.contains(guardianUid)) return;
+    existingInfos[guardianUid] = {
+      'phone': guardianPhone,
+      'displayName': guardianDisplayName,
+    };
+    paired.add(guardianUid);
+
+    final newData = <String, dynamic>{
+      'pairedGuardianUids': paired,
+      'guardianInfos': existingInfos,
+    };
+    if (subjectDisplayName != null && subjectDisplayName.trim().isNotEmpty) {
+      newData['displayName'] = subjectDisplayName.trim();
+    }
+    if (subjectPhone.isNotEmpty) {
+      newData['phone'] = subjectPhone;
+    }
+    if (docSnap.exists) {
+      await docRef.update({'pairedGuardianUids': paired, 'guardianInfos': existingInfos});
+    } else {
+      await docRef.set(newData);
+    }
+  }
+
   /// 이 보호자 UID가 등록된 대상자(subject) ID 목록
   Future<List<String>> getSubjectIdsForGuardian(String guardianUid) async {
     final snapshot = await _firestore
@@ -219,6 +305,18 @@ class GuardianService {
         .get();
 
     return snapshot.docs.map((d) => d.id).toList();
+  }
+
+  /// 보호자 표시 이름 (users 문서 displayName, 없으면 '보호자')
+  Future<String> getGuardianDisplayName(String guardianUid) async {
+    try {
+      final doc = await _firestore.collection(AppConstants.usersCollection).doc(guardianUid).get();
+      if (doc.exists) {
+        final name = doc.data()?['displayName'];
+        if (name is String && name.trim().isNotEmpty) return name.trim();
+      }
+    } catch (_) {}
+    return '보호자';
   }
 
   /// 대상자 표시 이름 (users 문서 displayName, 없으면 '이름 없음')

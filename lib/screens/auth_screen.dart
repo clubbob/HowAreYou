@@ -6,11 +6,22 @@ import 'dart:io' show Platform;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
+import '../services/guardian_service.dart';
+import '../services/invite_pending_service.dart';
 import '../utils/button_styles.dart';
 import 'home_screen.dart';
+import 'subject_mode_screen.dart';
+import 'guardian_mode_screen.dart';
 
 class AuthScreen extends StatefulWidget {
-  const AuthScreen({super.key});
+  const AuthScreen({
+    super.key,
+    this.redirectToSubjectIfInvited = false,
+    this.redirectToGuardianIfInvited = false,
+  });
+
+  final bool redirectToSubjectIfInvited;
+  final bool redirectToGuardianIfInvited;
 
   @override
   State<AuthScreen> createState() => _AuthScreenState();
@@ -28,6 +39,57 @@ class _AuthScreenState extends State<AuthScreen> {
     _phoneController.dispose();
     _codeController.dispose();
     super.dispose();
+  }
+
+  /// 로그인 성공 후: 초대 링크로 들어왔으면 보호대상자/보호자 연결 후 해당 화면, 아니면 Home
+  Future<void> _navigateAfterLogin(BuildContext context, AuthService authService) async {
+    if (!context.mounted) return;
+    if (widget.redirectToSubjectIfInvited) {
+      final inviterId = await InvitePendingService.getPendingInviterId();
+      if (inviterId != null && authService.user != null && context.mounted) {
+        try {
+          final uid = authService.user!.uid;
+          final phone = authService.user!.phoneNumber ?? '';
+          await GuardianService().acceptInviteAsSubject(
+            subjectUid: uid,
+            subjectPhone: phone,
+            subjectDisplayName: authService.user!.displayName,
+            guardianUid: inviterId,
+          );
+          await InvitePendingService.clearPendingInviterId();
+        } catch (_) {}
+        if (!context.mounted) return;
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const SubjectModeScreen()),
+        );
+        return;
+      }
+    }
+    if (widget.redirectToGuardianIfInvited) {
+      final subjectId = await InvitePendingService.getPendingSubjectId();
+      if (subjectId != null && authService.user != null && context.mounted) {
+        try {
+          final uid = authService.user!.uid;
+          final phone = authService.user!.phoneNumber ?? '';
+          await GuardianService().acceptInviteAsGuardian(
+            guardianUid: uid,
+            guardianPhone: phone,
+            guardianDisplayName: authService.user!.displayName,
+            subjectId: subjectId,
+          );
+          await InvitePendingService.clearPendingSubjectId();
+        } catch (_) {}
+        if (!context.mounted) return;
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const GuardianModeScreen()),
+        );
+        return;
+      }
+    }
+    if (!context.mounted) return;
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (_) => const HomeScreen(skipAutoNavigation: true)),
+    );
   }
 
   /// 한국 전화번호를 E.164 형식으로 변환 (+821012345678)
@@ -231,11 +293,7 @@ class _AuthScreenState extends State<AuthScreen> {
           if (mounted) setState(() => _isLoading = false);
           final authService = Provider.of<AuthService>(context, listen: false);
           await authService.verifyOTP('', credential.smsCode ?? '');
-          if (mounted) {
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (_) => const HomeScreen(skipAutoNavigation: true)),
-            );
-          }
+          if (mounted) await _navigateAfterLogin(context, authService);
         },
         verificationFailed: (FirebaseAuthException e) {
           debugPrint('인증 실패 - 코드: ${e.code}, 메시지: ${e.message}');
@@ -352,9 +410,8 @@ class _AuthScreenState extends State<AuthScreen> {
           _isLoading = false;
         });
         if (error == null) {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const HomeScreen(skipAutoNavigation: true)),
-          );
+          final authService = Provider.of<AuthService>(context, listen: false);
+          await _navigateAfterLogin(context, authService);
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(error), duration: const Duration(seconds: 5)),

@@ -63,7 +63,9 @@ class PermissionHelper {
             ],
           ),
           content: const Text(
-            '지금 어때?에서 알림을 보내도록 허용하시겠습니까?\n\n알림을 통해 하루 3번 상태 확인을 받을 수 있습니다.',
+            '지금 어때?에서 알림을 보내도록 허용하시겠습니까?\n\n'
+            '알림을 통해 하루 3번 상태 확인을 받을 수 있습니다.\n\n'
+            '다음 화면에서 「허용」을 눌러 주세요.',
             style: TextStyle(
               fontSize: 16,
               height: 1.5,
