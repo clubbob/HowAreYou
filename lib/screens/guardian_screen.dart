@@ -214,7 +214,7 @@ class _GuardianScreenState extends State<GuardianScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('수정 실패: $e')),
+        const SnackBar(content: Text('수정에 실패했습니다. 잠시 후 다시 시도해 주세요.')),
       );
     }
   }
@@ -349,7 +349,7 @@ class _GuardianScreenState extends State<GuardianScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('오류: $e')),
+          const SnackBar(content: Text('오류가 발생했습니다. 잠시 후 다시 시도해 주세요.')),
         );
       }
     } finally {
@@ -644,7 +644,7 @@ class _GuardianScreenState extends State<GuardianScreen> {
                                               if (mounted) {
                                                 ScaffoldMessenger.of(context).showSnackBar(
                                                   SnackBar(
-                                                    content: Text('삭제 실패: $e'),
+                                                    content: const Text('삭제에 실패했습니다. 잠시 후 다시 시도해 주세요.'),
                                                   ),
                                                 );
                                               }

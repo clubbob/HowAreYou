@@ -58,6 +58,17 @@ class MoodService {
     return doc.exists;
   }
 
+  /// 오늘 응답을 삭제하여 다시 응답할 수 있게 함 (24시 기준 오늘 문서만 삭제)
+  Future<void> deleteTodayResponse(String subjectId) async {
+    final dateStr = DateFormat('yyyy-MM-dd').format(_nowKorea());
+    await _firestore
+        .collection('subjects')
+        .doc(subjectId)
+        .collection('prompts')
+        .doc(dateStr)
+        .delete();
+  }
+
   /// 현재 응답 가능한 슬롯. 24시 기준 하루 1회이므로 오늘 아직 안 했으면 daily, 했으면 null.
   Future<TimeSlot?> getCurrentTimeSlot() async {
     return TimeSlot.daily;

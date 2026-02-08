@@ -15,6 +15,9 @@ import 'services/fcm_service.dart';
 import 'screens/splash_screen.dart';
 import 'screens/auth_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/guardian_mode_screen.dart';
+import 'screens/question_screen.dart';
+import 'models/mood_response_model.dart';
 
 // 디버그 시각적 도구 비활성화
 void _disableDebugVisuals() {
@@ -77,6 +80,7 @@ void main() async {
       FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
     } catch (e) {
       debugPrint('Firebase 초기화 오류: $e');
+      MyApp.firebaseInitFailed = true;
     }
     try {
       await NotificationService.instance.initialize();
@@ -103,6 +107,8 @@ class MyApp extends StatelessWidget {
 
   static final GlobalKey<NavigatorState> navigatorKey =
       GlobalKey<NavigatorState>();
+  /// Firebase 초기화 실패 시 true (스플래시/첫 화면에서 안내 표시용)
+  static bool firebaseInitFailed = false;
 
   @override
   Widget build(BuildContext context) {
@@ -186,7 +192,9 @@ class MyApp extends StatelessWidget {
         home: const SplashScreen(),
         routes: {
           '/auth': (context) => const AuthScreen(),
-          '/home': (context) => const HomeScreen(),
+          '/home': (context) => const HomeScreen(skipAutoNavigation: true),
+          '/guardian': (context) => const GuardianModeScreen(),
+          '/question': (context) => const QuestionScreen(timeSlot: TimeSlot.daily),
         },
       ),
     );

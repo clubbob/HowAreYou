@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
 import 'fcm_service.dart';
 
+/// 전화번호 인증 로그인. 한 번 로그인하면 앱을 닫았다 켜도 유지되며, 로그아웃 버튼을 누르기 전까지 유지됨.
 class AuthService extends ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -19,6 +20,7 @@ class AuthService extends ChangeNotifier {
   bool get isAuthenticated => _user != null;
 
   /// 앱 시작 시 저장된 로그인 상태가 복원될 때까지 기다릴 때 사용
+  /// Firebase Auth는 한 번 로그인하면 기기에서 자동으로 유지됨(명시적 로그아웃 전까지).
   Future<void> get authReady => _authReadyCompleter.future;
 
   AuthService() {

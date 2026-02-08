@@ -317,13 +317,9 @@ class _AuthScreenState extends State<AuthScreen> {
           _isLoading = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('오류 발생: $e\n\n전화번호: $phoneNumber'),
-            duration: const Duration(seconds: 8),
-            action: SnackBarAction(
-              label: '확인',
-              onPressed: () {},
-            ),
+          const SnackBar(
+            content: Text('오류가 발생했습니다. 네트워크를 확인한 뒤 다시 시도해 주세요.'),
+            duration: Duration(seconds: 5),
           ),
         );
       }
@@ -370,7 +366,7 @@ class _AuthScreenState extends State<AuthScreen> {
         setState(() {
           _isLoading = false;
         });
-        final msg = e is TimeoutException ? e.message ?? '요청이 지연되었습니다.' : '오류: $e';
+        final msg = e is TimeoutException ? (e.message ?? '요청이 지연되었습니다. 네트워크를 확인해 주세요.') : '오류가 발생했습니다. 잠시 후 다시 시도해 주세요.';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(msg), duration: const Duration(seconds: 5)),
         );

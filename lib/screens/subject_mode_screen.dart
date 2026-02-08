@@ -199,11 +199,57 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> {
                   ),
                 ),
               ),
+              const SizedBox(height: 32),
+              TextButton(
+                onPressed: () => _clearTodayResponse(),
+                child: Text(
+                  '오늘 응답 취소하고 다시 하기',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey.shade600,
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
+              ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  Future<void> _clearTodayResponse() async {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final userId = authService.user?.uid;
+    if (userId == null) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('오늘 응답 취소'),
+        content: const Text(
+          '오늘 알려주신 상태를 취소할까요?\n취소하면 다시 상태를 알려주실 수 있습니다.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('아니오'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('취소하기'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    await _moodService.deleteTodayResponse(userId);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('취소되었습니다. 다시 상태를 알려주세요.')),
+      );
+    }
   }
 
   Future<void> _navigateToQuestion() async {
@@ -213,15 +259,28 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> {
     if (userId == null) return;
 
     final hasResponded = await _moodService.hasRespondedToday(subjectId: userId);
-    if (hasResponded) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('오늘 이미 상태를 알려주셨습니다. 자정(한국 시간) 이후에 다시 알려주세요.'),
+    if (hasResponded && mounted) {
+      final choice = await showDialog<String>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('오늘 이미 응답했어요'),
+          content: const Text(
+            '오늘 이미 상태를 알려주셨습니다.\n취소하고 다시 하시겠어요?',
           ),
-        );
-      }
-      return;
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop('close'),
+              child: const Text('닫기'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop('retry'),
+              child: const Text('취소하고 다시 하기'),
+            ),
+          ],
+        ),
+      );
+      if (choice != 'retry' || !mounted) return;
+      await _moodService.deleteTodayResponse(userId);
     }
 
     if (mounted) {

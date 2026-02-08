@@ -1,4 +1,4 @@
-package com.example.how_are_you
+package com.andy.howareyou
 
 import io.flutter.embedding.android.FlutterActivity
 

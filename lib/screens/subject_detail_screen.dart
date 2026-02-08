@@ -187,7 +187,7 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
         Future.microtask(() {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('저장 실패: $e')),
+              const SnackBar(content: Text('저장에 실패했습니다. 잠시 후 다시 시도해 주세요.')),
             );
           }
         });
@@ -215,7 +215,7 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
         Future.microtask(() {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('삭제 실패: $e')),
+              const SnackBar(content: Text('삭제에 실패했습니다. 잠시 후 다시 시도해 주세요.')),
             );
           }
         });

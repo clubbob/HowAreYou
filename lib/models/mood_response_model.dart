@@ -2,25 +2,28 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'package:flutter/material.dart';
 
-/// 저장/이력 표시용 5종 유지. 상태 알려주기 선택은 selectableMoods(괜찮아, 별로)만 사용.
+/// 저장/이력 표시용 5종 유지. 상태 알려주기 선택은 selectableMoods(괜찮아, 보통, 별로).
 enum Mood {
   good(emoji: '😊', label: '좋아', value: 1, color: Colors.green),
   okay(emoji: '🙂', label: '괜찮아', value: 2, color: Colors.lightGreen),
-  normal(emoji: '😐', label: '보통', value: 3, color: Colors.orange),
+  normal(emoji: '😐', label: '보통', value: 3, color: Color(0xFFE8DCC8)), // 베이지
   notGood(emoji: '🙁', label: '별로', value: 4, color: Colors.deepOrange),
   hard(emoji: '😞', label: '힘들어', value: 5, color: Colors.red);
 
-  /// 상태 알려주기 화면에서 선택 가능한 옵션 (괜찮아, 별로만)
-  static const List<Mood> selectableMoods = [Mood.okay, Mood.notGood];
+  /// 상태 알려주기 화면에서 선택 가능한 옵션 (괜찮아, 보통, 별로)
+  static const List<Mood> selectableMoods = [Mood.okay, Mood.normal, Mood.notGood];
 
-  /// 내 상태 보기/차트 등에서 2가지로만 표시할 때 (좋아·보통·힘들어 → 괜찮아 또는 별로)
+  /// 내 상태 보기/차트 등에서 3가지로 표시할 때 (좋아→괜찮아, 힘들어→별로)
   Mood get displayAsSelectable {
     switch (this) {
       case Mood.good:
-      case Mood.okay:
-      case Mood.normal:
         return Mood.okay;
+      case Mood.okay:
+        return Mood.okay;
+      case Mood.normal:
+        return Mood.normal;
       case Mood.notGood:
+        return Mood.notGood;
       case Mood.hard:
         return Mood.notGood;
     }

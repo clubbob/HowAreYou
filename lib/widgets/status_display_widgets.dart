@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../models/mood_response_model.dart';
+import 'mood_face_icon.dart';
 
 /// 오늘 상태 표시 위젯 (보호자/보호대상자 공통)
 class TodayStatusWidget extends StatelessWidget {
@@ -62,7 +63,11 @@ class TodayStatusWidget extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           hasResponse
-                              ? response!.mood.displayAsSelectable.buildColoredIcon(size: 40)
+                              ? MoodFaceIcon(
+                                  mood: response!.mood.displayAsSelectable,
+                                  size: 40,
+                                  withShadow: false,
+                                )
                               : const Text(
                                   '—',
                                   style: TextStyle(fontSize: 32),
@@ -383,9 +388,12 @@ class StatusHistoryTable extends StatelessWidget {
       if (response == null) {
         barColors.add(Colors.grey.shade300);
       } else {
-        barColors.add(response.mood.displayAsSelectable == Mood.okay
+        final m = response.mood.displayAsSelectable;
+        barColors.add(m == Mood.okay
             ? Colors.lightGreen
-            : Colors.deepOrange);
+            : m == Mood.normal
+                ? const Color(0xFFD4C4B0)
+                : Colors.deepOrange);
       }
     }
 
@@ -474,6 +482,7 @@ class StatusHistoryTable extends StatelessWidget {
           runSpacing: 4,
           children: [
             _LegendItem(label: '괜찮아', color: Colors.lightGreen),
+            _LegendItem(label: '보통', color: Color(0xFFD4C4B0)),
             _LegendItem(label: '별로', color: Colors.deepOrange),
             _LegendItem(label: '없음', color: Colors.grey),
           ],

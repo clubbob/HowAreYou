@@ -1,0 +1,7 @@
+# Release 서명용. 이 파일을 key.properties 로 복사한 뒤 값을 채우세요.
+# key.properties, *.jks 는 git 에 올리지 마세요.
+
+storePassword=비밀번호
+keyPassword=비밀번호
+keyAlias=upload
+storeFile=upload-keystore.jks

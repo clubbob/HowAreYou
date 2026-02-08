@@ -150,14 +150,10 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
                                 ),
                               );
                             } else {
-                              String msg = e.toString().replaceFirst('Exception: ', '');
-                              if (msg.isEmpty || msg == e.toString()) {
-                                msg = e is Exception ? e.toString() : '등록에 실패했습니다.';
-                              }
                               ScaffoldMessenger.of(ctx).showSnackBar(
-                                SnackBar(
-                                  content: Text(msg),
-                                  duration: const Duration(seconds: 5),
+                                const SnackBar(
+                                  content: Text('등록에 실패했습니다. 잠시 후 다시 시도해 주세요.'),
+                                  duration: Duration(seconds: 5),
                                 ),
                               );
                             }

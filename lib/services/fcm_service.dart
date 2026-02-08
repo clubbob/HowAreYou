@@ -198,9 +198,9 @@ class FCMService {
     if (navigator == null) return;
 
     if (type == 'RESPONSE_RECEIVED' || type == 'UNREACHABLE') {
-      // 보호자 모드로 이동
-      navigator.pushNamedAndRemoveUntil('/home', (route) => false);
-      // TODO: 보호자 대시보드로 이동하거나 알림 상세 화면 표시
+      navigator.pushNamedAndRemoveUntil('/guardian', (route) => false);
+    } else if (type == 'REMIND_RESPONSE') {
+      navigator.pushNamed('/question');
     }
   }
 

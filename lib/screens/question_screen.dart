@@ -4,6 +4,7 @@ import '../services/auth_service.dart';
 import '../services/mood_service.dart';
 import '../services/guardian_service.dart';
 import '../models/mood_response_model.dart';
+import '../widgets/mood_face_icon.dart';
 import '../utils/button_styles.dart';
 
 class QuestionScreen extends StatefulWidget {
@@ -22,7 +23,6 @@ class QuestionScreen extends StatefulWidget {
 
 class _QuestionScreenState extends State<QuestionScreen> {
   Mood? _selectedMood;
-  final _noteController = TextEditingController();
   final MoodService _moodService = MoodService();
   final GuardianService _guardianService = GuardianService();
   bool _isSaving = false;
@@ -50,7 +50,6 @@ class _QuestionScreenState extends State<QuestionScreen> {
 
   @override
   void dispose() {
-    _noteController.dispose();
     super.dispose();
   }
 
@@ -78,7 +77,7 @@ class _QuestionScreenState extends State<QuestionScreen> {
         return;
       }
 
-      final note = _selectedMood == Mood.notGood ? _noteController.text.trim() : null;
+      final note = null;
 
       await _moodService.saveMoodResponse(
         subjectId: userId,
@@ -89,12 +88,11 @@ class _QuestionScreenState extends State<QuestionScreen> {
 
       if (mounted) {
         Navigator.of(context).pop();
-        _showThankYouDialog(hasNote: note?.isNotEmpty == true);
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('저장 실패: $e')),
+          const SnackBar(content: Text('저장에 실패했습니다. 잠시 후 다시 시도해 주세요.')),
         );
       }
     } finally {
@@ -122,29 +120,6 @@ class _QuestionScreenState extends State<QuestionScreen> {
               child: const Text('확인'),
             ),
           ],
-        );
-      },
-    );
-  }
-
-  /// PRD §4.3: 응답 완료 후 "고마워요." 또는 "알려줘서 고마워요." 한 줄 표시
-  void _showThankYouDialog({required bool hasNote}) {
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (dialogContext) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          Future.delayed(const Duration(seconds: 2), () {
-            if (Navigator.of(dialogContext).canPop()) {
-              Navigator.of(dialogContext).pop();
-            }
-          });
-        });
-        return AlertDialog(
-          content: Text(
-            hasNote ? '알려줘서 고마워요.' : '고마워요.',
-            style: const TextStyle(fontSize: 18),
-          ),
         );
       },
     );
@@ -195,80 +170,80 @@ class _QuestionScreenState extends State<QuestionScreen> {
                       ),
                     ),
                     const SizedBox(height: 24),
-                    Wrap(
-                      alignment: WrapAlignment.center,
-                      spacing: 16,
-                      runSpacing: 12,
+                    Column(
                       children: Mood.selectableMoods.map((mood) {
-                        final isOkay = mood == Mood.okay;
-                        final backgroundColor = isOkay ? Colors.lightGreen.shade50 : Colors.deepOrange.shade50;
-                        final borderColor = isOkay ? Colors.lightGreen.shade300 : Colors.deepOrange.shade300;
-                        final textColor = isOkay ? Colors.lightGreen.shade800 : Colors.deepOrange.shade800;
+                        Color backgroundColor;
+                        Color borderColor;
+                        Color textColor;
+                        if (mood == Mood.okay) {
+                          backgroundColor = Colors.lightGreen.shade50;
+                          borderColor = Colors.lightGreen.shade300;
+                          textColor = Colors.lightGreen.shade800;
+                        } else if (mood == Mood.normal) {
+                          backgroundColor = const Color(0xFFF5F0E8);
+                          borderColor = const Color(0xFFD4C4B0);
+                          textColor = const Color(0xFF6B5B4F);
+                        } else {
+                          backgroundColor = Colors.deepOrange.shade50;
+                          borderColor = Colors.deepOrange.shade300;
+                          textColor = Colors.deepOrange.shade800;
+                        }
                         final isSelected = _selectedMood == mood;
-                        return GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _selectedMood = mood;
-                            });
-                          },
-                          child: Container(
-                            width: 120,
-                            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? backgroundColor
-                                  : backgroundColor.withOpacity(0.3),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _selectedMood = mood;
+                              });
+                            },
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+                              decoration: BoxDecoration(
                                 color: isSelected
-                                    ? borderColor
-                                    : borderColor.withOpacity(0.5),
-                                width: isSelected ? 3 : 2,
-                              ),
-                              boxShadow: isSelected
-                                  ? [
-                                      BoxShadow(
-                                        color: borderColor.withOpacity(0.3),
-                                        blurRadius: 8,
-                                        offset: const Offset(0, 4),
-                                      ),
-                                    ]
-                                  : null,
-                            ),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                mood.buildLargeIcon(size: isSelected ? 48 : 46),
-                                const SizedBox(height: 4),
-                                Text(
-                                  mood.label,
-                                  style: TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w600,
-                                    color: isSelected ? textColor : textColor.withOpacity(0.7),
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
+                                    ? backgroundColor
+                                    : backgroundColor.withOpacity(0.3),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? borderColor
+                                      : borderColor.withOpacity(0.5),
+                                  width: isSelected ? 3 : 2,
                                 ),
-                              ],
+                                boxShadow: isSelected
+                                    ? [
+                                        BoxShadow(
+                                          color: borderColor.withOpacity(0.3),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 4),
+                                        ),
+                                      ]
+                                    : null,
+                              ),
+                              child: Row(
+                                children: [
+                                  MoodFaceIcon(
+                                    mood: mood,
+                                    size: isSelected ? 48 : 46,
+                                    withShadow: true,
+                                  ),
+                                  const SizedBox(width: 20),
+                                  Text(
+                                    mood.label,
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w600,
+                                      color: isSelected ? textColor : textColor.withOpacity(0.7),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         );
                       }).toList(),
                     ),
-                    if (_selectedMood == Mood.notGood) ...[
-                      const SizedBox(height: 20),
-                      TextField(
-                        controller: _noteController,
-                        decoration: const InputDecoration(
-                          hintText: '어떤 게 별로예요? (선택)',
-                          border: OutlineInputBorder(),
-                        ),
-                        maxLines: 2,
-                        textInputAction: TextInputAction.done,
-                      ),
-                    ],
                   ],
                 ),
               ),
