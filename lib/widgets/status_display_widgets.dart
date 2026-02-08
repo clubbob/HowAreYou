@@ -35,7 +35,7 @@ class TodayStatusWidget extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         Row(
-          children: TimeSlot.values.map((slot) {
+          children: TimeSlot.displaySlots.map((slot) {
             final response = responses![slot];
             final hasResponse = response != null;
             final isNoResponse = !hasResponse;
@@ -59,32 +59,14 @@ class TodayStatusWidget extends StatelessWidget {
                       ),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text(
-                            slot.label,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[700],
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
                           hasResponse
-                              ? response!.mood.buildColoredIcon(size: 40)
+                              ? response!.mood.displayAsSelectable.buildColoredIcon(size: 40)
                               : const Text(
                                   '—',
                                   style: TextStyle(fontSize: 32),
                                 ),
-                          Text(
-                            hasResponse ? '응답함' : '회신 없음',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: isNoResponse
-                                  ? Colors.orange.shade800
-                                  : Colors.green.shade800,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
                         ],
                       ),
                     ),
@@ -125,21 +107,20 @@ class StatusTrendChart extends StatelessWidget {
       final dateStr = entry.key;
       final dayResponses = entry.value;
 
-      int goodCount = 0;
-      int normalCount = 0;
-      int badCount = 0;
+      // 2가지 상태로 집계: 괜찮아(좋아+괜찮아+보통), 별로(별로+힘들어)
+      int okayCount = 0;
+      int notGoodCount = 0;
 
       for (final response in dayResponses.values) {
         if (response != null) {
-          switch (response.mood) {
-            case Mood.good:
-              goodCount++;
+          switch (response.mood.displayAsSelectable) {
+            case Mood.okay:
+              okayCount++;
               break;
-            case Mood.normal:
-              normalCount++;
+            case Mood.notGood:
+              notGoodCount++;
               break;
-            case Mood.bad:
-              badCount++;
+            default:
               break;
           }
         }
@@ -161,28 +142,16 @@ class StatusTrendChart extends StatelessWidget {
           groupVertically: false,
           barRods: [
             BarChartRodData(
-              toY: goodCount.toDouble(),
-              color: Colors.green,
+              toY: okayCount.toDouble(),
+              color: Colors.lightGreen,
               width: 12,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(4),
-              ),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
             ),
             BarChartRodData(
-              toY: normalCount.toDouble(),
-              color: Colors.orange,
+              toY: notGoodCount.toDouble(),
+              color: Colors.deepOrange,
               width: 12,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(4),
-              ),
-            ),
-            BarChartRodData(
-              toY: badCount.toDouble(),
-              color: Colors.red,
-              width: 12,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(4),
-              ),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
             ),
           ],
         ),
@@ -211,14 +180,6 @@ class StatusTrendChart extends StatelessWidget {
             color: Colors.grey[700],
           ),
         ),
-        const SizedBox(height: 4),
-        Text(
-          '각 날짜별 좋아/보통/안좋아 응답 개수',
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey[600],
-          ),
-        ),
         const SizedBox(height: 12),
         Container(
           height: 200,
@@ -239,7 +200,7 @@ class StatusTrendChart extends StatelessWidget {
                   tooltipRoundedRadius: 8,
                   tooltipPadding: const EdgeInsets.all(8),
                   getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                    final moodLabels = ['좋아', '보통', '안좋아'];
+                    final moodLabels = ['괜찮아', '별로'];
                     final moodLabel = rodIndex < moodLabels.length
                         ? moodLabels[rodIndex]
                         : '';
@@ -290,7 +251,7 @@ class StatusTrendChart extends StatelessWidget {
                   sideTitles: SideTitles(
                     showTitles: true,
                     getTitlesWidget: (value, meta) {
-                      if (value.toInt() >= 0 && value.toInt() <= 3) {
+                      if (value.toInt() >= 0 && value.toInt() <= 10) {
                         return Text(
                           value.toInt().toString(),
                           style: TextStyle(
@@ -334,14 +295,13 @@ class StatusTrendChart extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _LegendItem(label: '좋아', color: Colors.green),
-            const SizedBox(width: 16),
-            _LegendItem(label: '보통', color: Colors.orange),
-            const SizedBox(width: 16),
-            _LegendItem(label: '안좋아', color: Colors.red),
+        Wrap(
+          alignment: WrapAlignment.center,
+          spacing: 12,
+          runSpacing: 8,
+          children: const [
+            _LegendItem(label: '괜찮아', color: Colors.lightGreen),
+            _LegendItem(label: '별로', color: Colors.deepOrange),
           ],
         ),
       ],
@@ -385,7 +345,7 @@ class _LegendItem extends StatelessWidget {
   }
 }
 
-/// 최근 7일 이력 테이블 위젯 (보호자/보호대상자 공통)
+/// 최근 7일 이력 그래프 위젯 (날짜별 상태를 막대 색으로 표시)
 class StatusHistoryTable extends StatelessWidget {
   final Map<String, Map<TimeSlot, MoodResponseModel?>>? historyResponses;
 
@@ -400,6 +360,35 @@ class StatusHistoryTable extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
+    final sortedEntries = historyResponses!.entries.toList()
+      ..sort((a, b) => a.key.compareTo(b.key));
+    final dateLabels = <String>[];
+    final barColors = <Color>[];
+    for (final entry in sortedEntries) {
+      DateTime date;
+      try {
+        date = DateFormat('yyyy-MM-dd').parse(entry.key);
+      } catch (_) {
+        date = DateTime.now();
+      }
+      dateLabels.add(DateFormat('M/d', 'ko_KR').format(date));
+      final dayResponses = entry.value;
+      MoodResponseModel? response;
+      for (final r in dayResponses.values) {
+        if (r != null) {
+          response = r;
+          break;
+        }
+      }
+      if (response == null) {
+        barColors.add(Colors.grey.shade300);
+      } else {
+        barColors.add(response.mood.displayAsSelectable == Mood.okay
+            ? Colors.lightGreen
+            : Colors.deepOrange);
+      }
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -411,109 +400,84 @@ class StatusHistoryTable extends StatelessWidget {
             color: Colors.grey[700],
           ),
         ),
-        const SizedBox(height: 8),
-        // 테이블 헤더
-        Padding(
-          padding: const EdgeInsets.only(bottom: 6),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 72,
-                child: Text(
-                  '날짜',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.grey[800],
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 160,
+          child: BarChart(
+            BarChartData(
+              alignment: BarChartAlignment.spaceAround,
+              maxY: 1.2,
+              barTouchData: BarTouchData(enabled: false),
+              titlesData: FlTitlesData(
+                show: true,
+                bottomTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    getTitlesWidget: (value, meta) {
+                      if (value.toInt() >= 0 && value.toInt() < dateLabels.length) {
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Text(
+                            dateLabels[value.toInt()],
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey[700],
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        );
+                      }
+                      return const SizedBox.shrink();
+                    },
+                    reservedSize: 28,
                   ),
                 ),
-              ),
-              Expanded(
-                child: Row(
-                  children: TimeSlot.values.map((slot) {
-                    return Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 2),
-                        child: Text(
-                          slot.label,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.grey[800],
-                          ),
-                        ),
-                      ),
-                    );
-                  }).toList(),
+                leftTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                topTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
                 ),
               ),
-            ],
+              gridData: const FlGridData(show: false),
+              borderData: FlBorderData(
+                show: true,
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade300),
+                ),
+              ),
+              barGroups: List.generate(
+                sortedEntries.length,
+                (i) => BarChartGroupData(
+                  x: i,
+                  barRods: [
+                    BarChartRodData(
+                      toY: 1,
+                      color: barColors[i],
+                      width: 20,
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+                    ),
+                  ],
+                  showingTooltipIndicators: [],
+                ),
+              ),
+            ),
           ),
         ),
-        // 테이블 데이터
-        ...historyResponses!.entries.map((entry) {
-          final dateStr = entry.key;
-          final dayResponses = entry.value;
-          DateTime date;
-          try {
-            date = DateFormat('yyyy-MM-dd').parse(dateStr);
-          } catch (_) {
-            date = DateTime.now();
-          }
-          final dateLabel = DateFormat('M/d (E)', 'ko_KR').format(date);
-          final isToday = dateStr ==
-              DateFormat('yyyy-MM-dd').format(DateTime.now());
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 6),
-            child: Row(
-              children: [
-                SizedBox(
-                  width: 72,
-                  child: Text(
-                    dateLabel,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: isToday ? Colors.blue.shade700 : Colors.grey[700],
-                      fontWeight: isToday ? FontWeight.w600 : FontWeight.w500,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: Row(
-                    children: TimeSlot.values.map((slot) {
-                      final r = dayResponses[slot];
-                      final hasR = r != null;
-                      return Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 2),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 6),
-                            decoration: BoxDecoration(
-                              color: hasR
-                                  ? Colors.green.shade50
-                                  : Colors.grey.shade100,
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: hasR
-                                ? Center(
-                                    child: r!.mood.buildColoredIcon(size: 28),
-                                  )
-                                : const Text(
-                                    '—',
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(fontSize: 24),
-                                  ),
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ),
-              ],
-            ),
-          );
-        }).toList(),
+        const SizedBox(height: 8),
+        Wrap(
+          alignment: WrapAlignment.center,
+          spacing: 16,
+          runSpacing: 4,
+          children: [
+            _LegendItem(label: '괜찮아', color: Colors.lightGreen),
+            _LegendItem(label: '별로', color: Colors.deepOrange),
+            _LegendItem(label: '없음', color: Colors.grey),
+          ],
+        ),
       ],
     );
   }

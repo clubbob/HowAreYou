@@ -94,18 +94,27 @@
 - 지정자-보호대상 연결:
   - subject 문서에 guardian uid 배열로 관리
 
-## 9. Firestore 컬렉션 구조 (요약)
+## 9. 데이터 모델 (설계 고정 조건)
+
+- **subjects/{subjectUid}** 의 문서 ID는 항상 **보호대상자의 Firebase Auth UID**와 동일하다.
+- **users/{uid}** 역시 **Auth UID**를 문서 ID로 사용한다.
+- **subjectUid === users 문서의 uid** 이며, 별도의 subject 전용 식별자는 생성하지 않는다.
+- Guardian / Mood / 조회 로직은 모두 위 규칙을 전제로 동작한다.
+
+## 10. Firestore 컬렉션 구조 (요약)
 
 ### /users/{uid}
+- `uid` = Firebase Auth UID (문서 ID)
 - role: guardian | subject | both
 - phone
 - fcmTokens[]
 
-### /subjects/{subjectId}
+### /subjects/{subjectUid}
+- `subjectUid` = 보호대상자의 Firebase Auth UID (문서 ID, users/{uid}와 동일)
 - displayName
 - pairedGuardianUids[]
 
-### /subjects/{subjectId}/prompts/{YYYY-MM-DD_slot}
+### /subjects/{subjectUid}/prompts/{YYYY-MM-DD_slot}
 - slot: morning | noon | evening
 - answeredAt
 - mood
@@ -118,13 +127,13 @@
 - triggerDate
 - triggeredAt
 
-## 10. 비범위 (MVP에서 하지 않는 것)
+## 11. 비범위 (MVP에서 하지 않는 것)
 - 위치 추적
 - 감정 분석/판정
 - 지정자 대시보드
 - 유료 결제
 
-## 11. 성공 기준 (MVP)
+## 12. 성공 기준 (MVP)
 - 로컬 알림 3회 안정적 동작
 - 응답 Firestore 정상 저장
 - 미회신 조건 충족 시 보호자에게 1회만 알림 발송

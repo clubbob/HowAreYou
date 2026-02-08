@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -45,12 +46,20 @@ class _AuthScreenState extends State<AuthScreen> {
   }
   
   /// 전화번호를 읽기 쉬운 형식으로 변환 (010-1111-2222)
+  /// +82 10 xxxx xxxx → 010-xxxx-xxxx (digits가 10으로 시작하는 10자리)
   String _formatPhoneNumber(String phone) {
     if (phone.startsWith('+82')) {
       final digits = phone.substring(3);
+      if (digits.length == 10 && digits.startsWith('10')) {
+        return '010-${digits.substring(2, 6)}-${digits.substring(6)}';
+      }
+      if (digits.length == 9 && digits.startsWith('10')) {
+        return '010-${digits.substring(2, 5)}-${digits.substring(5)}';
+      }
       if (digits.length == 10) {
         return '010-${digits.substring(0, 4)}-${digits.substring(4)}';
-      } else if (digits.length == 9) {
+      }
+      if (digits.length == 9) {
         return '010-${digits.substring(0, 3)}-${digits.substring(3)}';
       }
     }
@@ -199,10 +208,27 @@ class _AuthScreenState extends State<AuthScreen> {
 
     try {
       debugPrint('인증 코드 전송 시도: $phoneNumber');
+      // 에뮬레이터 등에서 콜백이 늦게 오면 로딩이 멈추지 않을 수 있음 → 10초 후 강제 해제
+      Future.delayed(const Duration(seconds: 10), () {
+        if (!mounted) return;
+        if (_isLoading || (!_codeSent && _verificationId != null)) {
+          setState(() {
+            _isLoading = false;
+            if (_verificationId != null) _codeSent = true;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('인증 코드 입력란을 확인해 주세요. 코드가 있다면 입력 후 인증하기를 누르세요.'),
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+      });
       await FirebaseAuth.instance.verifyPhoneNumber(
         phoneNumber: phoneNumber,
         verificationCompleted: (PhoneAuthCredential credential) async {
           debugPrint('자동 인증 완료: ${credential.smsCode}');
+          if (mounted) setState(() => _isLoading = false);
           final authService = Provider.of<AuthService>(context, listen: false);
           await authService.verifyOTP('', credential.smsCode ?? '');
           if (mounted) {
@@ -265,7 +291,21 @@ class _AuthScreenState extends State<AuthScreen> {
         },
         codeAutoRetrievalTimeout: (String verificationId) {
           debugPrint('자동 인증 코드 타임아웃: $verificationId');
-          _verificationId = verificationId;
+          if (mounted) {
+            setState(() {
+              _verificationId = verificationId;
+              _codeSent = true;
+              _isLoading = false;
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('인증 코드를 수동으로 입력해주세요.'),
+                duration: Duration(seconds: 2),
+              ),
+            );
+          } else {
+            _verificationId = verificationId;
+          }
         },
         timeout: const Duration(seconds: 60),
       );
@@ -304,20 +344,24 @@ class _AuthScreenState extends State<AuthScreen> {
 
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
-      final error = await authService.verifyOTP(_verificationId!, _codeController.text);
-      
+      final error = await authService
+          .verifyOTP(_verificationId!, _codeController.text)
+          .timeout(
+            const Duration(seconds: 20),
+            onTimeout: () => '로그인 요청이 지연되고 있습니다. 네트워크를 확인한 뒤 다시 시도해 주세요.',
+          );
+
       if (mounted) {
         setState(() {
           _isLoading = false;
         });
-        
         if (error == null) {
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (_) => const HomeScreen(skipAutoNavigation: true)),
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('인증 실패: $error')),
+            SnackBar(content: Text(error), duration: const Duration(seconds: 5)),
           );
         }
       }
@@ -326,8 +370,9 @@ class _AuthScreenState extends State<AuthScreen> {
         setState(() {
           _isLoading = false;
         });
+        final msg = e is TimeoutException ? e.message ?? '요청이 지연되었습니다.' : '오류: $e';
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('오류: $e')),
+          SnackBar(content: Text(msg), duration: const Duration(seconds: 5)),
         );
       }
     }
@@ -347,12 +392,11 @@ class _AuthScreenState extends State<AuthScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: 40),
-              // Pixel 6 스타일 타이틀
-              const Text(
-                '지금 어때?',
-                style: TextStyle(
-                  fontSize: 36,
-                  fontWeight: FontWeight.w400, // Pixel 6 uses lighter weight
+              Text(
+                _codeSent ? '인증 코드 입력' : '지금 어때?',
+                style: const TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w600,
                   letterSpacing: -0.5,
                   color: Color(0xFF202124),
                   height: 1.2,
@@ -361,22 +405,26 @@ class _AuthScreenState extends State<AuthScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                _codeSent ? '인증 코드를 입력해주세요' : '전화번호로 로그인하세요',
+                _codeSent ? '문자로 받은 6자리 코드를 입력하세요' : '전화번호로 로그인하세요',
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: 15,
                   fontWeight: FontWeight.w400,
                   color: Colors.grey.shade600,
-                  letterSpacing: 0.15,
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 48),
+              const SizedBox(height: 40),
               if (!_codeSent) ...[
                 TextField(
                   controller: _phoneController,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: '전화번호',
                     hintText: '010-1234-5678',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    filled: true,
+                    fillColor: Colors.grey.shade50,
                   ),
                   keyboardType: TextInputType.phone,
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
@@ -389,6 +437,12 @@ class _AuthScreenState extends State<AuthScreen> {
                 const SizedBox(height: 24),
                 ElevatedButton(
                   onPressed: _isLoading ? null : _sendOTP,
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
                   child: _isLoading
                       ? const SizedBox(
                           width: 24,
@@ -403,23 +457,35 @@ class _AuthScreenState extends State<AuthScreen> {
               ] else ...[
                 TextField(
                   controller: _codeController,
-                  decoration: const InputDecoration(
-                    labelText: '인증 코드',
-                    hintText: '6자리 코드',
+                  decoration: InputDecoration(
+                    hintText: '000000',
+                    counterText: '',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    filled: true,
+                    fillColor: Colors.grey.shade50,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
                   ),
                   keyboardType: TextInputType.number,
                   maxLength: 6,
                   textAlign: TextAlign.center,
                   style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w500,
-                    letterSpacing: 8,
+                    fontSize: 28,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 12,
                     color: Color(0xFF202124),
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 28),
                 ElevatedButton(
                   onPressed: _isLoading ? null : _verifyOTP,
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
                   child: _isLoading
                       ? const SizedBox(
                           width: 24,
@@ -431,7 +497,7 @@ class _AuthScreenState extends State<AuthScreen> {
                         )
                       : const Text('인증 확인'),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 TextButton(
                   onPressed: () {
                     setState(() {
@@ -439,7 +505,14 @@ class _AuthScreenState extends State<AuthScreen> {
                       _codeController.clear();
                     });
                   },
-                  child: const Text('전화번호 다시 입력'),
+                  child: Text(
+                    '전화번호 다시 입력',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey.shade700,
+                      decoration: TextDecoration.none,
+                    ),
+                  ),
                 ),
               ],
               const SizedBox(height: 40),

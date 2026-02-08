@@ -3,11 +3,13 @@ import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../services/mode_service.dart';
 import '../services/fcm_service.dart';
+import '../services/guardian_service.dart';
 import '../utils/button_styles.dart';
 import '../utils/permission_helper.dart';
 import '../main.dart';
 import 'subject_mode_screen.dart';
 import 'guardian_mode_screen.dart';
+import 'guardian_screen.dart';
 import 'auth_screen.dart';
 import 'dart:io' show Platform;
 
@@ -62,8 +64,8 @@ class _HomeScreenState extends State<HomeScreen> {
       // skipAutoNavigation이 false이고 마지막 선택한 모드가 있으면 자동으로 해당 모드로 진입
       // (로그인 직후에는 skipAutoNavigation=true로 설정하여 역할 선택 화면을 보여줌)
       if (!widget.skipAutoNavigation && mode != null) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _navigateToMode(mode, skipSave: true);
+        WidgetsBinding.instance.addPostFrameCallback((_) async {
+          await _navigateToMode(mode, skipSave: true);
         });
       }
     }
@@ -72,15 +74,28 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _selectMode(String mode) async {
     await ModeService.saveSelectedMode(mode);
-    _navigateToMode(mode);
+    await _navigateToMode(mode);
   }
 
-  void _navigateToMode(String mode, {bool skipSave = false}) {
+  Future<void> _navigateToMode(String mode, {bool skipSave = false}) async {
     if (!skipSave) {
       ModeService.saveSelectedMode(mode);
     }
 
     if (mode == ModeService.modeSubject) {
+      final uid = Provider.of<AuthService>(context, listen: false).user?.uid;
+      if (uid != null) {
+        final hasGuardian = await GuardianService().hasGuardian(uid);
+        if (!mounted) return;
+        // 보호자가 한 명도 없으면 바로 보호자 등록 화면으로
+        if (!hasGuardian) {
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const GuardianScreen()),
+          );
+          return;
+        }
+      }
+      if (!mounted) return;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const SubjectModeScreen()),
       );

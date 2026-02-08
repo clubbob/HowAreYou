@@ -53,7 +53,7 @@ class NoResponseScreen extends StatelessWidget {
               ),
               const SizedBox(height: 24),
               Text(
-                '$subjectName님\n${slot.label} 회신이 없습니다.',
+                '$subjectName님과 연락이 닿지 않고 있어요.',
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontSize: 22,
@@ -63,7 +63,7 @@ class NoResponseScreen extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               Text(
-                '연락해 보시거나, 나중에 다시 확인해 보세요.',
+                '${slot.label} 회신이 없습니다. 연락해 보시거나, 나중에 다시 확인해 보세요.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 15,

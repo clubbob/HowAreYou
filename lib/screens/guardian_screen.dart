@@ -4,6 +4,8 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
+import '../services/guardian_service.dart';
+import '../utils/constants.dart';
 import '../utils/button_styles.dart';
 
 class GuardianScreen extends StatefulWidget {
@@ -17,6 +19,7 @@ class _GuardianScreenState extends State<GuardianScreen> {
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final GuardianService _guardianService = GuardianService();
   final ScrollController _scrollController = ScrollController();
   bool _isLoading = false;
   bool _hasScrolledAfterAdd = false;
@@ -53,25 +56,6 @@ class _GuardianScreenState extends State<GuardianScreen> {
         });
       }
     }
-  }
-
-  /// 로그인 시 저장 형식과 맞추기 위해 E.164로 변환 (+821012345678)
-  String _toE164(String input) {
-    final digits = input.replaceAll(RegExp(r'[^\d]'), '');
-    if (digits.isEmpty) return input.trim();
-    if (digits.startsWith('82') && digits.length >= 11) {
-      return '+$digits';
-    }
-    if (digits.length >= 9 && digits.startsWith('010')) {
-      return '+82${digits.substring(1)}';
-    }
-    if (digits.length >= 10 && digits.startsWith('0')) {
-      return '+82${digits.substring(1)}';
-    }
-    if (!input.trim().startsWith('+')) {
-      return '+82$digits';
-    }
-    return input.trim();
   }
 
   /// 목록 표시용: E.164(82...) 등을 010XXXXXXXX 형태로
@@ -194,7 +178,7 @@ class _GuardianScreenState extends State<GuardianScreen> {
     
     try {
       // 보호자 추가와 동일하게 guardianInfos 전체를 읽어 수정 후 통째로 저장
-      final docRef = _firestore.collection('subjects').doc(userId);
+      final docRef = _firestore.collection(AppConstants.subjectsCollection).doc(userId);
       final docSnap = await docRef.get();
       final existingData = docSnap.data() as Map<String, dynamic>?;
       final existingInfosRaw = existingData?['guardianInfos'];
@@ -207,7 +191,7 @@ class _GuardianScreenState extends State<GuardianScreen> {
           : <String, dynamic>{};
       
       // 전화번호를 E.164 형식으로 변환
-      final normalizedPhone = _toE164(result['phone']!);
+      final normalizedPhone = GuardianService.toE164(result['phone']!);
       
       existingInfos[guardianUid] = {
         'displayName': result['name'] ?? '',
@@ -233,32 +217,6 @@ class _GuardianScreenState extends State<GuardianScreen> {
         SnackBar(content: Text('수정 실패: $e')),
       );
     }
-  }
-
-  /// 지정자 조회용: Firestore에 저장된 형식이 다양할 수 있어 여러 형식으로 시도
-  Future<QuerySnapshot> _findUserByPhone(String rawInput) async {
-    final digits = rawInput.replaceAll(RegExp(r'[^\d]'), '');
-    final candidates = <String>{
-      _toE164(rawInput),
-      digits, // 01063914520
-      if (digits.startsWith('010')) '82${digits.substring(1)}', // 821063914520
-    };
-
-    for (final phone in candidates) {
-      if (phone.isEmpty) continue;
-      final q = await _firestore
-          .collection('users')
-          .where('phone', isEqualTo: phone)
-          .limit(1)
-          .get();
-      if (q.docs.isNotEmpty) return q;
-    }
-    // 빈 결과를 반환하기 위해 존재하지 않는 값으로 쿼리
-    return _firestore
-        .collection('users')
-        .where('phone', isEqualTo: '__never_match__')
-        .limit(1)
-        .get();
   }
 
   Future<void> _addGuardian() async {
@@ -288,14 +246,11 @@ class _GuardianScreenState extends State<GuardianScreen> {
         throw Exception('사용자 인증이 필요합니다.');
       }
 
-      // 여러 형식으로 시도 (E.164, 010..., 82...)
-      final usersQuery = await _findUserByPhone(_phoneController.text.trim());
-
-      if (usersQuery.docs.isEmpty) {
+      final guardianDoc = await _guardianService.getUserByPhone(_phoneController.text.trim());
+      if (guardianDoc == null) {
         throw Exception('해당 전화번호로 가입된 사용자를 찾을 수 없습니다.');
       }
 
-      final guardianDoc = usersQuery.docs.first;
       final guardianId = guardianDoc.id;
       final guardianData = guardianDoc.data() as Map<String, dynamic>? ?? {};
       final guardianPhone = guardianData['phone'] is String
@@ -314,7 +269,7 @@ class _GuardianScreenState extends State<GuardianScreen> {
         }
       }
 
-      final docRef = _firestore.collection('subjects').doc(userId);
+      final docRef = _firestore.collection(AppConstants.subjectsCollection).doc(userId);
       // 기존 데이터를 먼저 읽어서 중복 확인
       final docSnap = await docRef.get();
       final existingData = docSnap.data() as Map<String, dynamic>?;
@@ -439,7 +394,7 @@ class _GuardianScreenState extends State<GuardianScreen> {
       body: userId == null
           ? const Center(child: Text('로그인이 필요합니다.'))
           : StreamBuilder<DocumentSnapshot>(
-              stream: _firestore.collection('subjects').doc(userId).snapshots(),
+              stream: _firestore.collection(AppConstants.subjectsCollection).doc(userId).snapshots(),
               builder: (context, snapshot) {
                 if (!snapshot.hasData) {
                   return const Center(child: CircularProgressIndicator());
@@ -669,7 +624,7 @@ class _GuardianScreenState extends State<GuardianScreen> {
                                             
                                             try {
                                               await _firestore
-                                                  .collection('subjects')
+                                                  .collection(AppConstants.subjectsCollection)
                                                   .doc(userId)
                                                   .update({
                                                 'pairedGuardianUids':

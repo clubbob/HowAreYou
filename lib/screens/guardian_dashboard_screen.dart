@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 import '../services/auth_service.dart';
 import '../services/guardian_service.dart';
 import '../services/mood_service.dart';
@@ -99,8 +101,8 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
                         if (!formKey.currentState!.validate()) return;
                         setDialogState(() => isAdding = true);
                         try {
-                          final subjectId =
-                              await _guardianService.addMeAsGuardianToSubject(
+                          final subjectId = await _guardianService
+                              .addMeAsGuardianToSubject(
                             subjectPhone: phoneController.text.trim(),
                             guardianUid: userId,
                             guardianPhone: authService.userModel?.phone ??
@@ -108,6 +110,11 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
                                 '',
                             guardianDisplayName:
                                 authService.userModel?.displayName,
+                          ).timeout(
+                            const Duration(seconds: 15),
+                            onTimeout: () => throw TimeoutException(
+                              '요청이 지연되고 있습니다. 네트워크를 확인한 뒤 다시 시도해 주세요.',
+                            ),
                           );
                           final name = nameController.text.trim();
                           if (name.isNotEmpty && ctx.mounted) {
@@ -116,17 +123,44 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
                               guardianUid: userId,
                               subjectId: subjectId,
                               displayName: name,
+                            ).timeout(
+                              const Duration(seconds: 10),
+                              onTimeout: () {},
                             );
                           }
                           if (ctx.mounted) Navigator.pop(ctx, true);
-                        } catch (e) {
+                        } catch (e, stack) {
                           if (ctx.mounted) {
                             setDialogState(() => isAdding = false);
-                            final msg =
-                                e.toString().replaceFirst('Exception: ', '');
-                            ScaffoldMessenger.of(ctx).showSnackBar(
-                              SnackBar(content: Text(msg)),
-                            );
+                            debugPrint('보호대상자 추가 오류: $e');
+                            debugPrint('$stack');
+                            if (e is NoSubjectUserException) {
+                              await showDialog<void>(
+                                context: ctx,
+                                builder: (c) => AlertDialog(
+                                  icon: Icon(Icons.warning_amber_rounded, color: Colors.orange[700], size: 48),
+                                  title: const Text('경고'),
+                                  content: Text(e.message),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(c),
+                                      child: const Text('확인'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            } else {
+                              String msg = e.toString().replaceFirst('Exception: ', '');
+                              if (msg.isEmpty || msg == e.toString()) {
+                                msg = e is Exception ? e.toString() : '등록에 실패했습니다.';
+                              }
+                              ScaffoldMessenger.of(ctx).showSnackBar(
+                                SnackBar(
+                                  content: Text(msg),
+                                  duration: const Duration(seconds: 5),
+                                ),
+                              );
+                            }
                           }
                         }
                       },
@@ -168,7 +202,12 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
     }
 
     if (_subjectIdsFuture == null) {
-      _subjectIdsFuture = _guardianService.getSubjectIdsForGuardian(userId);
+      _subjectIdsFuture = _guardianService
+          .getSubjectIdsForGuardian(userId)
+          .timeout(
+            const Duration(seconds: 15),
+            onTimeout: () => <String>[],
+          );
     }
 
     return Scaffold(
@@ -348,7 +387,7 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
   }
 }
 
-/// 보호 대상 목록 아이템 (여러 명일 때 사용)
+/// 보호 대상 목록 아이템. [subjectId] = 보호대상자 Auth UID (PRD §9).
 class _SubjectListItem extends StatefulWidget {
   final String subjectId;
   final String guardianUid;
@@ -372,6 +411,7 @@ class _SubjectListItemState extends State<_SubjectListItem> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   String _subjectName = '…';
   Map<TimeSlot, MoodResponseModel?>? _todayResponses;
+  DateTime? _latestAnsweredAt;
   String _fallbackName = '이름 없음';
   late final Stream<String> _nameStream;
 
@@ -379,7 +419,7 @@ class _SubjectListItemState extends State<_SubjectListItem> {
   void initState() {
     super.initState();
     _loadName();
-    _loadTodayResponses();
+    _loadResponses();
     _nameStream = _firestore
         .collection(AppConstants.usersCollection)
         .doc(widget.guardianUid)
@@ -409,11 +449,21 @@ class _SubjectListItemState extends State<_SubjectListItem> {
     }
   }
 
-  Future<void> _loadTodayResponses() async {
-    final responses = await widget.moodService.getTodayResponses(widget.subjectId);
+  Future<void> _loadResponses() async {
+    final today = await widget.moodService.getTodayResponses(widget.subjectId);
+    final last7 = await widget.moodService.getLast7DaysResponses(widget.subjectId);
+    DateTime? latest;
+    for (final dayMap in last7.values) {
+      for (final r in dayMap.values) {
+        if (r != null && (latest == null || r.answeredAt.isAfter(latest))) {
+          latest = r.answeredAt;
+        }
+      }
+    }
     if (mounted) {
       setState(() {
-        _todayResponses = responses;
+        _todayResponses = today;
+        _latestAnsweredAt = latest;
       });
     }
   }
@@ -425,8 +475,16 @@ class _SubjectListItemState extends State<_SubjectListItem> {
       initialData: _fallbackName,
       builder: (context, nameSnapshot) {
         final subjectName = nameSnapshot.data ?? _fallbackName;
-        final responseCount = _todayResponses?.values.where((r) => r != null).length ?? 0;
-        
+        final hasRespondedToday = _todayResponses?.values.any((r) => r != null) ?? false;
+        final subtitleText = _todayResponses == null
+            ? '로딩 중...'
+            : _latestAnsweredAt == null
+                ? '최근 응답: 없음'
+                : '최근 응답: ${DateFormat('yyyy년 M월 d일 H시 m분', 'ko_KR').format(_latestAnsweredAt!)}';
+        final subtitleColor = hasRespondedToday
+            ? Colors.green.shade700
+            : Colors.grey.shade700;
+
         return Card(
           margin: const EdgeInsets.only(bottom: 12),
           child: ListTile(
@@ -437,17 +495,13 @@ class _SubjectListItemState extends State<_SubjectListItem> {
                 fontWeight: FontWeight.w600,
               ),
             ),
-            subtitle: _todayResponses == null
-                ? const Text('로딩 중...')
-                : Text(
-                    '오늘 응답: ${responseCount}/3',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: responseCount == 3
-                          ? Colors.green.shade700
-                          : Colors.orange.shade700,
-                    ),
-                  ),
+            subtitle: Text(
+              subtitleText,
+              style: TextStyle(
+                fontSize: 14,
+                color: subtitleColor,
+              ),
+            ),
             trailing: const Icon(Icons.chevron_right, size: 32),
             onTap: widget.onTap,
           ),

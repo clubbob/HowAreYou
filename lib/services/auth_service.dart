@@ -49,12 +49,15 @@ class AuthService extends ChangeNotifier {
           _userModel = UserModel.fromMap(data, uid);
         }
       }
-      // FCM 서비스 초기화 (모바일에서만)
-      await FCMService.instance.initialize(uid);
       notifyListeners();
+      // FCM은 화면 블로킹 없이 백그라운드에서 초기화
+      FCMService.instance.initialize(uid).catchError((e) {
+        debugPrint('FCM 초기화 지연/실패 (무시): $e');
+      });
     } catch (e, stack) {
       debugPrint('사용자 데이터 로드 오류: $e');
       debugPrint('스택: $stack');
+      notifyListeners();
     }
   }
 
@@ -82,6 +85,7 @@ class AuthService extends ChangeNotifier {
 
   Future<String?> verifyOTP(String verificationId, String smsCode) async {
     try {
+      debugPrint('verifyOTP: signIn 시도');
       final credential = PhoneAuthProvider.credential(
         verificationId: verificationId,
         smsCode: smsCode,
@@ -89,19 +93,23 @@ class AuthService extends ChangeNotifier {
       
       final userCredential = await _auth.signInWithCredential(credential);
       final user = userCredential.user;
-      
+      debugPrint('verifyOTP: signIn 완료 uid=${user?.uid}');
+
       if (user != null) {
         final phoneNumber = user.phoneNumber ?? '';
-        // 사용자 문서가 없으면 생성
+        debugPrint('verifyOTP: 사용자 문서 확보 시도');
         await _ensureUserDocument(user.uid, phoneNumber);
-        // 마지막 로그인 전화번호 저장
+        debugPrint('verifyOTP: 사용자 문서 확보 완료');
         await _saveLastLoginPhone(phoneNumber);
-        // FCM 서비스 초기화
-        await FCMService.instance.initialize(user.uid);
+        // FCM은 로그인 완료 후 백그라운드에서 초기화 (에뮬레이터에서 getToken 지연 시 로딩 멈춤 방지)
+        FCMService.instance.initialize(user.uid).catchError((e) {
+          debugPrint('FCM 초기화 지연/실패 (무시): $e');
+        });
       }
-      
+      debugPrint('verifyOTP: 완료');
       return null;
     } catch (e) {
+      debugPrint('verifyOTP: 오류 $e');
       return e.toString();
     }
   }
@@ -146,6 +154,7 @@ class AuthService extends ChangeNotifier {
     return input.trim();
   }
 
+  /// PRD §9: users 문서 ID = Auth UID. 생성/갱신만 담당.
   Future<void> _ensureUserDocument(String uid, String phone) async {
     final userRef = _firestore.collection('users').doc(uid);
     final doc = await userRef.get();

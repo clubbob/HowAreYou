@@ -306,8 +306,6 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
                 ),
                 if (_historyResponses != null && _historyResponses!.isNotEmpty) ...[
                   const SizedBox(height: 24),
-                  StatusTrendChart(historyResponses: _historyResponses),
-                  const SizedBox(height: 24),
                   StatusHistoryTable(historyResponses: _historyResponses),
                 ],
               ],

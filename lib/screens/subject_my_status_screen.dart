@@ -145,11 +145,9 @@ class _SubjectMyStatusScreenState extends State<SubjectMyStatusScreen> {
                       children: [
                         // 오늘 상태
                         TodayStatusWidget(responses: _todayResponses),
-                        // 최근 7일 추이 및 이력
+                        // 최근 7일 이력 그래프
                         if (_historyResponses != null &&
                             _historyResponses!.isNotEmpty) ...[
-                          const SizedBox(height: 24),
-                          StatusTrendChart(historyResponses: _historyResponses),
                           const SizedBox(height: 24),
                           StatusHistoryTable(historyResponses: _historyResponses),
                         ],

@@ -1,12 +1,16 @@
+// 지금 어때? (HowAreYou) - Firestore 보안 규칙
+// PRD §9: users/{uid} = Auth UID, subjects/{subjectUid} = 보호대상자 Auth UID (subjectUid === uid).
+// 구조: users(uid), subjects(보호대상자uid), subjects/{subjectUid}/prompts(일일 응답), notification_requests
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // 사용자 문서 - 본인만 읽기/쓰기 가능
+    // users/{userId} - 문서 ID = Firebase Auth UID
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null;
     }
-    
-    // 보호대상 문서 (subjectId = uid로 통일)
+
+    // subjects/{subjectUid} - 문서 ID = 보호대상자 Auth UID (별도 subject 식별자 없음)
     match /subjects/{subjectUid} {
       // 보호 대상자 본인: 읽기/쓰기 가능
       function isSubject() {
@@ -45,6 +49,9 @@ service cloud.firestore {
       // 보호자는 읽기만 가능 (B안: 가족 공유형 - 상태 공유 허용)
       allow read: if isGuardian();
       
+      // 보호자가 보호 대상자 추가 시 기존 문서를 읽어야 하므로: 본인이 아닌 인증 사용자는 읽기 허용
+      allow read: if request.auth != null && request.auth.uid != subjectUid;
+      
       // 보호자가 자신을 pairedGuardianUids에 추가하는 경우 쓰기 허용
       // 변경 가능한 필드: pairedGuardianUids, guardianInfos, displayName, phone만 허용
       allow write: if canAddSelfAsGuardian()
@@ -66,13 +73,15 @@ service cloud.firestore {
           request.auth.uid in resource.data.guardianUids;
       }
       
-      // 응답 문서 (prompts) - B안: 보호 대상자와 보호자 모두 읽기 가능
+      // 응답 문서 (prompts) - 보호 대상자: 읽기/쓰기, 보호자: 읽기만 (상태 공유)
       match /prompts/{promptId} {
         // 보호 대상자 본인: 읽기/쓰기 가능
         allow read, write: if isSubject();
-        
-        // 보호자: 읽기만 가능 (최근 7일 상태 공유)
-        allow read: if isGuardian();
+        // 보호자: 부모 subject 문서의 pairedGuardianUids에 포함된 경우에만 읽기 (서브컬렉션은 resource가 prompt 문서이므로 get()으로 부모 조회)
+        // pairedGuardianUids 필드 없음 시 빈 배열로 처리하여 null 오류 방지
+        allow read: if request.auth != null
+          && request.auth.uid != subjectUid
+          && request.auth.uid in get(/databases/$(database)/documents/subjects/$(subjectUid)).data.get('pairedGuardianUids', []);
       }
     }
     

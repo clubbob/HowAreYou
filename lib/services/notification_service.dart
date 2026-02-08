@@ -94,35 +94,44 @@ class NotificationService {
   }
 
   Future<void> scheduleDailyNotifications() async {
-    // 기존 알림 취소
     await _notifications.cancelAll();
 
-    // 아침 08:00
-    await _scheduleNotification(
-      id: 1,
-      title: '지금 어때?',
-      body: '아침 상태를 알려주세요.',
-      hour: 8,
-      minute: 0,
-    );
-
-    // 점심 12:00
-    await _scheduleNotification(
-      id: 2,
-      title: '지금 어때?',
-      body: '점심 상태를 알려주세요.',
-      hour: 12,
-      minute: 0,
-    );
-
-    // 저녁 18:00
-    await _scheduleNotification(
-      id: 3,
-      title: '지금 어때?',
-      body: '저녁 상태를 알려주세요.',
-      hour: 18,
-      minute: 0,
-    );
+    try {
+      await _scheduleNotification(
+        id: 1,
+        title: '지금 어때?',
+        body: '아침 상태를 알려주세요.',
+        hour: 8,
+        minute: 0,
+        useExact: true,
+      );
+      await _scheduleNotification(
+        id: 2,
+        title: '지금 어때?',
+        body: '점심 상태를 알려주세요.',
+        hour: 12,
+        minute: 0,
+        useExact: true,
+      );
+      await _scheduleNotification(
+        id: 3,
+        title: '지금 어때?',
+        body: '저녁 상태를 알려주세요.',
+        hour: 18,
+        minute: 0,
+        useExact: true,
+      );
+    } on Exception catch (e) {
+      if (e.toString().contains('exact_alarms_not_permitted') ||
+          e.toString().contains('Exact alarms are not permitted')) {
+        debugPrint('일일 알림: 정확 알람 권한 없음 → 대략적 시간으로 스케줄');
+        await _scheduleNotification(id: 1, title: '지금 어때?', body: '아침 상태를 알려주세요.', hour: 8, minute: 0, useExact: false);
+        await _scheduleNotification(id: 2, title: '지금 어때?', body: '점심 상태를 알려주세요.', hour: 12, minute: 0, useExact: false);
+        await _scheduleNotification(id: 3, title: '지금 어때?', body: '저녁 상태를 알려주세요.', hour: 18, minute: 0, useExact: false);
+      } else {
+        rethrow;
+      }
+    }
   }
 
   Future<void> _scheduleNotification({
@@ -131,7 +140,11 @@ class NotificationService {
     required String body,
     required int hour,
     required int minute,
+    bool useExact = true,
   }) async {
+    final androidMode = useExact
+        ? AndroidScheduleMode.exactAllowWhileIdle
+        : AndroidScheduleMode.inexactAllowWhileIdle;
     await _notifications.zonedSchedule(
       id,
       title,
@@ -154,7 +167,7 @@ class NotificationService {
           presentSound: true,
         ),
       ),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      androidScheduleMode: androidMode,
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
       matchDateTimeComponents: DateTimeComponents.time,
@@ -184,43 +197,28 @@ class NotificationService {
     final navigator = MyApp.navigatorKey.currentState;
     if (navigator == null) return;
 
-    // 알림 ID로 시간대 판단
-    TimeSlot? timeSlot;
-    switch (response.id) {
-      case 1:
-        timeSlot = TimeSlot.morning;
-        break;
-      case 2:
-        timeSlot = TimeSlot.noon;
-        break;
-      case 3:
-        timeSlot = TimeSlot.evening;
-        break;
-    }
+    // 24시 기준 하루 1회 → 알림 탭 시 항상 daily
+    // 알림은 보호대상자용이므로 보호대상자 모드로 자동 진입
+    await ModeService.saveSelectedMode(ModeService.modeSubject);
 
-    if (timeSlot != null) {
-      // 알림은 보호대상자용이므로 보호대상자 모드로 자동 진입
-      await ModeService.saveSelectedMode(ModeService.modeSubject);
-      
-      // 보호대상자 모드 화면으로 이동한 후 질문 화면으로 이동
-      navigator.pushNamedAndRemoveUntil('/home', (route) => false);
-      await Future.delayed(const Duration(milliseconds: 300));
-      
-      // 보호대상자 모드 화면으로 이동
-      navigator.pushReplacement(
-        MaterialPageRoute(
-          builder: (_) => const SubjectModeScreen(),
+    navigator.pushNamedAndRemoveUntil('/home', (route) => false);
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    navigator.pushReplacement(
+      MaterialPageRoute(
+        builder: (_) => const SubjectModeScreen(),
+      ),
+    );
+
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    navigator.push(
+      MaterialPageRoute(
+        builder: (_) => QuestionScreen(
+          timeSlot: TimeSlot.daily,
+          alreadyResponded: false,
         ),
-      );
-      
-      await Future.delayed(const Duration(milliseconds: 300));
-      
-      // 질문 화면으로 이동
-      navigator.push(
-        MaterialPageRoute(
-          builder: (_) => QuestionScreen(timeSlot: timeSlot!),
-        ),
-      );
-    }
+      ),
+    );
   }
 }

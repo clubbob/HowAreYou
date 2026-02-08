@@ -212,30 +212,24 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> {
 
     if (userId == null) return;
 
-    final currentSlot = await _moodService.getCurrentTimeSlot();
-
-    if (currentSlot == null) {
+    final hasResponded = await _moodService.hasRespondedToday(subjectId: userId);
+    if (hasResponded) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('현재는 질문 시간이 아닙니다.'),
+            content: Text('오늘 이미 상태를 알려주셨습니다. 자정(한국 시간) 이후에 다시 알려주세요.'),
           ),
         );
       }
       return;
     }
 
-    final hasResponded = await _moodService.hasRespondedToday(
-      subjectId: userId,
-      slot: currentSlot,
-    );
-
     if (mounted) {
       Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => QuestionScreen(
-            timeSlot: currentSlot,
-            alreadyResponded: hasResponded,
+            timeSlot: TimeSlot.daily,
+            alreadyResponded: false,
           ),
         ),
       );

@@ -25,19 +25,22 @@ void _disableDebugVisuals() {
     // 원본 debugPrint 저장
     final originalDebugPrint = debugPrint;
     
-    // Flutter의 포커스 관련 디버그 출력을 필터링
+    // Flutter 포커스·에뮬레이터 EGL 로그 필터링 (터미널 가독성)
     debugPrint = (String? message, {int? wrapWidth}) {
-      // Focus 관련 디버그 출력 필터링
-      if (message != null && 
-          (message.contains('FocusScopeNode') || 
-           message.contains('FocusNode') || 
-           message.contains('FocusManager') ||
-           message.contains('PRIMARY FOCUS') ||
-           message.contains('Root Focus Scope') ||
-           message.contains('_ModalScopeState'))) {
-        return; // 출력하지 않음
+      if (message == null) {
+        originalDebugPrint(message, wrapWidth: wrapWidth);
+        return;
       }
-      // 다른 디버그 출력은 정상적으로 출력
+      if (message.contains('FocusScopeNode') ||
+          message.contains('FocusNode') ||
+          message.contains('FocusManager') ||
+          message.contains('PRIMARY FOCUS') ||
+          message.contains('Root Focus Scope') ||
+          message.contains('_ModalScopeState') ||
+          message.contains('EGL_emulation') ||
+          message.contains('app_time_stats')) {
+        return;
+      }
       originalDebugPrint(message, wrapWidth: wrapWidth);
     };
   }
@@ -66,20 +69,19 @@ void main() async {
   await initializeDateFormatting('ko_KR', null);
 
   // Firebase 초기화 (모바일 플랫폼만)
-  // Windows에서는 Firebase가 완전히 지원되지 않으므로 초기화 건너뛰기
   if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
     try {
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
-      
-      // 백그라운드 메시지 핸들러 등록
       FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
-      
-      // 알림 서비스 초기화
-      await NotificationService.instance.initialize();
     } catch (e) {
       debugPrint('Firebase 초기화 오류: $e');
+    }
+    try {
+      await NotificationService.instance.initialize();
+    } catch (e) {
+      debugPrint('알림 서비스 초기화 오류 (앱은 계속 실행됩니다): $e');
     }
   } else if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
     // 데스크톱 플랫폼에서는 Firebase 초기화 시도 (선택적)

@@ -22,10 +22,37 @@ class QuestionScreen extends StatefulWidget {
 
 class _QuestionScreenState extends State<QuestionScreen> {
   Mood? _selectedMood;
+  final _noteController = TextEditingController();
   final MoodService _moodService = MoodService();
   final GuardianService _guardianService = GuardianService();
   bool _isSaving = false;
 
+  @override
+  void initState() {
+    super.initState();
+    if (widget.timeSlot == TimeSlot.daily && !widget.alreadyResponded) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _checkAlreadyResponded());
+    }
+  }
+
+  Future<void> _checkAlreadyResponded() async {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final userId = authService.user?.uid;
+    if (userId == null) return;
+    final done = await _moodService.hasRespondedToday(subjectId: userId);
+    if (done && mounted) {
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('오늘 이미 상태를 알려주셨습니다. 자정(한국 시간) 이후에 다시 알려주세요.')),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _noteController.dispose();
+    super.dispose();
+  }
 
   Future<void> _saveResponse() async {
     if (_selectedMood == null) return;
@@ -42,7 +69,6 @@ class _QuestionScreenState extends State<QuestionScreen> {
         throw Exception('사용자 인증이 필요합니다.');
       }
 
-      // 보호자 지정 여부 확인
       final hasGuardian = await _guardianService.hasGuardian(userId);
       if (!hasGuardian) {
         if (mounted) {
@@ -52,16 +78,18 @@ class _QuestionScreenState extends State<QuestionScreen> {
         return;
       }
 
+      final note = _selectedMood == Mood.notGood ? _noteController.text.trim() : null;
+
       await _moodService.saveMoodResponse(
         subjectId: userId,
         slot: widget.timeSlot,
         mood: _selectedMood!,
-        note: null, // 텍스트 입력 기능 제거
+        note: note?.isEmpty == true ? null : note,
       );
 
       if (mounted) {
         Navigator.of(context).pop();
-        _showThankYouDialog();
+        _showThankYouDialog(hasNote: note?.isNotEmpty == true);
       }
     } catch (e) {
       if (mounted) {
@@ -99,12 +127,12 @@ class _QuestionScreenState extends State<QuestionScreen> {
     );
   }
 
-  void _showThankYouDialog() {
+  /// PRD §4.3: 응답 완료 후 "고마워요." 또는 "알려줘서 고마워요." 한 줄 표시
+  void _showThankYouDialog({required bool hasNote}) {
     showDialog(
       context: context,
       barrierDismissible: true,
       builder: (dialogContext) {
-        // 다이얼로그가 표시된 후 2초 뒤 자동으로 닫기
         WidgetsBinding.instance.addPostFrameCallback((_) {
           Future.delayed(const Duration(seconds: 2), () {
             if (Navigator.of(dialogContext).canPop()) {
@@ -113,9 +141,9 @@ class _QuestionScreenState extends State<QuestionScreen> {
           });
         });
         return AlertDialog(
-          content: const Text(
-            '확인해 줘서 고마워요.',
-            style: TextStyle(fontSize: 18),
+          content: Text(
+            hasNote ? '알려줘서 고마워요.' : '고마워요.',
+            style: const TextStyle(fontSize: 18),
           ),
         );
       },
@@ -155,7 +183,7 @@ class _QuestionScreenState extends State<QuestionScreen> {
           children: [
             Expanded(
               child: SingleChildScrollView(
-                padding: EdgeInsets.fromLTRB(24, 24, 24, 24 + bottomInset),
+                padding: EdgeInsets.fromLTRB(24, 24, 24, 32 + bottomInset),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -170,33 +198,13 @@ class _QuestionScreenState extends State<QuestionScreen> {
                     Wrap(
                       alignment: WrapAlignment.center,
                       spacing: 16,
-                      runSpacing: 16,
-                      children: Mood.values.map((mood) {
-                        // 각 기분에 맞는 색상 정의
-                        Color backgroundColor;
-                        Color borderColor;
-                        Color textColor;
-                        
-                        switch (mood) {
-                          case Mood.good:
-                            backgroundColor = Colors.green.shade50;
-                            borderColor = Colors.green.shade300;
-                            textColor = Colors.green.shade800;
-                            break;
-                          case Mood.normal:
-                            backgroundColor = Colors.orange.shade50;
-                            borderColor = Colors.orange.shade300;
-                            textColor = Colors.orange.shade800;
-                            break;
-                          case Mood.bad:
-                            backgroundColor = Colors.red.shade50;
-                            borderColor = Colors.red.shade300;
-                            textColor = Colors.red.shade800;
-                            break;
-                        }
-                        
+                      runSpacing: 12,
+                      children: Mood.selectableMoods.map((mood) {
+                        final isOkay = mood == Mood.okay;
+                        final backgroundColor = isOkay ? Colors.lightGreen.shade50 : Colors.deepOrange.shade50;
+                        final borderColor = isOkay ? Colors.lightGreen.shade300 : Colors.deepOrange.shade300;
+                        final textColor = isOkay ? Colors.lightGreen.shade800 : Colors.deepOrange.shade800;
                         final isSelected = _selectedMood == mood;
-                        
                         return GestureDetector(
                           onTap: () {
                             setState(() {
@@ -204,11 +212,8 @@ class _QuestionScreenState extends State<QuestionScreen> {
                             });
                           },
                           child: Container(
-                            width: 100,
-                            padding: const EdgeInsets.symmetric(
-                              vertical: 14,
-                              horizontal: 8,
-                            ),
+                            width: 120,
+                            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
                             decoration: BoxDecoration(
                               color: isSelected
                                   ? backgroundColor
@@ -234,17 +239,17 @@ class _QuestionScreenState extends State<QuestionScreen> {
                               mainAxisSize: MainAxisSize.min,
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                mood.buildLargeIcon(
-                                  size: isSelected ? 56 : 52,
-                                ),
-                                const SizedBox(height: 8),
+                                mood.buildLargeIcon(size: isSelected ? 48 : 46),
+                                const SizedBox(height: 4),
                                 Text(
                                   mood.label,
                                   style: TextStyle(
-                                    fontSize: 20,
+                                    fontSize: 15,
                                     fontWeight: FontWeight.w600,
                                     color: isSelected ? textColor : textColor.withOpacity(0.7),
                                   ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ],
                             ),
@@ -252,6 +257,18 @@ class _QuestionScreenState extends State<QuestionScreen> {
                         );
                       }).toList(),
                     ),
+                    if (_selectedMood == Mood.notGood) ...[
+                      const SizedBox(height: 20),
+                      TextField(
+                        controller: _noteController,
+                        decoration: const InputDecoration(
+                          hintText: '어떤 게 별로예요? (선택)',
+                          border: OutlineInputBorder(),
+                        ),
+                        maxLines: 2,
+                        textInputAction: TextInputAction.done,
+                      ),
+                    ],
                   ],
                 ),
               ),
