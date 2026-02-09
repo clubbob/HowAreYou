@@ -53,28 +53,41 @@ class TodayStatusWidget extends StatelessWidget {
                         ? () => onNoResponseTap!(slot)
                         : null,
                     borderRadius: BorderRadius.circular(8),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 10,
-                        horizontal: 6,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 10,
+                          horizontal: 6,
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            hasResponse
+                                ? MoodFaceIcon(
+                                    mood: response!.mood.displayAsSelectable,
+                                    size: 40,
+                                    withShadow: false,
+                                  )
+                                : const Text(
+                                    '—',
+                                    style: TextStyle(fontSize: 32),
+                                  ),
+                            const SizedBox(height: 8),
+                            Text(
+                              hasResponse
+                                  ? response!.mood.displayAsSelectable.label
+                                  : '없음',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: hasResponse
+                                    ? response!.mood.displayAsSelectable.color
+                                    : Colors.grey.shade600,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          hasResponse
-                              ? MoodFaceIcon(
-                                  mood: response!.mood.displayAsSelectable,
-                                  size: 40,
-                                  withShadow: false,
-                                )
-                              : const Text(
-                                  '—',
-                                  style: TextStyle(fontSize: 32),
-                                ),
-                        ],
-                      ),
-                    ),
                   ),
                 ),
               ),

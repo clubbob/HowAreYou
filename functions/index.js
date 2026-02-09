@@ -14,13 +14,16 @@ async function sendToGuardian(guardianUid, payload) {
     // 보호자 문서에서 FCM 토큰 조회
     const userDoc = await admin.firestore().collection('users').doc(guardianUid).get();
     if (!userDoc.exists) {
+      console.log(`[FCM 발송] 보호자 문서 없음: ${guardianUid}`);
       return { successCount: 0, failureCount: 0 };
     }
 
     const userData = userDoc.data();
     const tokens = (userData?.fcmTokens || []).filter(Boolean);
+    console.log(`[FCM 발송] 보호자 ${guardianUid}: 토큰 ${tokens.length}개`);
     
     if (tokens.length === 0) {
+      console.log(`[FCM 발송] 보호자 ${guardianUid}: FCM 토큰이 없어 알림 발송 불가`);
       return { successCount: 0, failureCount: 0 };
     }
 
@@ -31,6 +34,7 @@ async function sendToGuardian(guardianUid, payload) {
     };
 
     const response = await admin.messaging().sendEachForMulticast(messagePayload);
+    console.log(`[FCM 발송] 보호자 ${guardianUid}: ${response.successCount}개 성공, ${response.failureCount}개 실패`);
 
     // Invalid 토큰 정리
     const invalidTokenErrors = new Set([
@@ -42,6 +46,9 @@ async function sendToGuardian(guardianUid, payload) {
     response.responses.forEach((resp, idx) => {
       if (!resp.success && invalidTokenErrors.has(resp.error?.code)) {
         invalidTokens.push(tokens[idx]);
+        console.log(`[FCM 발송] 보호자 ${guardianUid}: 토큰 ${idx} 실패 - ${resp.error?.code}`);
+      } else if (!resp.success) {
+        console.log(`[FCM 발송] 보호자 ${guardianUid}: 토큰 ${idx} 실패 - ${resp.error?.message || '알 수 없는 오류'}`);
       }
     });
 
@@ -116,7 +123,7 @@ exports.sendReminderToSubject = functions.https.onCall(async (data, context) => 
   const result = await sendToUser(subjectId, {
     notification: {
       title: '지금 어때?',
-      body: '기분 알려주기를 확인해 주세요.',
+      body: '오늘 컨디션을 기록해 주세요.',
     },
     data: {
       type: 'REMIND_RESPONSE',
@@ -148,7 +155,9 @@ async function sendResponseNotification(snap, context) {
 
       const subjectData = subjectDoc.data();
       const guardianUids = subjectData.pairedGuardianUids || [];
+      console.log(`[응답 알림] 보호 대상: ${subjectId}, 보호자 수: ${guardianUids.length}명`);
       if (guardianUids.length === 0) {
+        console.log(`[응답 알림] 보호자가 없어 알림 발송하지 않음`);
         return null; // 보호자가 없으면 알림 불필요
       }
 
@@ -158,11 +167,12 @@ async function sendResponseNotification(snap, context) {
       // slot 값으로 문구 결정 (하루 1회 응답 시 slot === 'daily')
       const slot = promptData.slot || '';
       const bodyText = (slot === 'daily')
-        ? `${subjectDisplayName}님이 오늘 상태를 알려주었습니다`
-        : `${subjectDisplayName}님이 상태를 알려주었습니다`;
+        ? `${subjectDisplayName}님이 오늘 컨디션을 기록했습니다`
+        : `${subjectDisplayName}님이 컨디션을 기록했습니다`;
 
       // 보호자별로 알림 발송 (FCM 토큰 정리 포함)
       const sendPromises = guardianUids.map(async (guardianUid) => {
+        console.log(`[응답 알림] 보호자 ${guardianUid}에게 알림 발송 시도`);
         return await sendToGuardian(guardianUid, {
           notification: {
             title: '상태 확인 알림',
@@ -223,103 +233,4 @@ exports.onResponseUpdated = functions.firestore
   .onUpdate(async (change, context) => {
     // 업데이트된 문서 사용
     return await sendResponseNotification(change.after, context);
-  });
-
-/**
- * 미회신 판단 및 알림 발송 (매일 12:00 실행)
- * Cloud Scheduler로 호출
- */
-exports.checkUnreachableSubjects = functions.pubsub
-  .schedule('0 12 * * *') // 매일 12:00 (UTC 기준, 한국 시간으로는 21:00)
-  .timeZone('Asia/Seoul')
-  .onRun(async (context) => {
-    console.log('미회신 판단 시작:', new Date().toISOString());
-
-    try {
-      const db = admin.firestore();
-      const now = new Date();
-      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const yesterday = new Date(today);
-      yesterday.setDate(yesterday.getDate() - 1);
-
-      // 어제 날짜 문자열 (YYYY-MM-DD)
-      const yesterdayStr = yesterday.toISOString().split('T')[0];
-      // 오늘 날짜 문자열
-      const todayStr = today.toISOString().split('T')[0];
-
-      // 모든 subjects 문서 조회
-      const subjectsSnapshot = await db.collection('subjects').get();
-
-      // 병렬 처리로 실행 시간 단축 (최적화)
-      const checkPromises = subjectsSnapshot.docs.map(async (subjectDoc) => {
-        const subjectId = subjectDoc.id;
-        const subjectData = subjectDoc.data();
-        const guardianUids = subjectData.pairedGuardianUids || [];
-
-        if (guardianUids.length === 0) return null; // 보호자가 없으면 스킵
-
-        // 어제(Day 1) 응답 확인 (병렬 처리)
-        const [day1Morning, day1Noon, day1Evening, day2Morning] = await Promise.all([
-          db.collection('subjects').doc(subjectId).collection('prompts').doc(`${yesterdayStr}_morning`).get(),
-          db.collection('subjects').doc(subjectId).collection('prompts').doc(`${yesterdayStr}_noon`).get(),
-          db.collection('subjects').doc(subjectId).collection('prompts').doc(`${yesterdayStr}_evening`).get(),
-          db.collection('subjects').doc(subjectId).collection('prompts').doc(`${todayStr}_morning`).get(),
-        ]);
-
-        // 미회신 조건 확인
-        const day1AllMissed = !day1Morning.exists && !day1Noon.exists && !day1Evening.exists;
-        const day2MorningMissed = !day2Morning.exists;
-
-        if (day1AllMissed && day2MorningMissed) {
-          // 미회신 조건 충족 → 직접 알림 발송 (notification_requests 제거)
-          const subjectDisplayName = subjectData.displayName || '보호 대상';
-          
-          // 보호자별로 알림 발송 (FCM 토큰 정리 포함)
-          const sendPromises = guardianUids.map(async (guardianUid) => {
-            return await sendToGuardian(guardianUid, {
-              notification: {
-                title: '연락 불가 알림',
-                body: `${subjectDisplayName}님이 상태를 확인하지 않고 있습니다`,
-              },
-              data: {
-                type: 'UNREACHABLE',
-                subjectId: subjectId,
-                subjectDisplayName: subjectDisplayName,
-                click_action: 'FLUTTER_NOTIFICATION_CLICK',
-              },
-              android: {
-                priority: 'high',
-                notification: {
-                  sound: 'default',
-                  channelId: 'guardian_notifications',
-                },
-              },
-              apns: {
-                payload: {
-                  aps: {
-                    sound: 'default',
-                    badge: 1,
-                  },
-                },
-              },
-            });
-          });
-
-          const results = await Promise.all(sendPromises);
-          const totalSuccess = results.reduce((sum, r) => sum + (r?.successCount || 0), 0);
-          console.log(`미회신 알림 발송: ${subjectId} (${subjectDisplayName}) - ${totalSuccess}개 성공`);
-        }
-
-        return null;
-      });
-
-      // 모든 체크를 병렬로 실행
-      await Promise.all(checkPromises);
-
-      console.log('미회신 판단 완료');
-      return null;
-    } catch (error) {
-      console.error('미회신 판단 오류:', error);
-      return null;
-    }
   });

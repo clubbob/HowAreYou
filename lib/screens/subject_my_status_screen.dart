@@ -35,6 +35,77 @@ class _SubjectMyStatusScreenState extends State<SubjectMyStatusScreen> {
     _loadData();
   }
 
+  Widget _buildSummaryText(Map<String, Map<TimeSlot, MoodResponseModel?>> historyResponses) {
+    // 최근 7일 데이터 분석
+    int totalDays = 0;
+    int okayDays = 0;
+    int normalDays = 0;
+    int notGoodDays = 0;
+    
+    for (final dayResponses in historyResponses.values) {
+      for (final response in dayResponses.values) {
+        if (response != null) {
+          totalDays++;
+          switch (response.mood.displayAsSelectable) {
+            case Mood.okay:
+              okayDays++;
+              break;
+            case Mood.normal:
+              normalDays++;
+              break;
+            case Mood.notGood:
+              notGoodDays++;
+              break;
+            default:
+              break;
+          }
+        }
+      }
+    }
+    
+    String summaryText;
+    if (totalDays == 0) {
+      summaryText = '아직 기록이 없어요.';
+    } else if (okayDays == totalDays) {
+      summaryText = '최근 7일 모두 "괜찮아" 상태였습니다.';
+    } else if (notGoodDays == totalDays) {
+      summaryText = '최근 7일 모두 "별로" 상태였습니다.';
+    } else if (okayDays > notGoodDays && okayDays > normalDays) {
+      summaryText = '최근 7일 중 ${okayDays}일은 "괜찮아" 상태였습니다.';
+    } else if (normalDays > okayDays && normalDays > notGoodDays) {
+      summaryText = '최근 7일 중 ${normalDays}일은 "보통" 상태였습니다.';
+    } else if (notGoodDays > okayDays && notGoodDays > normalDays) {
+      summaryText = '최근 7일 중 ${notGoodDays}일은 "별로" 상태였습니다.';
+    } else {
+      summaryText = '최근 일주일은 비슷한 컨디션이 이어지고 있어요.';
+    }
+    
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.blue.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.blue.shade200),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.info_outline, color: Colors.blue.shade700, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              summaryText,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.blue.shade900,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
     
@@ -67,7 +138,7 @@ class _SubjectMyStatusScreenState extends State<SubjectMyStatusScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('내 상태 보기'),
+        title: const Text('최근 컨디션'),
         backgroundColor: Colors.white,
         elevation: 0,
         foregroundColor: Colors.black87,
@@ -149,6 +220,8 @@ class _SubjectMyStatusScreenState extends State<SubjectMyStatusScreen> {
                         if (_historyResponses != null &&
                             _historyResponses!.isNotEmpty) ...[
                           const SizedBox(height: 24),
+                          _buildSummaryText(_historyResponses!),
+                          const SizedBox(height: 12),
                           StatusHistoryTable(historyResponses: _historyResponses),
                         ],
                       ],

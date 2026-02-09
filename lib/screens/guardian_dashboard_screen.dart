@@ -7,7 +7,10 @@ import '../services/auth_service.dart';
 import '../services/guardian_service.dart';
 import '../services/mood_service.dart';
 import '../services/fcm_service.dart';
+import '../utils/permission_helper.dart';
+import 'dart:io' show Platform;
 import '../models/mood_response_model.dart';
+import '../widgets/mood_face_icon.dart';
 import '../utils/button_styles.dart';
 import '../utils/constants.dart';
 import '../utils/invite_link_helper.dart';
@@ -27,6 +30,37 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
   final GuardianService _guardianService = GuardianService();
   final MoodService _moodService = MoodService();
   Future<List<String>>? _subjectIdsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    // 보호자 대시보드 진입 시 FCM 초기화 (알림 수신을 위해)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeFCM();
+    });
+  }
+
+  Future<void> _initializeFCM() async {
+    if (!mounted) return;
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final userId = authService.user?.uid;
+    if (userId == null) return;
+
+    // Android에서 알림 권한 확인 및 요청
+    if (Platform.isAndroid) {
+      final isGranted = await PermissionHelper.isNotificationPermissionGranted();
+      if (!isGranted) {
+        await PermissionHelper.requestNotificationPermission(context);
+      }
+    }
+
+    // FCM 초기화 (토큰 저장) - 강제로 다시 초기화하여 토큰이 확실히 저장되도록 함
+    try {
+      await FCMService.instance.initialize(userId, context: context, forceReinitialize: true);
+    } catch (e) {
+      debugPrint('보호자 FCM 초기화 오류: $e');
+    }
+  }
 
   void _refreshList(String userId) {
     setState(() {
@@ -202,7 +236,7 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
 
     if (userId == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('보호자 확인')),
+        appBar: AppBar(title: const Text('보호 대상 관리')),
         body: const Center(child: Text('로그인이 필요합니다.')),
       );
     }
@@ -218,7 +252,7 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('보호자 확인'),
+        title: const Text('보호 대상 관리'),
         backgroundColor: Colors.white,
         elevation: 0,
         foregroundColor: Colors.black87,
@@ -240,9 +274,9 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
         ),
         actions: [
           // 로그아웃 버튼 (테스트용)
-          IconButton(
-            icon: const Icon(Icons.logout),
-            tooltip: '로그아웃',
+          TextButton.icon(
+            icon: const Icon(Icons.logout, size: 18),
+            label: const Text('로그아웃', style: TextStyle(fontSize: 14)),
             onPressed: () async {
               final confirmed = await showDialog<bool>(
                 context: context,
@@ -345,9 +379,8 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
                 return ListView(
                   padding: const EdgeInsets.all(24),
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.center,
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           '보호 대상 (${subjectIds.length}명)',
@@ -356,25 +389,31 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
+                        const SizedBox(height: 12),
                         Row(
-                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            OutlinedButton.icon(
-                              onPressed: () => _shareInviteLink(context, userId),
-                              icon: const Icon(Icons.link, size: 20),
-                              label: const Text('초대 링크'),
-                              style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: () => _shareInviteLink(context, userId),
+                                icon: const Icon(Icons.link, size: 18),
+                                label: const Text('초대 링크 보내기'),
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  foregroundColor: const Color(0xFF5C6BC0),
+                                  side: const BorderSide(color: Color(0xFF5C6BC0), width: 1.5),
+                                ),
                               ),
                             ),
                             const SizedBox(width: 8),
-                            FilledButton.icon(
-                              onPressed: () => _showAddSubjectDialog(context, userId),
-                              icon: const Icon(Icons.person_add, size: 22),
-                              label: const Text('보호 대상 추가'),
-                              style: FilledButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                            Expanded(
+                              child: FilledButton.icon(
+                                onPressed: () => _showAddSubjectDialog(context, userId),
+                                icon: const Icon(Icons.person_add, size: 18),
+                                label: const Text('보호 대상 추가'),
+                                style: FilledButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  backgroundColor: const Color(0xFF5C6BC0),
+                                ),
                               ),
                             ),
                           ],
@@ -511,6 +550,15 @@ class _SubjectListItemState extends State<_SubjectListItem> {
             ? Colors.green.shade700
             : Colors.grey.shade700;
 
+        // 오늘 응답이 있으면 상태 아이콘과 문구 표시
+        final todayResponse = _todayResponses?[TimeSlot.daily];
+        final statusText = todayResponse != null
+            ? todayResponse.mood.displayAsSelectable.label
+            : (hasRespondedToday ? '응답 완료' : '응답 없음');
+        final statusColor = todayResponse != null
+            ? todayResponse.mood.displayAsSelectable.color
+            : Colors.grey;
+
         return Card(
           margin: const EdgeInsets.only(bottom: 12),
           child: ListTile(
@@ -521,12 +569,39 @@ class _SubjectListItemState extends State<_SubjectListItem> {
                 fontWeight: FontWeight.w600,
               ),
             ),
-            subtitle: Text(
-              subtitleText,
-              style: TextStyle(
-                fontSize: 14,
-                color: subtitleColor,
-              ),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (todayResponse != null) ...[
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      MoodFaceIcon(
+                        mood: todayResponse.mood.displayAsSelectable,
+                        size: 24,
+                        withShadow: false,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        statusText,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: statusColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                ],
+                Text(
+                  subtitleText,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: subtitleColor,
+                  ),
+                ),
+              ],
             ),
             trailing: const Icon(Icons.chevron_right, size: 32),
             onTap: widget.onTap,

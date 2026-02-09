@@ -8,6 +8,12 @@ class PermissionHelper {
   static Future<bool> requestNotificationPermission(BuildContext? context) async {
     // Android 13 이상에서만 권한 요청 필요
     if (Platform.isAndroid) {
+      // 이미 권한이 허용되었는지 확인
+      final isAlreadyGranted = await isNotificationPermissionGranted();
+      if (isAlreadyGranted) {
+        return true; // 이미 허용되었으면 다이얼로그 표시하지 않고 바로 반환
+      }
+      
       // 권한 요청 전에 한글 다이얼로그 표시
       if (context != null && context.mounted) {
         final shouldRequest = await _showPermissionRequestDialog(context);
@@ -63,8 +69,7 @@ class PermissionHelper {
             ],
           ),
           content: const Text(
-            '지금 어때?에서 알림을 보내도록 허용하시겠습니까?\n\n'
-            '알림을 통해 하루 3번 상태 확인을 받을 수 있습니다.\n\n'
+            '"보호대상자"가 상태를 등록한 경우 "보호자"께 알림을 보내도록 허용하시겠습니까?\n\n'
             '다음 화면에서 「허용」을 눌러 주세요.',
             style: TextStyle(
               fontSize: 16,

@@ -100,7 +100,7 @@ class NotificationService {
       await _scheduleNotification(
         id: 1,
         title: '지금 어때?',
-        body: '아침 상태를 알려주세요.',
+        body: '오늘 컨디션을 기록해 주세요.',
         hour: 8,
         minute: 0,
         useExact: true,
@@ -108,7 +108,7 @@ class NotificationService {
       await _scheduleNotification(
         id: 2,
         title: '지금 어때?',
-        body: '점심 상태를 알려주세요.',
+        body: '오늘 컨디션을 기록해 주세요.',
         hour: 12,
         minute: 0,
         useExact: true,
@@ -116,7 +116,7 @@ class NotificationService {
       await _scheduleNotification(
         id: 3,
         title: '지금 어때?',
-        body: '저녁 상태를 알려주세요.',
+        body: '오늘 컨디션을 기록해 주세요.',
         hour: 18,
         minute: 0,
         useExact: true,
@@ -125,9 +125,9 @@ class NotificationService {
       if (e.toString().contains('exact_alarms_not_permitted') ||
           e.toString().contains('Exact alarms are not permitted')) {
         debugPrint('일일 알림: 정확 알람 권한 없음 → 대략적 시간으로 스케줄');
-        await _scheduleNotification(id: 1, title: '지금 어때?', body: '아침 상태를 알려주세요.', hour: 8, minute: 0, useExact: false);
-        await _scheduleNotification(id: 2, title: '지금 어때?', body: '점심 상태를 알려주세요.', hour: 12, minute: 0, useExact: false);
-        await _scheduleNotification(id: 3, title: '지금 어때?', body: '저녁 상태를 알려주세요.', hour: 18, minute: 0, useExact: false);
+        await _scheduleNotification(id: 1, title: '지금 어때?', body: '오늘 컨디션을 기록해 주세요.', hour: 8, minute: 0, useExact: false);
+        await _scheduleNotification(id: 2, title: '지금 어때?', body: '오늘 컨디션을 기록해 주세요.', hour: 12, minute: 0, useExact: false);
+        await _scheduleNotification(id: 3, title: '지금 어때?', body: '오늘 컨디션을 기록해 주세요.', hour: 18, minute: 0, useExact: false);
       } else {
         rethrow;
       }

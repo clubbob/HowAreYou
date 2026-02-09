@@ -88,6 +88,13 @@ class _QuestionScreenState extends State<QuestionScreen> {
 
       if (mounted) {
         Navigator.of(context).pop();
+        // 완료 메시지 표시
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('오늘 상태를 남겼어요.'),
+            duration: Duration(seconds: 2),
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -131,7 +138,7 @@ class _QuestionScreenState extends State<QuestionScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('상태 알려주기'),
+        title: const Text('오늘 컨디션 기록하기'),
         backgroundColor: Colors.white,
         elevation: 0,
         foregroundColor: Colors.black87,

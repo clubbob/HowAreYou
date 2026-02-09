@@ -5,6 +5,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../main.dart';
 import '../utils/permission_helper.dart';
+import '../screens/guardian_dashboard_screen.dart';
 
 class FCMService {
   static final FCMService _instance = FCMService._internal();
@@ -16,10 +17,18 @@ class FCMService {
   final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
 
   String? _fcmToken;
+  String? _lastInitializedUserId; // 마지막으로 초기화한 사용자 ID
 
   String? get fcmToken => _fcmToken;
 
-  Future<void> initialize(String userId, {BuildContext? context}) async {
+  Future<void> initialize(String userId, {BuildContext? context, bool forceReinitialize = false}) async {
+    // 같은 사용자이고 이미 초기화했으면 스킵 (중복 방지, forceReinitialize가 false인 경우)
+    if (!forceReinitialize && _lastInitializedUserId == userId && _fcmToken != null) {
+      debugPrint('FCM 이미 초기화됨: $userId (토큰: $_fcmToken)');
+      return;
+    }
+    
+    _lastInitializedUserId = userId;
     // Android에서는 한글 커스텀 다이얼로그를 표시한 후 권한 요청
     if (context != null) {
       // 한글 커스텀 다이얼로그를 표시한 후 권한 요청
@@ -48,11 +57,17 @@ class FCMService {
     // 보호자 알림 채널 생성 (Android)
     await _createGuardianNotificationChannel();
 
-    // FCM 토큰 가져오기
-    _fcmToken = await _messaging.getToken();
-    if (_fcmToken != null) {
-      await _saveTokenToFirestore(userId, _fcmToken!);
-      debugPrint('FCM 토큰: $_fcmToken');
+    // FCM 토큰 가져오기 (알림 권한이 있어야 토큰을 받을 수 있음)
+    try {
+      _fcmToken = await _messaging.getToken();
+      if (_fcmToken != null && _fcmToken!.isNotEmpty) {
+        await _saveTokenToFirestore(userId, _fcmToken!);
+        debugPrint('FCM 토큰 저장 성공: $userId -> $_fcmToken');
+      } else {
+        debugPrint('FCM 토큰이 null이거나 비어있음 - 알림 권한이 필요할 수 있음');
+      }
+    } catch (e) {
+      debugPrint('FCM 토큰 가져오기 실패: $e');
     }
 
     // 토큰 갱신 리스너
@@ -107,9 +122,21 @@ class FCMService {
 
   Future<void> _saveTokenToFirestore(String userId, String token) async {
     try {
-      await _firestore.collection('users').doc(userId).update({
-        'fcmTokens': FieldValue.arrayUnion([token]),
-      });
+      final userRef = _firestore.collection('users').doc(userId);
+      final doc = await userRef.get();
+      
+      if (doc.exists) {
+        // 문서가 있으면 update 사용
+        await userRef.update({
+          'fcmTokens': FieldValue.arrayUnion([token]),
+        });
+      } else {
+        // 문서가 없으면 set with merge 사용
+        await userRef.set({
+          'fcmTokens': [token],
+        }, SetOptions(merge: true));
+      }
+      debugPrint('FCM 토큰 저장 성공: $userId');
     } catch (e) {
       debugPrint('FCM 토큰 저장 실패: $e');
     }
@@ -198,7 +225,11 @@ class FCMService {
     if (navigator == null) return;
 
     if (type == 'RESPONSE_RECEIVED' || type == 'UNREACHABLE') {
-      navigator.pushNamedAndRemoveUntil('/guardian', (route) => false);
+      // 알림 탭 시 바로 보호 대상 관리 화면으로 이동
+      navigator.pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const GuardianDashboardScreen()),
+        (route) => false,
+      );
     } else if (type == 'REMIND_RESPONSE') {
       navigator.pushNamed('/question');
     }

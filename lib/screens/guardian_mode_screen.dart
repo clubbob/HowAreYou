@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:io' show Platform;
 import '../services/auth_service.dart';
+import '../services/fcm_service.dart';
+import '../utils/permission_helper.dart';
 import '../utils/button_styles.dart';
 import '../main.dart';
 import 'guardian_dashboard_screen.dart';
@@ -8,8 +11,44 @@ import 'home_screen.dart';
 import 'auth_screen.dart';
 
 /// 보호자 모드 화면 (보호 대상 확인)
-class GuardianModeScreen extends StatelessWidget {
+class GuardianModeScreen extends StatefulWidget {
   const GuardianModeScreen({super.key});
+
+  @override
+  State<GuardianModeScreen> createState() => _GuardianModeScreenState();
+}
+
+class _GuardianModeScreenState extends State<GuardianModeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // 보호자 모드 진입 시 FCM 초기화 (알림 수신을 위해)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeFCM();
+    });
+  }
+
+  Future<void> _initializeFCM() async {
+    if (!mounted) return;
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final userId = authService.user?.uid;
+    if (userId == null) return;
+
+    // Android에서 알림 권한 확인 및 요청
+    if (Platform.isAndroid) {
+      final isGranted = await PermissionHelper.isNotificationPermissionGranted();
+      if (!isGranted) {
+        await PermissionHelper.requestNotificationPermission(context);
+      }
+    }
+
+    // FCM 초기화 (토큰 저장) - 강제로 다시 초기화하여 토큰이 확실히 저장되도록 함
+    try {
+      await FCMService.instance.initialize(userId, context: context, forceReinitialize: true);
+    } catch (e) {
+      debugPrint('보호자 모드 FCM 초기화 오류: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

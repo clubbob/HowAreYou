@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/auth_service.dart';
 import '../services/mood_service.dart';
 import '../models/mood_response_model.dart';
@@ -21,6 +22,47 @@ class SubjectModeScreen extends StatefulWidget {
 
 class _SubjectModeScreenState extends State<SubjectModeScreen> {
   final MoodService _moodService = MoodService();
+  bool _hasShownWelcomeDialog = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkAndShowWelcomeDialog());
+  }
+
+  Future<void> _checkAndShowWelcomeDialog() async {
+    if (_hasShownWelcomeDialog) return;
+    
+    final prefs = await SharedPreferences.getInstance();
+    final hasShownBefore = prefs.getBool('subject_mode_welcome_shown') ?? false;
+    
+    if (!hasShownBefore && mounted) {
+      _hasShownWelcomeDialog = true;
+      await prefs.setBool('subject_mode_welcome_shown', true);
+      
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: true,
+          builder: (dialogContext) {
+            return AlertDialog(
+              title: const Text('안내'),
+              content: const Text(
+                '하루 한 번, 오늘 컨디션을 간단히 기록할 수 있어요.\n\n'
+                '전화 대신 간단히 상태를 남겨두세요.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('확인'),
+                ),
+              ],
+            );
+          },
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -124,7 +166,7 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> {
                 child: FilledButton.icon(
                   onPressed: () => _navigateToQuestion(),
                   icon: const Icon(Icons.sentiment_satisfied_rounded, size: 40),
-                  label: const Text('상태 알려주기'),
+                  label: const Text('오늘 컨디션 기록하기'),
                   style: FilledButton.styleFrom(
                     backgroundColor: primaryColor,
                     foregroundColor: Colors.white,
@@ -142,6 +184,15 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> {
                   ),
                 ),
               ),
+              const SizedBox(height: 12),
+              Text(
+                '전화 대신 오늘 컨디션을 간단히 남길 수 있어요.',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                ),
+                textAlign: TextAlign.center,
+              ),
               const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
@@ -157,7 +208,7 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> {
                     }
                   },
                   icon: const Icon(Icons.history_rounded, size: 22),
-                  label: const Text('내 상태 보기'),
+                  label: const Text('최근 컨디션'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: primaryColor,
                     side: const BorderSide(color: primaryColor, width: 1.5),
@@ -196,18 +247,6 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> {
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 32),
-              TextButton(
-                onPressed: () => _clearTodayResponse(),
-                child: Text(
-                  '오늘 응답 취소하고 다시 하기',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey.shade600,
-                    decoration: TextDecoration.underline,
                   ),
                 ),
               ),

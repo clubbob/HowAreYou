@@ -11,6 +11,7 @@ import 'invited_subject_welcome_screen.dart';
 import 'invited_guardian_welcome_screen.dart';
 import 'subject_mode_screen.dart';
 import 'guardian_mode_screen.dart';
+import 'guardian_dashboard_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -52,7 +53,10 @@ class _SplashScreenState extends State<SplashScreen> {
       final pendingSubjectId = await InvitePendingService.getPendingSubjectId();
       if (!mounted) return;
       if (type == 'RESPONSE_RECEIVED' || type == 'UNREACHABLE') {
-        Navigator.of(context).pushReplacementNamed('/guardian');
+        // 앱 시작 시 알림이 있으면 바로 보호 대상 관리 화면으로 이동
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const GuardianDashboardScreen()),
+        );
       } else if (type == 'REMIND_RESPONSE') {
         Navigator.of(context).pushReplacementNamed('/question');
       } else if (pendingInviterId != null && pendingInviterId.isNotEmpty) {

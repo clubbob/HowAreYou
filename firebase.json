@@ -9,6 +9,12 @@
   },
   "hosting": {
     "public": "hosting",
-    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"]
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "rewrites": [
+      {
+        "source": "/invite",
+        "destination": "/invite/index.html"
+      }
+    ]
   }
 }
