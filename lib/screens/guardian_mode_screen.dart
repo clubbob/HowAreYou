@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:provider/provider.dart';
 import 'dart:io' show Platform;
 import '../services/auth_service.dart';
@@ -32,21 +33,36 @@ class _GuardianModeScreenState extends State<GuardianModeScreen> {
     if (!mounted) return;
     final authService = Provider.of<AuthService>(context, listen: false);
     final userId = authService.user?.uid;
-    if (userId == null) return;
+    if (userId == null) {
+      debugPrint('[보호자 모드] 사용자 ID가 없음');
+      return;
+    }
+
+    debugPrint('[보호자 모드] FCM 초기화 시작');
 
     // Android에서 알림 권한 확인 및 요청
     if (Platform.isAndroid) {
-      final isGranted = await PermissionHelper.isNotificationPermissionGranted();
-      if (!isGranted) {
-        await PermissionHelper.requestNotificationPermission(context);
+      try {
+        final isGranted = await PermissionHelper.isNotificationPermissionGranted();
+        debugPrint('[보호자 모드] 알림 권한 상태: $isGranted');
+        if (!isGranted && mounted) {
+          debugPrint('[보호자 모드] 알림 권한 요청 시작');
+          final granted = await PermissionHelper.requestNotificationPermission(context, isForSubject: false);
+          debugPrint('[보호자 모드] 알림 권한 요청 결과: $granted');
+        } else {
+          debugPrint('[보호자 모드] 알림 권한이 이미 허용되어 있음');
+        }
+      } catch (e) {
+        debugPrint('[보호자 모드] 알림 권한 요청 오류: $e');
       }
     }
 
     // FCM 초기화 (토큰 저장) - 강제로 다시 초기화하여 토큰이 확실히 저장되도록 함
     try {
       await FCMService.instance.initialize(userId, context: context, forceReinitialize: true);
+      debugPrint('[보호자 모드] FCM 초기화 완료');
     } catch (e) {
-      debugPrint('보호자 모드 FCM 초기화 오류: $e');
+      debugPrint('[보호자 모드] FCM 초기화 오류: $e');
     }
   }
 

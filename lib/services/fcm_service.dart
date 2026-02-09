@@ -30,10 +30,11 @@ class FCMService {
     
     _lastInitializedUserId = userId;
     // Android에서는 한글 커스텀 다이얼로그를 표시한 후 권한 요청
-    if (context != null) {
-      // 한글 커스텀 다이얼로그를 표시한 후 권한 요청
-      await PermissionHelper.requestNotificationPermission(context);
-    }
+    // 주의: 이미 화면에서 권한을 요청했으면 중복 요청하지 않음
+    // (화면에서 요청하는 것이 우선순위가 높음)
+    // if (context != null) {
+    //   await PermissionHelper.requestNotificationPermission(context);
+    // }
     
     // iOS용 알림 권한 요청 (Firebase Messaging)
     NotificationSettings settings = await _messaging.requestPermission(

@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:io' show Platform;
 import '../services/auth_service.dart';
 import '../services/mood_service.dart';
+import '../services/notification_service.dart';
 import '../models/mood_response_model.dart';
 import '../utils/button_styles.dart';
+import '../utils/permission_helper.dart';
 import '../main.dart';
 import 'question_screen.dart';
 import 'guardian_screen.dart';
@@ -27,41 +31,107 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _checkAndShowWelcomeDialog());
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      // 환영 다이얼로그와 알림 권한 요청을 순차적으로 처리
+      final shouldShowWelcome = await _checkAndShowWelcomeDialog();
+      if (shouldShowWelcome && mounted) {
+        // 환영 다이얼로그가 표시된 경우, 닫힌 후 권한 요청
+        await Future.delayed(const Duration(milliseconds: 500));
+      } else {
+        // 환영 다이얼로그가 표시되지 않은 경우, 바로 권한 요청
+        await Future.delayed(const Duration(milliseconds: 300));
+      }
+      if (mounted) {
+        await _requestNotificationPermission();
+        // 오늘 18:00 이전이고 아직 기록하지 않았다면 즉시 알림 표시
+        await _checkTodayNotification();
+      }
+    });
   }
 
-  Future<void> _checkAndShowWelcomeDialog() async {
-    if (_hasShownWelcomeDialog) return;
+  /// 오늘 18:00 이전이고 아직 기록하지 않았다면 즉시 알림 표시
+  Future<void> _checkTodayNotification() async {
+    try {
+      final authService = Provider.of<AuthService>(context, listen: false);
+      if (!authService.isAuthenticated) return;
+      
+      final user = authService.user;
+      if (user == null) return;
+      
+      // 알림 권한이 허용되어 있는지 확인
+      if (Platform.isAndroid) {
+        final isGranted = await PermissionHelper.isNotificationPermissionGranted();
+        if (!isGranted) return; // 권한이 없으면 알림 표시하지 않음
+      }
+      
+      // 오늘 알림 체크 및 표시
+      await NotificationService.instance.checkAndShowTodayNotificationIfNeeded(user.uid);
+    } catch (e) {
+      debugPrint('[보호대상자] 오늘 알림 체크 오류: $e');
+    }
+  }
+
+  Future<void> _requestNotificationPermission() async {
+    if (!mounted) return;
+    
+    // Android에서 알림 권한 확인 및 요청 (보호대상자는 로컬 알림 필요)
+    if (Platform.isAndroid) {
+      try {
+        final isGranted = await PermissionHelper.isNotificationPermissionGranted();
+        debugPrint('[보호대상자] 알림 권한 상태: $isGranted');
+        if (!isGranted && mounted) {
+          debugPrint('[보호대상자] 알림 권한 요청 시작');
+          final granted = await PermissionHelper.requestNotificationPermission(context, isForSubject: true);
+          debugPrint('[보호대상자] 알림 권한 요청 결과: $granted');
+        } else {
+          debugPrint('[보호대상자] 알림 권한이 이미 허용되어 있음');
+        }
+      } catch (e) {
+        debugPrint('[보호대상자] 알림 권한 요청 오류: $e');
+      }
+    }
+  }
+
+  /// 환영 다이얼로그 표시 여부를 반환 (true면 표시됨, false면 이미 표시됨)
+  Future<bool> _checkAndShowWelcomeDialog() async {
+    if (_hasShownWelcomeDialog) return false;
     
     final prefs = await SharedPreferences.getInstance();
     final hasShownBefore = prefs.getBool('subject_mode_welcome_shown') ?? false;
     
-    if (!hasShownBefore && mounted) {
-      _hasShownWelcomeDialog = true;
-      await prefs.setBool('subject_mode_welcome_shown', true);
-      
-      if (mounted) {
-        showDialog(
-          context: context,
-          barrierDismissible: true,
-          builder: (dialogContext) {
-            return AlertDialog(
-              title: const Text('안내'),
-              content: const Text(
-                '하루 한 번, 오늘 컨디션을 간단히 기록할 수 있어요.\n\n'
-                '전화 대신 간단히 상태를 남겨두세요.',
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: const Text('확인'),
-                ),
-              ],
-            );
-          },
-        );
-      }
+    if (hasShownBefore) {
+      return false; // 이미 표시되었으면 false 반환
     }
+    
+    if (!mounted) return false;
+    
+    _hasShownWelcomeDialog = true;
+    await prefs.setBool('subject_mode_welcome_shown', true);
+    
+    if (mounted) {
+      await showDialog(
+        context: context,
+        barrierDismissible: true,
+        builder: (dialogContext) {
+          return AlertDialog(
+            title: const Text('안내'),
+            content: const Text(
+              '하루 한 번, 기록으로 안부를 전할 수 있어요.\n\n'
+              '간단히 컨디션을 기록해 두세요.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('확인'),
+              ),
+            ],
+          );
+        },
+      );
+      return true; // 다이얼로그가 표시되었으면 true 반환
+    }
+    
+    return false;
   }
 
   @override
@@ -160,6 +230,16 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 40),
+              Text(
+                '하루 한 번, 기록으로 안부를 전할 수 있어요.',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey[700],
+                  fontWeight: FontWeight.w500,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
                 height: 88,
@@ -183,15 +263,6 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> {
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                '전화 대신 오늘 컨디션을 간단히 남길 수 있어요.',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[600],
-                ),
-                textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
               SizedBox(

@@ -187,11 +187,14 @@ class StatusTrendChart extends StatelessWidget {
             .reduce((a, b) => a > b ? a : b))
         .reduce((a, b) => a > b ? a : b);
 
+    final dayCount = historyResponses!.length;
+    final dayLabel = dayCount == 30 ? '30일' : '7일';
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          '최근 7일 추세',
+          '최근 $dayLabel 추세',
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
@@ -410,11 +413,14 @@ class StatusHistoryTable extends StatelessWidget {
       }
     }
 
+    final dayCount = historyResponses!.length;
+    final dayLabel = dayCount == 30 ? '30일' : '7일';
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          '최근 7일 이력',
+          '최근 $dayLabel 이력',
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,

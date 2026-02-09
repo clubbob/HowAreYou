@@ -103,10 +103,25 @@ class MoodService {
   Future<Map<String, Map<TimeSlot, MoodResponseModel?>>> getLast7DaysResponses(
     String subjectId,
   ) async {
+    return _getLastNDaysResponses(subjectId, 7);
+  }
+
+  /// 최근 30일 이력. 날짜별로 1건씩, 키는 TimeSlot.daily.
+  Future<Map<String, Map<TimeSlot, MoodResponseModel?>>> getLast30DaysResponses(
+    String subjectId,
+  ) async {
+    return _getLastNDaysResponses(subjectId, 30);
+  }
+
+  /// 최근 N일 이력 조회 (내부 헬퍼 메서드)
+  Future<Map<String, Map<TimeSlot, MoodResponseModel?>>> _getLastNDaysResponses(
+    String subjectId,
+    int days,
+  ) async {
     final now = _nowKorea();
     final result = <String, Map<TimeSlot, MoodResponseModel?>>{};
 
-    for (var d = 0; d < 7; d++) {
+    for (var d = 0; d < days; d++) {
       final date = DateTime(now.year, now.month, now.day).subtract(Duration(days: d));
       final dateStr = DateFormat('yyyy-MM-dd').format(date);
       final dayResponses = <TimeSlot, MoodResponseModel?>{};

@@ -101,44 +101,6 @@ async function sendToUser(userId, payload) {
 }
 
 /**
- * 보호자가 "알림 보내기" 시 보호대상자에게 "기분 알려주기" FCM 발송 (Callable)
- */
-exports.sendReminderToSubject = functions.https.onCall(async (data, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError('unauthenticated', '로그인이 필요합니다.');
-  }
-  const subjectId = data?.subjectId;
-  if (!subjectId || typeof subjectId !== 'string') {
-    throw new functions.https.HttpsError('invalid-argument', 'subjectId가 필요합니다.');
-  }
-  const guardianUid = context.auth.uid;
-  const subjectDoc = await admin.firestore().collection('subjects').doc(subjectId).get();
-  if (!subjectDoc.exists) {
-    throw new functions.https.HttpsError('not-found', '대상자를 찾을 수 없습니다.');
-  }
-  const pairedGuardianUids = subjectDoc.data()?.pairedGuardianUids || [];
-  if (!pairedGuardianUids.includes(guardianUid)) {
-    throw new functions.https.HttpsError('permission-denied', '해당 대상자의 보호자가 아닙니다.');
-  }
-  const result = await sendToUser(subjectId, {
-    notification: {
-      title: '지금 어때?',
-      body: '오늘 컨디션을 기록해 주세요.',
-    },
-    data: {
-      type: 'REMIND_RESPONSE',
-      click_action: 'FLUTTER_NOTIFICATION_CLICK',
-    },
-    android: {
-      priority: 'high',
-      notification: { sound: 'default', channelId: 'default' },
-    },
-    apns: { payload: { aps: { sound: 'default', badge: 1 } } },
-  });
-  return { success: result.successCount > 0, successCount: result.successCount, failureCount: result.failureCount };
-});
-
-/**
  * 응답 저장/업데이트 시 보호자에게 알림 발송
  * prompts 컬렉션에 새 문서가 생성되거나 업데이트되면 실행
  */

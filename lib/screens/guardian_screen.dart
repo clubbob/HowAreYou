@@ -410,16 +410,15 @@ class _GuardianScreenState extends State<GuardianScreen> {
                     : <String, dynamic>{};
 
                 final padding = MediaQuery.of(context).padding;
-                final rightPadding = 24 + padding.right + 20;
                 return SingleChildScrollView(
                   controller: _scrollController,
                   padding: EdgeInsets.fromLTRB(
                     24,
                     24,
-                    rightPadding,
+                    24,
                     24 + padding.bottom,
                   ),
-                  clipBehavior: Clip.none,
+                  clipBehavior: Clip.hardEdge,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [

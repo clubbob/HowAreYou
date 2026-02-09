@@ -6,7 +6,7 @@ class AppConstants {
   static const String dailyMoodCheckChannelId = 'daily_mood_check';
   static const String dailyMoodCheckChannelName = '일일 상태 확인';
   static const String dailyMoodCheckChannelDescription =
-      '하루 3번 상태를 확인하는 알림';
+      '하루 1번 상태를 확인하는 알림';
 
   // 알림 시간
   static const int morningHour = 8;

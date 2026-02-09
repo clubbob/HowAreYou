@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../services/mode_service.dart';
@@ -30,28 +31,8 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _loadLastSelectedMode();
-    // Android에서 알림 권한 요청 (한글 다이얼로그 표시)
-    if (Platform.isAndroid) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _requestNotificationPermission();
-      });
-    }
-  }
-  
-  Future<void> _requestNotificationPermission() async {
-    if (!mounted) return;
-    
-    // 권한이 이미 허용되었는지 확인
-    final isGranted = await PermissionHelper.isNotificationPermissionGranted();
-    if (!isGranted) {
-      // 한글 커스텀 다이얼로그를 표시한 후 권한 요청
-      await PermissionHelper.requestNotificationPermission(context);
-      // FCM 서비스도 다시 초기화 (권한이 허용된 경우)
-      final authService = Provider.of<AuthService>(context, listen: false);
-      if (authService.user != null) {
-        await FCMService.instance.initialize(authService.user!.uid, context: context);
-      }
-    }
+    // 알림 권한 요청은 각 모드 진입 시에만 수행하도록 변경 (통일성)
+    // HomeScreen에서는 권한 요청하지 않음
   }
 
   Future<void> _loadLastSelectedMode() async {

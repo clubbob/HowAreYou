@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import '../main.dart';
 import '../services/auth_service.dart';
+import '../services/notification_service.dart';
 import '../services/invite_pending_service.dart';
 import '../services/guardian_service.dart';
 import 'auth_screen.dart';
@@ -46,6 +47,14 @@ class _SplashScreenState extends State<SplashScreen> {
     }
 
     if (isAuthenticated) {
+      // 로그인 상태 확인 후 일일 알림 스케줄링 (앱 재시작 시에도)
+      final user = authService.user;
+      if (user != null) {
+        NotificationService.instance.scheduleDailyNotifications().catchError((e) {
+          debugPrint('앱 시작 시 알림 스케줄링 오류 (무시): $e');
+        });
+      }
+      
       final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
       final data = initialMessage?.data;
       final type = data?['type'];

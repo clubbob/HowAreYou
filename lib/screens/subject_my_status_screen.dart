@@ -28,6 +28,7 @@ class _SubjectMyStatusScreenState extends State<SubjectMyStatusScreen> {
   Map<String, Map<TimeSlot, MoodResponseModel?>>? _historyResponses;
   bool _isLoading = true;
   bool _hasGuardian = false;
+  bool _showExtendedHistory = false; // 30일 확장 여부
 
   @override
   void initState() {
@@ -36,7 +37,10 @@ class _SubjectMyStatusScreenState extends State<SubjectMyStatusScreen> {
   }
 
   Widget _buildSummaryText(Map<String, Map<TimeSlot, MoodResponseModel?>> historyResponses) {
-    // 최근 7일 데이터 분석
+    // 데이터 분석 (7일 또는 30일)
+    final dayCount = historyResponses.length;
+    final dayLabel = dayCount == 30 ? '30일' : '7일';
+    
     int totalDays = 0;
     int okayDays = 0;
     int normalDays = 0;
@@ -67,17 +71,19 @@ class _SubjectMyStatusScreenState extends State<SubjectMyStatusScreen> {
     if (totalDays == 0) {
       summaryText = '아직 기록이 없어요.';
     } else if (okayDays == totalDays) {
-      summaryText = '최근 7일 모두 "괜찮아" 상태였습니다.';
+      summaryText = '최근 $dayLabel 모두 "괜찮아" 상태였습니다.';
     } else if (notGoodDays == totalDays) {
-      summaryText = '최근 7일 모두 "별로" 상태였습니다.';
+      summaryText = '최근 $dayLabel 모두 "별로" 상태였습니다.';
     } else if (okayDays > notGoodDays && okayDays > normalDays) {
-      summaryText = '최근 7일 중 ${okayDays}일은 "괜찮아" 상태였습니다.';
+      summaryText = '최근 $dayLabel 중 ${okayDays}일은 "괜찮아" 상태였습니다.';
     } else if (normalDays > okayDays && normalDays > notGoodDays) {
-      summaryText = '최근 7일 중 ${normalDays}일은 "보통" 상태였습니다.';
+      summaryText = '최근 $dayLabel 중 ${normalDays}일은 "보통" 상태였습니다.';
     } else if (notGoodDays > okayDays && notGoodDays > normalDays) {
-      summaryText = '최근 7일 중 ${notGoodDays}일은 "별로" 상태였습니다.';
+      summaryText = '최근 $dayLabel 중 ${notGoodDays}일은 "별로" 상태였습니다.';
     } else {
-      summaryText = '최근 일주일은 비슷한 컨디션이 이어지고 있어요.';
+      summaryText = dayCount == 30 
+          ? '최근 한 달은 비슷한 컨디션이 이어지고 있어요.'
+          : '최근 일주일은 비슷한 컨디션이 이어지고 있어요.';
     }
     
     return Container(
@@ -106,7 +112,7 @@ class _SubjectMyStatusScreenState extends State<SubjectMyStatusScreen> {
     );
   }
 
-  Future<void> _loadData() async {
+  Future<void> _loadData({bool loadExtended = false}) async {
     setState(() => _isLoading = true);
     
     // 보호자 지정 여부 확인
@@ -115,13 +121,18 @@ class _SubjectMyStatusScreenState extends State<SubjectMyStatusScreen> {
     // 보호자가 지정되어 있을 때만 상태 데이터 로드
     if (hasGuardian) {
       final today = await _moodService.getTodayResponses(widget.subjectId);
-      final history = await _moodService.getLast7DaysResponses(widget.subjectId);
+      final history = loadExtended || _showExtendedHistory
+          ? await _moodService.getLast30DaysResponses(widget.subjectId)
+          : await _moodService.getLast7DaysResponses(widget.subjectId);
       if (mounted) {
         setState(() {
           _todayResponses = today;
           _historyResponses = history;
           _hasGuardian = true;
           _isLoading = false;
+          if (loadExtended) {
+            _showExtendedHistory = true;
+          }
         });
       }
     } else {
@@ -132,6 +143,50 @@ class _SubjectMyStatusScreenState extends State<SubjectMyStatusScreen> {
         });
       }
     }
+  }
+
+  Future<void> _loadExtendedHistory() async {
+    if (_showExtendedHistory) return; // 이미 확장된 경우 스킵
+    
+    setState(() => _isLoading = true);
+    final history = await _moodService.getLast30DaysResponses(widget.subjectId);
+    if (mounted) {
+      setState(() {
+        _historyResponses = history;
+        _showExtendedHistory = true;
+        _isLoading = false;
+      });
+    }
+  }
+
+  Widget _buildRecordInfoBanner() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade300, width: 1),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.history, color: Colors.grey.shade700, size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              _showExtendedHistory 
+                  ? '이 화면에서 최근 30일 기록을 확인할 수 있습니다.'
+                  : '이 화면에서 최근 7일 기록을 확인할 수 있습니다.',
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.grey.shade800,
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -214,15 +269,33 @@ class _SubjectMyStatusScreenState extends State<SubjectMyStatusScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // 기록 회수 가능성 안내
+                        _buildRecordInfoBanner(),
                         // 오늘 상태
                         TodayStatusWidget(responses: _todayResponses),
-                        // 최근 7일 이력 그래프
+                        // 최근 이력 그래프
                         if (_historyResponses != null &&
                             _historyResponses!.isNotEmpty) ...[
                           const SizedBox(height: 24),
                           _buildSummaryText(_historyResponses!),
                           const SizedBox(height: 12),
                           StatusHistoryTable(historyResponses: _historyResponses),
+                          // 더 보기 버튼 (7일만 보여줄 때만 표시)
+                          if (!_showExtendedHistory && _historyResponses!.length == 7) ...[
+                            const SizedBox(height: 16),
+                            Center(
+                              child: OutlinedButton.icon(
+                                onPressed: _loadExtendedHistory,
+                                icon: const Icon(Icons.expand_more, size: 18),
+                                label: const Text('더 보기 (최근 30일)'),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: const Color(0xFF5C6BC0),
+                                  side: const BorderSide(color: Color(0xFF5C6BC0), width: 1.5),
+                                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                ),
+                              ),
+                            ),
+                          ],
                         ],
                       ],
                     ),

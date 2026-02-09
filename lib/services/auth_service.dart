@@ -3,8 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:io' show Platform;
 import '../models/user_model.dart';
 import 'fcm_service.dart';
+import 'notification_service.dart';
+import '../utils/permission_helper.dart';
 
 /// 전화번호 인증 로그인. 한 번 로그인하면 앱을 닫았다 켜도 유지되며, 로그아웃 버튼을 누르기 전까지 유지됨.
 class AuthService extends ChangeNotifier {
@@ -30,13 +33,18 @@ class AuthService extends ChangeNotifier {
       _user = user;
       if (user != null) {
         _loadUserData(user.uid);
+        // 로그인 시 일일 알림 스케줄링
+        NotificationService.instance.scheduleDailyNotifications().catchError((e) {
+          debugPrint('알림 스케줄링 오류 (무시): $e');
+        });
       } else {
         _userModel = null;
         notifyListeners();
-        // 로그아웃 시에만 자동으로 AuthScreen으로 이동 (로그인 시에는 수동 처리)
+        // 로그아웃 시 알림 취소
         if (wasAuthenticated) {
-          // 로그아웃이 감지되었을 때만 처리
-          // Navigator는 각 화면에서 처리하므로 여기서는 처리하지 않음
+          NotificationService.instance.cancelAllNotifications().catchError((e) {
+            debugPrint('알림 취소 오류 (무시): $e');
+          });
         }
       }
     });
@@ -107,6 +115,8 @@ class AuthService extends ChangeNotifier {
         FCMService.instance.initialize(user.uid).catchError((e) {
           debugPrint('FCM 초기화 지연/실패 (무시): $e');
         });
+        // 로그인 완료 후 오늘 18:00 이전이고 아직 기록하지 않았다면 즉시 알림 표시
+        _checkTodayNotificationAfterLogin(user.uid);
       }
       debugPrint('verifyOTP: 완료');
       return null;
@@ -175,6 +185,25 @@ class AuthService extends ChangeNotifier {
         SetOptions(merge: true),
       );
     }
+  }
+
+  /// 로그인 완료 후 오늘 알림 체크 (백그라운드)
+  void _checkTodayNotificationAfterLogin(String userId) {
+    // 비동기로 실행하여 로그인 플로우를 방해하지 않음
+    Future.delayed(const Duration(milliseconds: 500), () async {
+      try {
+        // 알림 권한이 허용되어 있는지 확인
+        if (Platform.isAndroid) {
+          final isGranted = await PermissionHelper.isNotificationPermissionGranted();
+          if (!isGranted) return; // 권한이 없으면 알림 표시하지 않음
+        }
+        
+        // 오늘 알림 체크 및 표시
+        await NotificationService.instance.checkAndShowTodayNotificationIfNeeded(userId);
+      } catch (e) {
+        debugPrint('[AuthService] 로그인 후 오늘 알림 체크 오류: $e');
+      }
+    });
   }
 
   Future<void> signOut() async {

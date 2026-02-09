@@ -44,21 +44,36 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
     if (!mounted) return;
     final authService = Provider.of<AuthService>(context, listen: false);
     final userId = authService.user?.uid;
-    if (userId == null) return;
+    if (userId == null) {
+      debugPrint('[보호자 대시보드] 사용자 ID가 없음');
+      return;
+    }
+
+    debugPrint('[보호자 대시보드] FCM 초기화 시작');
 
     // Android에서 알림 권한 확인 및 요청
     if (Platform.isAndroid) {
-      final isGranted = await PermissionHelper.isNotificationPermissionGranted();
-      if (!isGranted) {
-        await PermissionHelper.requestNotificationPermission(context);
+      try {
+        final isGranted = await PermissionHelper.isNotificationPermissionGranted();
+        debugPrint('[보호자 대시보드] 알림 권한 상태: $isGranted');
+        if (!isGranted && mounted) {
+          debugPrint('[보호자 대시보드] 알림 권한 요청 시작');
+          final granted = await PermissionHelper.requestNotificationPermission(context, isForSubject: false);
+          debugPrint('[보호자 대시보드] 알림 권한 요청 결과: $granted');
+        } else {
+          debugPrint('[보호자 대시보드] 알림 권한이 이미 허용되어 있음');
+        }
+      } catch (e) {
+        debugPrint('[보호자 대시보드] 알림 권한 요청 오류: $e');
       }
     }
 
     // FCM 초기화 (토큰 저장) - 강제로 다시 초기화하여 토큰이 확실히 저장되도록 함
     try {
       await FCMService.instance.initialize(userId, context: context, forceReinitialize: true);
+      debugPrint('[보호자 대시보드] FCM 초기화 완료');
     } catch (e) {
-      debugPrint('보호자 FCM 초기화 오류: $e');
+      debugPrint('[보호자 대시보드] FCM 초기화 오류: $e');
     }
   }
 
@@ -379,6 +394,53 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
                 return ListView(
                   padding: const EdgeInsets.all(24),
                   children: [
+                    // 해석 가이드 및 안전 신호 안내
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 16),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.blue.shade200, width: 1),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.info_outline, color: Colors.blue.shade700, size: 20),
+                              const SizedBox(width: 8),
+                              Text(
+                                '안내',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.blue.shade900,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '이 정보는 참고용이며, 판단이나 조치를 의미하지 않습니다.',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.blue.shade900,
+                              fontWeight: FontWeight.w400,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '최근 기록이 있다는 것은, 일상적인 활동이 있었다는 신호로 이해할 수 있습니다.',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.blue.shade900,
+                              fontWeight: FontWeight.w400,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
