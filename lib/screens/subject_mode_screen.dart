@@ -116,7 +116,7 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> {
           return AlertDialog(
             title: const Text('안내'),
             content: const Text(
-              '하루 한 번, 기록으로 안부를 전할 수 있어요.\n\n'
+              '하루 한 번이면 충분해요.\n\n'
               '간단히 컨디션을 기록해 두세요.',
             ),
             actions: [
@@ -231,7 +231,7 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> {
               ),
               const SizedBox(height: 40),
               Text(
-                '하루 한 번, 기록으로 안부를 전할 수 있어요.',
+                '하루 한 번이면 충분해요.',
                 style: TextStyle(
                   fontSize: 16,
                   color: Colors.grey[700],
@@ -321,6 +321,15 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> {
                   ),
                 ),
               ),
+              const SizedBox(height: 8),
+              Text(
+                '보호자에게 기록 내용은 공유되지 않으며, 안부가 전달되었는지만 표시됩니다.',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey[600],
+                ),
+                textAlign: TextAlign.center,
+              ),
             ],
           ),
         ),
@@ -338,7 +347,7 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> {
       builder: (ctx) => AlertDialog(
         title: const Text('오늘 응답 취소'),
         content: const Text(
-          '오늘 알려주신 상태를 취소할까요?\n취소하면 다시 상태를 알려주실 수 있습니다.',
+          '오늘 남긴 기록을 취소할까요?\n취소하면 다시 기록을 남길 수 있습니다.',
         ),
         actions: [
           TextButton(
@@ -357,7 +366,7 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> {
     await _moodService.deleteTodayResponse(userId);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('취소되었습니다. 다시 상태를 알려주세요.')),
+        const SnackBar(content: Text('취소되었습니다. 다시 기록을 남겨주세요.')),
       );
     }
   }
@@ -373,9 +382,10 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> {
       final choice = await showDialog<String>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('오늘 이미 응답했어요'),
+          title: const Text('오늘 안부는 이미 전달됐어요'),
           content: const Text(
-            '오늘 이미 상태를 알려주셨습니다.\n취소하고 다시 하시겠어요?',
+            '오늘 기록은 이미 보호자에게 전달되었습니다.\n'
+            '필요하다면 다시 선택할 수 있어요.',
           ),
           actions: [
             TextButton(
@@ -384,7 +394,7 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> {
             ),
             TextButton(
               onPressed: () => Navigator.of(ctx).pop('retry'),
-              child: const Text('취소하고 다시 하기'),
+              child: const Text('다시 선택하기'),
             ),
           ],
         ),

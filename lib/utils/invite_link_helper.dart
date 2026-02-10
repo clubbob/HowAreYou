@@ -21,11 +21,11 @@ class InviteLinkHelper {
 
   /// 카톡/문자로 보낼 때 쓸 문장 (보호자가 보호대상자에게)
   static const String suggestedMessage =
-      '하루 한 번 컨디션만 기록하는 앱이에요.';
+      '하루 한 번 안부만 남기는 앱이에요.\n설치하면, 안부가 잘 전달됐는지 확인할 수 있어요.';
 
   /// 보호대상자가 보호자에게 보낼 때 쓸 문장
   static const String suggestedMessageForGuardian =
-      '하루 한 번 컨디션만 기록하는 앱이에요. 링크 누르고 앱 깔면 내 기록을 확인할 수 있어요 (이미 깔았어도 됨).';
+      '하루 한 번 안부만 남기는 앱이에요.\n설치하면, 안부가 잘 전달됐는지 확인할 수 있어요.';
 
   /// 링크 + 문장을 한 번에 공유 (보호자 → 보호대상자)
   static Future<void> shareInvite(String guardianUid) async {

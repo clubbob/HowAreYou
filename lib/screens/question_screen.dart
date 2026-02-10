@@ -30,8 +30,11 @@ class _QuestionScreenState extends State<QuestionScreen> {
   @override
   void initState() {
     super.initState();
-    if (widget.timeSlot == TimeSlot.daily && !widget.alreadyResponded) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _checkAlreadyResponded());
+    // 이미 오늘 기록을 남긴 뒤 다시 진입한 경우 안내 후 되돌림
+    if (widget.alreadyResponded) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _checkAlreadyResponded();
+      });
     }
   }
 
@@ -43,93 +46,11 @@ class _QuestionScreenState extends State<QuestionScreen> {
     if (done && mounted) {
       Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('오늘 이미 상태를 알려주셨습니다. 자정(한국 시간) 이후에 다시 알려주세요.')),
+        const SnackBar(
+          content: Text('오늘 안부는 이미 전달됐어요. 자정(한국 시간) 이후에 다시 남길 수 있어요.'),
+        ),
       );
     }
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
-  }
-
-  Future<void> _saveResponse() async {
-    if (_selectedMood == null) return;
-
-    setState(() {
-      _isSaving = true;
-    });
-
-    try {
-      final authService = Provider.of<AuthService>(context, listen: false);
-      final userId = authService.user?.uid;
-
-      if (userId == null) {
-        throw Exception('사용자 인증이 필요합니다.');
-      }
-
-      final hasGuardian = await _guardianService.hasGuardian(userId);
-      if (!hasGuardian) {
-        if (mounted) {
-          Navigator.of(context).pop();
-          _showNoGuardianDialog();
-        }
-        return;
-      }
-
-      final note = null;
-
-      await _moodService.saveMoodResponse(
-        subjectId: userId,
-        slot: widget.timeSlot,
-        mood: _selectedMood!,
-        note: note?.isEmpty == true ? null : note,
-      );
-
-      if (mounted) {
-        Navigator.of(context).pop();
-        // 완료 메시지 표시
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('오늘 상태를 남겼어요.'),
-            duration: Duration(seconds: 2),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('저장에 실패했습니다. 잠시 후 다시 시도해 주세요.')),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isSaving = false;
-        });
-      }
-    }
-  }
-
-  void _showNoGuardianDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('보호자 지정 필요'),
-          content: const Text(
-            '상태를 알려주려면 먼저 보호자를 지정해주세요.\n\n보호 대상자 모드에서 "보호자 지정" 메뉴를 이용해주세요.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('확인'),
-            ),
-          ],
-        );
-      },
-    );
   }
 
   @override
@@ -251,6 +172,15 @@ class _QuestionScreenState extends State<QuestionScreen> {
                         );
                       }).toList(),
                     ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '선택 내용은 해석되거나 평가되지 않습니다.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
                   ],
                 ),
               ),
@@ -279,5 +209,49 @@ class _QuestionScreenState extends State<QuestionScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _saveResponse() async {
+    if (_selectedMood == null || _isSaving) return;
+
+    setState(() {
+      _isSaving = true;
+    });
+
+    try {
+      final authService = Provider.of<AuthService>(context, listen: false);
+      final userId = authService.user?.uid;
+      if (userId == null) {
+        return;
+      }
+
+      await _moodService.saveMoodResponse(
+        subjectId: userId,
+        slot: widget.timeSlot,
+        mood: _selectedMood!,
+      );
+
+      if (!mounted) return;
+
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('잘했어요. 오늘 기록은 끝이에요.'),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('기록을 저장하는 데 실패했습니다. 잠시 후 다시 시도해 주세요.'),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
+    }
   }
 }

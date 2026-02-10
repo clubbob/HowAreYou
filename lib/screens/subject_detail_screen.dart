@@ -33,7 +33,6 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
   Map<String, Map<TimeSlot, MoodResponseModel?>>? _historyResponses;
   String _fallbackName = '이름 없음';
   late final Stream<String> _nameStream;
-  bool _showExtendedHistory = false; // 30일 확장 여부
 
   @override
   void initState() {
@@ -72,23 +71,14 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
   }
 
   Future<void> _loadHistory() async {
-    final history = _showExtendedHistory
-        ? await widget.moodService.getLast30DaysResponses(widget.subjectId)
-        : await widget.moodService.getLast7DaysResponses(widget.subjectId);
+    // 보호자는 항상 최근 7일 기록 여부만 확인
+    final history =
+        await widget.moodService.getLast7DaysResponses(widget.subjectId);
     if (mounted) {
       setState(() {
         _historyResponses = history;
       });
     }
-  }
-
-  Future<void> _loadExtendedHistory() async {
-    if (_showExtendedHistory) return; // 이미 확장된 경우 스킵
-    
-    setState(() {
-      _showExtendedHistory = true;
-    });
-    await _loadHistory();
   }
   
   Future<void> _loadFallbackName() async {
@@ -250,7 +240,7 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('보호 대상 상태'),
+        title: const Text('전달된 안부'),
         backgroundColor: Colors.white,
         elevation: 0,
         foregroundColor: Colors.black87,
@@ -323,7 +313,16 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        '최근 기록이 있다는 것은, 일상적인 활동이 있었다는 신호로 이해할 수 있습니다.',
+                        '보호자는 기록이 전달되었는지 정도만 확인하며, 구체적인 내용은 공유되지 않습니다.',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.blue.shade900,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '최근 기록이 있다는 것은, 일상적인 활동이 있었을 수 있다는 신호로 이해할 수 있습니다.',
                         style: TextStyle(
                           fontSize: 13,
                           color: Colors.blue.shade900,
@@ -359,28 +358,18 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
                 const SizedBox(height: 16),
                 TodayStatusWidget(
                   responses: _responses,
-                  onNoResponseTap: (slot) => _handleNoResponseTap(subjectName, slot),
+                  onNoResponseTap: (slot) =>
+                      _handleNoResponseTap(subjectName, slot),
                   noResponseSubjectName: subjectName,
+                  isGuardianView: true,
                 ),
-                if (_historyResponses != null && _historyResponses!.isNotEmpty) ...[
+                if (_historyResponses != null &&
+                    _historyResponses!.isNotEmpty) ...[
                   const SizedBox(height: 24),
-                  StatusHistoryTable(historyResponses: _historyResponses),
-                  // 더 보기 버튼 (7일만 보여줄 때만 표시)
-                  if (!_showExtendedHistory && _historyResponses!.length == 7) ...[
-                    const SizedBox(height: 16),
-                    Center(
-                      child: OutlinedButton.icon(
-                        onPressed: _loadExtendedHistory,
-                        icon: const Icon(Icons.expand_more, size: 18),
-                        label: const Text('더 보기 (최근 30일)'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: const Color(0xFF5C6BC0),
-                          side: const BorderSide(color: Color(0xFF5C6BC0), width: 1.5),
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                        ),
-                      ),
-                    ),
-                  ],
+                  StatusHistoryTable(
+                    historyResponses: _historyResponses,
+                    isGuardianView: true,
+                  ),
                 ],
               ],
             ),

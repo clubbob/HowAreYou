@@ -166,7 +166,7 @@ class _HomeScreenState extends State<HomeScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const Text(
-                '어떤 모드로 사용하시겠어요?',
+                '버튼 하나로\n안부를 전하는 앱입니다.',
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
@@ -176,11 +176,30 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 12),
               Text(
-                '부모님과 떨어져 살다 보니\n괜히 마음 쓰이는 순간을 위한 앱입니다.',
+                '하루 한 번이면 충분해요.',
                 style: TextStyle(
                   fontSize: 14,
                   color: Colors.grey.shade600,
                   height: 1.4,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                '어느 쪽으로 사용하시겠어요?',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.black87,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '선택은 언제든 변경할 수 있습니다.',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.grey.shade600,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -195,9 +214,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   label: const Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text('보호대상자 모드', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+                      Text('보호대상자', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
                       SizedBox(height: 6),
-                      Text('상태를 알려주는 모드', style: TextStyle(fontSize: 16)),
+                      Text('안부를 남깁니다.', style: TextStyle(fontSize: 16)),
                     ],
                   ),
                   style: FilledButton.styleFrom(
@@ -223,9 +242,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   label: const Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text('보호자 모드', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+                      Text('보호자', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
                       SizedBox(height: 6),
-                      Text('보호 대상을 확인하는 모드', style: TextStyle(fontSize: 16)),
+                      Text('안부를 확인합니다.', style: TextStyle(fontSize: 16)),
                     ],
                   ),
                   style: FilledButton.styleFrom(

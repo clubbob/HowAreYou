@@ -151,7 +151,7 @@ class _GuardianModeScreenState extends State<GuardianModeScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const Text(
-                '보호 대상 확인',
+                '안부 확인',
                 style: TextStyle(
                   fontSize: 36,
                   fontWeight: FontWeight.bold,
@@ -162,7 +162,7 @@ class _GuardianModeScreenState extends State<GuardianModeScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                '보호 대상의 상태를 확인하세요',
+                '안부가 전달되었는지 확인하세요',
                 style: TextStyle(
                   fontSize: 16,
                   color: Colors.grey[600],
@@ -182,7 +182,7 @@ class _GuardianModeScreenState extends State<GuardianModeScreen> {
                     );
                   },
                   icon: const Icon(Icons.visibility_outlined, size: 40),
-                  label: const Text('보호 대상 확인'),
+                  label: const Text('안부 확인'),
                   style: FilledButton.styleFrom(
                     backgroundColor: primaryColor,
                     foregroundColor: Colors.white,

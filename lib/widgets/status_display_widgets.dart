@@ -4,17 +4,24 @@ import 'package:fl_chart/fl_chart.dart';
 import '../models/mood_response_model.dart';
 import 'mood_face_icon.dart';
 
-/// 오늘 상태 표시 위젯 (보호자/보호대상자 공통)
+/// 오늘 상태/기록 표시 위젯
+///
+/// - 보호대상자 화면: 오늘 기분 상태를 그대로 보여줌
+/// - 보호자 화면: 기분 내용은 숨기고 "기록 있음/없음"만 중립적으로 보여줌
 class TodayStatusWidget extends StatelessWidget {
   final Map<TimeSlot, MoodResponseModel?>? responses;
   final void Function(TimeSlot)? onNoResponseTap;
   final String? noResponseSubjectName;
+
+  /// 보호자 화면용인지 여부 (기본값: false = 보호대상자 자신 화면)
+  final bool isGuardianView;
 
   const TodayStatusWidget({
     super.key,
     required this.responses,
     this.onNoResponseTap,
     this.noResponseSubjectName,
+    this.isGuardianView = false,
   });
 
   @override
@@ -27,7 +34,7 @@ class TodayStatusWidget extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          '오늘 상태',
+          isGuardianView ? '오늘 기록 상태' : '오늘 상태',
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
@@ -40,13 +47,23 @@ class TodayStatusWidget extends StatelessWidget {
             final response = responses![slot];
             final hasResponse = response != null;
             final isNoResponse = !hasResponse;
+
+            // 보호자 화면에서는 색과 텍스트를 중립적으로 표시
+            final Color backgroundColor;
+            if (isGuardianView) {
+              backgroundColor =
+                  hasResponse ? Colors.blueGrey.shade50 : Colors.grey.shade100;
+            } else {
+              backgroundColor = isNoResponse
+                  ? Colors.orange.shade50
+                  : Colors.green.shade50;
+            }
+
             return Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 4),
                 child: Material(
-                  color: isNoResponse
-                      ? Colors.orange.shade50
-                      : Colors.green.shade50,
+                  color: backgroundColor,
                   borderRadius: BorderRadius.circular(8),
                   child: InkWell(
                     onTap: isNoResponse && onNoResponseTap != null
@@ -62,27 +79,46 @@ class TodayStatusWidget extends StatelessWidget {
                           mainAxisSize: MainAxisSize.min,
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            hasResponse
-                                ? MoodFaceIcon(
-                                    mood: response!.mood.displayAsSelectable,
-                                    size: 40,
-                                    withShadow: false,
-                                  )
-                                : const Text(
-                                    '—',
-                                    style: TextStyle(fontSize: 32),
-                                  ),
+                            if (isGuardianView)
+                              hasResponse
+                                  ? const Icon(
+                                      Icons.check_circle_outline,
+                                      size: 32,
+                                      color: Color(0xFF5C6BC0),
+                                    )
+                                  : const Text(
+                                      '—',
+                                      style: TextStyle(fontSize: 32),
+                                    )
+                            else
+                              hasResponse
+                                  ? MoodFaceIcon(
+                                      mood: response!.mood.displayAsSelectable,
+                                      size: 40,
+                                      withShadow: false,
+                                    )
+                                  : const Text(
+                                      '—',
+                                      style: TextStyle(fontSize: 32),
+                                    ),
                             const SizedBox(height: 8),
                             Text(
-                              hasResponse
-                                  ? response!.mood.displayAsSelectable.label
-                                  : '없음',
+                              isGuardianView
+                                  ? (hasResponse ? '기록 있음' : '기록 없음')
+                                  : hasResponse
+                                      ? response!.mood.displayAsSelectable.label
+                                      : '없음',
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w500,
-                                color: hasResponse
-                                    ? response!.mood.displayAsSelectable.color
-                                    : Colors.grey.shade600,
+                                color: isGuardianView
+                                    ? (hasResponse
+                                        ? const Color(0xFF5C6BC0)
+                                        : Colors.grey.shade600)
+                                    : hasResponse
+                                        ? response!
+                                            .mood.displayAsSelectable.color
+                                        : Colors.grey.shade600,
                               ),
                             ),
                           ],
@@ -370,9 +406,16 @@ class _LegendItem extends StatelessWidget {
 class StatusHistoryTable extends StatelessWidget {
   final Map<String, Map<TimeSlot, MoodResponseModel?>>? historyResponses;
 
+  /// 보호자 화면용인지 여부 (기본값: false = 보호대상자 자신 화면)
+  ///
+  /// - false: 기분별 색상(괜찮아/보통/별로)을 그대로 표시
+  /// - true: 기분 내용은 숨기고 "기록 있음/없음"만 중립적인 색으로 표시
+  final bool isGuardianView;
+
   const StatusHistoryTable({
     super.key,
     required this.historyResponses,
+    this.isGuardianView = false,
   });
 
   @override
@@ -385,6 +428,8 @@ class StatusHistoryTable extends StatelessWidget {
       ..sort((a, b) => a.key.compareTo(b.key));
     final dateLabels = <String>[];
     final barColors = <Color>[];
+    final hasRecordFlags = <bool>[];
+
     for (final entry in sortedEntries) {
       DateTime date;
       try {
@@ -401,26 +446,116 @@ class StatusHistoryTable extends StatelessWidget {
           break;
         }
       }
-      if (response == null) {
-        barColors.add(Colors.grey.shade300);
+      final hasRecord = response != null;
+      hasRecordFlags.add(hasRecord);
+
+      if (isGuardianView) {
+        // 보호자 화면: 기분 내용 대신 기록 여부만 색으로 표현
+        barColors.add(
+          hasRecord ? Colors.blueGrey.shade400 : Colors.grey.shade300,
+        );
       } else {
-        final m = response.mood.displayAsSelectable;
-        barColors.add(m == Mood.okay
-            ? Colors.lightGreen
-            : m == Mood.normal
-                ? const Color(0xFFD4C4B0)
-                : Colors.deepOrange);
+        // 보호대상자 화면: 기존 기분별 색상 유지
+        if (response == null) {
+          barColors.add(Colors.grey.shade300);
+        } else {
+          final m = response.mood.displayAsSelectable;
+          barColors.add(m == Mood.okay
+              ? Colors.lightGreen
+              : m == Mood.normal
+                  ? const Color(0xFFD4C4B0)
+                  : Colors.deepOrange);
+        }
       }
     }
 
     final dayCount = historyResponses!.length;
     final dayLabel = dayCount == 30 ? '30일' : '7일';
     
+    // 30일일 때는 15일씩 두 행으로 나누기
+    final shouldSplit = dayCount == 30;
+    final firstHalfEntries = shouldSplit 
+        ? sortedEntries.sublist(0, 15)
+        : sortedEntries;
+    final secondHalfEntries = shouldSplit 
+        ? sortedEntries.sublist(15, 30)
+        : <MapEntry<String, Map<TimeSlot, MoodResponseModel?>>>[];
+    
+    Widget _buildChart(List<MapEntry<String, Map<TimeSlot, MoodResponseModel?>>> entries, List<String> labels, List<Color> colors) {
+      return SizedBox(
+        height: 160,
+        child: BarChart(
+          BarChartData(
+            alignment: BarChartAlignment.spaceAround,
+            maxY: 1.2,
+            barTouchData: BarTouchData(enabled: false),
+            titlesData: FlTitlesData(
+              show: true,
+              bottomTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  getTitlesWidget: (value, meta) {
+                    if (value.toInt() >= 0 && value.toInt() < labels.length) {
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text(
+                          labels[value.toInt()],
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey[700],
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  },
+                  reservedSize: 28,
+                ),
+              ),
+              leftTitles: const AxisTitles(
+                sideTitles: SideTitles(showTitles: false),
+              ),
+              topTitles: const AxisTitles(
+                sideTitles: SideTitles(showTitles: false),
+              ),
+              rightTitles: const AxisTitles(
+                sideTitles: SideTitles(showTitles: false),
+              ),
+            ),
+            gridData: const FlGridData(show: false),
+            borderData: FlBorderData(
+              show: true,
+              border: Border(
+                bottom: BorderSide(color: Colors.grey.shade300),
+              ),
+            ),
+            barGroups: List.generate(
+              entries.length,
+              (i) => BarChartGroupData(
+                x: i,
+                barRods: [
+                  BarChartRodData(
+                    toY: 1,
+                    color: colors[i],
+                    width: 20,
+                    borderRadius:
+                        const BorderRadius.vertical(top: Radius.circular(4)),
+                  ),
+                ],
+                showingTooltipIndicators: const [],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          '최근 $dayLabel 이력',
+          isGuardianView ? '최근 $dayLabel 기록 여부' : '최근 $dayLabel 이력',
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
@@ -428,84 +563,80 @@ class StatusHistoryTable extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 12),
-        SizedBox(
-          height: 160,
-          child: BarChart(
-            BarChartData(
-              alignment: BarChartAlignment.spaceAround,
-              maxY: 1.2,
-              barTouchData: BarTouchData(enabled: false),
-              titlesData: FlTitlesData(
-                show: true,
-                bottomTitles: AxisTitles(
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    getTitlesWidget: (value, meta) {
-                      if (value.toInt() >= 0 && value.toInt() < dateLabels.length) {
-                        return Padding(
-                          padding: const EdgeInsets.only(top: 8),
-                          child: Text(
-                            dateLabels[value.toInt()],
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.grey[700],
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        );
-                      }
-                      return const SizedBox.shrink();
-                    },
-                    reservedSize: 28,
-                  ),
-                ),
-                leftTitles: const AxisTitles(
-                  sideTitles: SideTitles(showTitles: false),
-                ),
-                topTitles: const AxisTitles(
-                  sideTitles: SideTitles(showTitles: false),
-                ),
-                rightTitles: const AxisTitles(
-                  sideTitles: SideTitles(showTitles: false),
-                ),
-              ),
-              gridData: const FlGridData(show: false),
-              borderData: FlBorderData(
-                show: true,
-                border: Border(
-                  bottom: BorderSide(color: Colors.grey.shade300),
-                ),
-              ),
-              barGroups: List.generate(
-                sortedEntries.length,
-                (i) => BarChartGroupData(
-                  x: i,
-                  barRods: [
-                    BarChartRodData(
-                      toY: 1,
-                      color: barColors[i],
-                      width: 20,
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
-                    ),
-                  ],
-                  showingTooltipIndicators: [],
-                ),
-              ),
-            ),
+        if (shouldSplit) ...[
+          // 첫 번째 행: 1일~15일
+          _buildChart(
+            firstHalfEntries,
+            firstHalfEntries.map((e) {
+              try {
+                final date = DateFormat('yyyy-MM-dd').parse(e.key);
+                return DateFormat('M/d', 'ko_KR').format(date);
+              } catch (_) {
+                return '';
+              }
+            }).toList(),
+            firstHalfEntries.map((e) {
+              final idx = sortedEntries.indexOf(e);
+              return barColors[idx];
+            }).toList(),
           ),
-        ),
+          const SizedBox(height: 16),
+          // 두 번째 행: 16일~30일
+          _buildChart(
+            secondHalfEntries,
+            secondHalfEntries.map((e) {
+              try {
+                final date = DateFormat('yyyy-MM-dd').parse(e.key);
+                return DateFormat('M/d', 'ko_KR').format(date);
+              } catch (_) {
+                return '';
+              }
+            }).toList(),
+            secondHalfEntries.map((e) {
+              final idx = sortedEntries.indexOf(e);
+              return barColors[idx];
+            }).toList(),
+          ),
+        ] else ...[
+          // 7일일 때는 기존처럼 한 행
+          _buildChart(sortedEntries, dateLabels, barColors),
+        ],
         const SizedBox(height: 8),
-        Wrap(
-          alignment: WrapAlignment.center,
-          spacing: 16,
-          runSpacing: 4,
-          children: [
-            _LegendItem(label: '괜찮아', color: Colors.lightGreen),
-            _LegendItem(label: '보통', color: Color(0xFFD4C4B0)),
-            _LegendItem(label: '별로', color: Colors.deepOrange),
-            _LegendItem(label: '없음', color: Colors.grey),
-          ],
-        ),
+        if (!isGuardianView)
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 16,
+            runSpacing: 4,
+            children: const [
+              _LegendItem(label: '괜찮아', color: Colors.lightGreen),
+              _LegendItem(label: '보통', color: Color(0xFFD4C4B0)),
+              _LegendItem(label: '별로', color: Colors.deepOrange),
+              _LegendItem(label: '없음', color: Colors.grey),
+            ],
+          )
+        else
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 16,
+                runSpacing: 4,
+                children: const [
+                  _LegendItem(label: '기록 있음', color: Color(0xFF607D8B)),
+                  _LegendItem(label: '기록 없음', color: Colors.grey),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '기록 간격은 개인의 생활 패턴에 따라 달라질 수 있습니다.',
+                style: TextStyle(
+                  fontSize: 10,
+                  color: Colors.grey[600],
+                ),
+              ),
+            ],
+          ),
       ],
     );
   }

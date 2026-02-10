@@ -37,53 +37,23 @@ class _SubjectMyStatusScreenState extends State<SubjectMyStatusScreen> {
   }
 
   Widget _buildSummaryText(Map<String, Map<TimeSlot, MoodResponseModel?>> historyResponses) {
-    // 데이터 분석 (7일 또는 30일)
+    // 기록 여부 요약 (7일 또는 30일)
     final dayCount = historyResponses.length;
     final dayLabel = dayCount == 30 ? '30일' : '7일';
-    
-    int totalDays = 0;
-    int okayDays = 0;
-    int normalDays = 0;
-    int notGoodDays = 0;
-    
+
+    int totalDaysWithRecord = 0;
     for (final dayResponses in historyResponses.values) {
-      for (final response in dayResponses.values) {
-        if (response != null) {
-          totalDays++;
-          switch (response.mood.displayAsSelectable) {
-            case Mood.okay:
-              okayDays++;
-              break;
-            case Mood.normal:
-              normalDays++;
-              break;
-            case Mood.notGood:
-              notGoodDays++;
-              break;
-            default:
-              break;
-          }
-        }
+      final hasRecord = dayResponses.values.any((response) => response != null);
+      if (hasRecord) {
+        totalDaysWithRecord++;
       }
     }
-    
+
     String summaryText;
-    if (totalDays == 0) {
-      summaryText = '아직 기록이 없어요.';
-    } else if (okayDays == totalDays) {
-      summaryText = '최근 $dayLabel 모두 "괜찮아" 상태였습니다.';
-    } else if (notGoodDays == totalDays) {
-      summaryText = '최근 $dayLabel 모두 "별로" 상태였습니다.';
-    } else if (okayDays > notGoodDays && okayDays > normalDays) {
-      summaryText = '최근 $dayLabel 중 ${okayDays}일은 "괜찮아" 상태였습니다.';
-    } else if (normalDays > okayDays && normalDays > notGoodDays) {
-      summaryText = '최근 $dayLabel 중 ${normalDays}일은 "보통" 상태였습니다.';
-    } else if (notGoodDays > okayDays && notGoodDays > normalDays) {
-      summaryText = '최근 $dayLabel 중 ${notGoodDays}일은 "별로" 상태였습니다.';
+    if (totalDaysWithRecord == 0) {
+      summaryText = '최근 $dayLabel 동안 남겨진 기록이 아직 없어요.';
     } else {
-      summaryText = dayCount == 30 
-          ? '최근 한 달은 비슷한 컨디션이 이어지고 있어요.'
-          : '최근 일주일은 비슷한 컨디션이 이어지고 있어요.';
+      summaryText = '최근 $dayLabel 동안 기록이 있었습니다.';
     }
     
     return Container(
@@ -324,7 +294,7 @@ class _SubjectMyStatusScreenState extends State<SubjectMyStatusScreen> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          '상태를 확인하려면 먼저 보호자를 지정해주세요.\n\n보호 대상자 모드에서 "보호자 지정" 메뉴를 이용해주세요.',
+                          '안부를 전달하려면 먼저 보호자를 지정해주세요.\n\n보호 대상자 모드에서 "보호자 지정" 메뉴를 이용해주세요.',
                           style: TextStyle(
                             fontSize: 14,
                             color: Colors.grey[600],

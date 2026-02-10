@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
@@ -10,7 +11,6 @@ import '../services/fcm_service.dart';
 import '../utils/permission_helper.dart';
 import 'dart:io' show Platform;
 import '../models/mood_response_model.dart';
-import '../widgets/mood_face_icon.dart';
 import '../utils/button_styles.dart';
 import '../utils/constants.dart';
 import '../utils/invite_link_helper.dart';
@@ -353,39 +353,128 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
                 }
                 final subjectIds = snapshot.data!;
                 if (subjectIds.isEmpty) {
-                  return Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.people_outline, size: 64, color: Colors.grey[400]),
-                          const SizedBox(height: 16),
-                          Text(
-                            '등록된 보호 대상이 없습니다.',
-                            style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-                            textAlign: TextAlign.center,
+                  return SingleChildScrollView(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Icon(Icons.people_outline, size: 64, color: Colors.grey[400]),
+                        const SizedBox(height: 16),
+                        Text(
+                          '등록된 보호 대상이 없습니다.',
+                          style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 32),
+                        // 링크로 보호 대상 초대 (빈 상태에서도 동일한 UI 패턴)
+                        const Text(
+                          '링크로 보호 대상 초대',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
                           ),
-                          const SizedBox(height: 24),
-                          FilledButton.icon(
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          '링크를 보내면 보호대상자는 앱이 없어도 설치 후 자동 연결됩니다.',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.black54,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          height: 56,
+                          child: OutlinedButton.icon(
                             onPressed: () => _shareInviteLink(context, userId),
                             icon: const Icon(Icons.link, size: 22),
-                            label: const Text('초대 링크 보내기'),
-                            style: FilledButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 24,
-                                vertical: 16,
+                            label: const Text('보호 대상에게 초대 링크 보내기'),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                              alignment: Alignment.centerLeft,
+                              minimumSize: const Size(double.infinity, 56),
+                              foregroundColor: const Color(0xFF5C6BC0),
+                              side: const BorderSide(color: Color(0xFF5C6BC0), width: 1.5),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
                               ),
                             ),
                           ),
-                          const SizedBox(height: 12),
-                          TextButton.icon(
-                            onPressed: () => _showAddSubjectDialog(context, userId),
-                            icon: const Icon(Icons.person_add, size: 20),
-                            label: const Text('전화번호로 보호 대상 추가'),
+                        ),
+                        const SizedBox(height: 20),
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade50,
+                            border: Border.all(color: Colors.grey.shade300),
+                            borderRadius: BorderRadius.circular(8),
                           ),
-                        ],
-                      ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  const Text(
+                                    '공유 예시 문구',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  IconButton(
+                                    icon: const Icon(Icons.copy, size: 18),
+                                    onPressed: () {
+                                      Clipboard.setData(
+                                        ClipboardData(text: InviteLinkHelper.suggestedMessage),
+                                      );
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('문구가 복사되었습니다.'),
+                                          duration: Duration(seconds: 1),
+                                        ),
+                                      );
+                                    },
+                                    tooltip: '복사',
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                InviteLinkHelper.suggestedMessage,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.grey.shade700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 28),
+                        // 보호 대상 추가 섹션
+                        const Text(
+                          '보호 대상 추가',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton.icon(
+                            onPressed: () => _showAddSubjectDialog(context, userId),
+                            icon: const Icon(Icons.person_add, size: 18),
+                            label: const Text('보호 대상 추가'),
+                            style: FilledButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              backgroundColor: const Color(0xFF5C6BC0),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   );
                 }
@@ -422,16 +511,7 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            '이 정보는 참고용이며, 판단이나 조치를 의미하지 않습니다.',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.blue.shade900,
-                              fontWeight: FontWeight.w400,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            '최근 기록이 있다는 것은, 일상적인 활동이 있었다는 신호로 이해할 수 있습니다.',
+                            '이 서비스는 안부 전달을 위한 참고 정보만 제공합니다.\n판단이나 조치를 위한 용도가 아닙니다.',
                             style: TextStyle(
                               fontSize: 13,
                               color: Colors.blue.shade900,
@@ -441,6 +521,93 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
                         ],
                       ),
                     ),
+                    // 링크로 보호 대상 초대 (보호자→보호대상자) - GuardianScreen과 통일된 UI
+                    const Text(
+                      '링크로 보호 대상 초대',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      '링크를 보내면 보호대상자는 앱이 없어도 설치 후 자동 연결됩니다.',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.black54,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      height: 56,
+                      child: OutlinedButton.icon(
+                        onPressed: () => _shareInviteLink(context, userId),
+                        icon: const Icon(Icons.link, size: 22),
+                        label: const Text('보호 대상에게 초대 링크 보내기'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                          alignment: Alignment.centerLeft,
+                          minimumSize: const Size(double.infinity, 56),
+                          foregroundColor: const Color(0xFF5C6BC0),
+                          side: const BorderSide(color: Color(0xFF5C6BC0), width: 1.5),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        border: Border.all(color: Colors.grey.shade300),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  const Text(
+                                    '공유 예시 문구',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                              const Spacer(),
+                              IconButton(
+                                icon: const Icon(Icons.copy, size: 18),
+                                onPressed: () {
+                                  Clipboard.setData(
+                                    ClipboardData(text: InviteLinkHelper.suggestedMessage),
+                                  );
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('문구가 복사되었습니다.'),
+                                      duration: Duration(seconds: 1),
+                                    ),
+                                  );
+                                },
+                                tooltip: '복사',
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            InviteLinkHelper.suggestedMessage,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 28),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -452,33 +619,17 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: OutlinedButton.icon(
-                                onPressed: () => _shareInviteLink(context, userId),
-                                icon: const Icon(Icons.link, size: 18),
-                                label: const Text('초대 링크 보내기'),
-                                style: OutlinedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(vertical: 12),
-                                  foregroundColor: const Color(0xFF5C6BC0),
-                                  side: const BorderSide(color: Color(0xFF5C6BC0), width: 1.5),
-                                ),
-                              ),
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton.icon(
+                            onPressed: () => _showAddSubjectDialog(context, userId),
+                            icon: const Icon(Icons.person_add, size: 18),
+                            label: const Text('보호 대상 추가'),
+                            style: FilledButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              backgroundColor: const Color(0xFF5C6BC0),
                             ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: FilledButton.icon(
-                                onPressed: () => _showAddSubjectDialog(context, userId),
-                                icon: const Icon(Icons.person_add, size: 18),
-                                label: const Text('보호 대상 추가'),
-                                style: FilledButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(vertical: 12),
-                                  backgroundColor: const Color(0xFF5C6BC0),
-                                ),
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
                       ],
                     ),
@@ -602,24 +753,34 @@ class _SubjectListItemState extends State<_SubjectListItem> {
       initialData: _fallbackName,
       builder: (context, nameSnapshot) {
         final subjectName = nameSnapshot.data ?? _fallbackName;
-        final hasRespondedToday = _todayResponses?.values.any((r) => r != null) ?? false;
-        final subtitleText = _todayResponses == null
-            ? '로딩 중...'
-            : _latestAnsweredAt == null
-                ? '최근 응답: 없음'
-                : '최근 응답: ${DateFormat('yyyy년 M월 d일 H시 m분', 'ko_KR').format(_latestAnsweredAt!)}';
-        final subtitleColor = hasRespondedToday
-            ? Colors.green.shade700
-            : Colors.grey.shade700;
+        final hasRespondedToday =
+            _todayResponses?.values.any((r) => r != null) ?? false;
+        final hasAnyRecordLast7 = _latestAnsweredAt != null;
 
-        // 오늘 응답이 있으면 상태 아이콘과 문구 표시
-        final todayResponse = _todayResponses?[TimeSlot.daily];
-        final statusText = todayResponse != null
-            ? todayResponse.mood.displayAsSelectable.label
-            : (hasRespondedToday ? '응답 완료' : '응답 없음');
-        final statusColor = todayResponse != null
-            ? todayResponse.mood.displayAsSelectable.color
-            : Colors.grey;
+        // 상태 요약 문구 (기록 여부만 표현)
+        final String statusText;
+        if (_todayResponses == null) {
+          statusText = '기록 정보를 불러오는 중입니다.';
+        } else if (hasRespondedToday) {
+          statusText = '오늘 기록이 전달되었습니다.';
+        } else if (hasAnyRecordLast7) {
+          statusText = '최근 7일 내에 기록이 있었습니다.';
+        } else {
+          statusText = '최근 7일 내 기록이 없습니다.';
+        }
+
+        final statusColor =
+            hasAnyRecordLast7 ? Colors.green.shade700 : Colors.grey.shade700;
+
+        // 최근 기록 날짜 (시간은 공유하지 않음)
+        final String dateText;
+        if (_latestAnsweredAt == null) {
+          dateText = '최근 전달: 없음';
+        } else {
+          final dateStr =
+              DateFormat('yyyy년 M월 d일', 'ko_KR').format(_latestAnsweredAt!);
+          dateText = '최근 전달: $dateStr';
+        }
 
         return Card(
           margin: const EdgeInsets.only(bottom: 12),
@@ -634,33 +795,20 @@ class _SubjectListItemState extends State<_SubjectListItem> {
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (todayResponse != null) ...[
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      MoodFaceIcon(
-                        mood: todayResponse.mood.displayAsSelectable,
-                        size: 24,
-                        withShadow: false,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        statusText,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: statusColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                ],
                 Text(
-                  subtitleText,
+                  statusText,
                   style: TextStyle(
                     fontSize: 14,
-                    color: subtitleColor,
+                    fontWeight: FontWeight.w500,
+                    color: statusColor,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  dateText,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade700,
                   ),
                 ),
               ],
@@ -743,7 +891,7 @@ class _GuardianSettingsScreenState extends State<GuardianSettingsScreen> {
                   child: ListTile(
                     leading: const Icon(Icons.notifications_active),
                     title: const Text('알림 소리'),
-                    subtitle: const Text('보호 대상 상태 알림 소리 재생'),
+                    subtitle: const Text('안부 전달 알림 소리 재생'),
                     trailing: Switch(
                       value: _notificationSoundEnabled,
                       onChanged: _toggleNotificationSound,
