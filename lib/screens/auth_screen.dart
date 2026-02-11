@@ -270,6 +270,9 @@ class _AuthScreenState extends State<AuthScreen> {
 
     try {
       debugPrint('인증 코드 전송 시도: $phoneNumber');
+      debugPrint('입력한 전화번호: ${_phoneController.text}');
+      debugPrint('변환된 E.164 형식: $phoneNumber');
+      
       // 에뮬레이터 등에서 콜백이 늦게 오면 로딩이 멈추지 않을 수 있음 → 10초 후 강제 해제
       Future.delayed(const Duration(seconds: 10), () {
         if (!mounted) return;
@@ -304,7 +307,7 @@ class _AuthScreenState extends State<AuthScreen> {
             // 에러 코드에 따른 구체적인 메시지
             switch (e.code) {
               case 'invalid-phone-number':
-                errorMessage = '전화번호 형식이 올바르지 않습니다.\n입력한 번호: $phoneNumber';
+                errorMessage = '전화번호 형식이 올바르지 않습니다.\n\n입력한 번호: ${_phoneController.text}\n변환된 번호: $phoneNumber\n\nFirebase Console에 테스트 전화번호가 등록되어 있는지 확인해주세요.\n\n테스트 번호:\n- +821011112222 (인증 코드: 111111)\n- +821033334444 (인증 코드: 333333)';
                 break;
               case 'missing-phone-number':
                 errorMessage = '전화번호를 입력해주세요.';
@@ -313,10 +316,10 @@ class _AuthScreenState extends State<AuthScreen> {
                 errorMessage = '일일 인증 횟수를 초과했습니다. 잠시 후 다시 시도해주세요.';
                 break;
               case 'too-many-requests':
-                errorMessage = '너무 많은 요청이 발생했습니다. 잠시 후 다시 시도해주세요.';
+                errorMessage = '너무 많은 요청이 발생했습니다. 5-10분 후 다시 시도해주세요.';
                 break;
               default:
-                errorMessage = '인증 실패: ${e.message ?? e.code}\n\n전화번호: $phoneNumber\n\nFirebase Console에서 테스트 전화번호가 등록되어 있는지 확인해주세요.';
+                errorMessage = '인증 실패: ${e.message ?? e.code}\n\n전화번호: $phoneNumber\n\nFirebase Console에서 테스트 전화번호가 등록되어 있는지 확인해주세요.\n\n테스트 번호:\n- +821011112222 (인증 코드: 111111)\n- +821033334444 (인증 코드: 333333)';
             }
             
             ScaffoldMessenger.of(context).showSnackBar(
