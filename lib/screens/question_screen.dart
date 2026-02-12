@@ -6,6 +6,7 @@ import '../services/guardian_service.dart';
 import '../models/mood_response_model.dart';
 import '../widgets/mood_face_icon.dart';
 import '../utils/button_styles.dart';
+import 'subject_mode_screen.dart';
 
 class QuestionScreen extends StatefulWidget {
   final TimeSlot timeSlot;
@@ -44,7 +45,22 @@ class _QuestionScreenState extends State<QuestionScreen> {
     if (userId == null) return;
     final done = await _moodService.hasRespondedToday(subjectId: userId);
     if (done && mounted) {
-      Navigator.of(context).pop();
+      // 이전 화면이 있는지 확인
+      try {
+        if (Navigator.of(context).canPop()) {
+          Navigator.of(context).pop();
+        } else {
+          // 이전 화면이 없으면 SubjectModeScreen으로 이동
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const SubjectModeScreen()),
+          );
+        }
+      } catch (e) {
+        // pop() 실패 시 SubjectModeScreen으로 이동
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const SubjectModeScreen()),
+        );
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('오늘 안부는 이미 전달됐어요. 자정(한국 시간) 이후에 다시 남길 수 있어요.'),
@@ -65,7 +81,22 @@ class _QuestionScreenState extends State<QuestionScreen> {
         foregroundColor: Colors.black87,
         leadingWidth: 80,
         leading: InkWell(
-          onTap: () => Navigator.of(context).pop(),
+          onTap: () {
+            try {
+              if (Navigator.of(context).canPop()) {
+                Navigator.of(context).pop();
+              } else {
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(builder: (_) => const SubjectModeScreen()),
+                );
+              }
+            } catch (e) {
+              // pop() 실패 시 SubjectModeScreen으로 이동
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (_) => const SubjectModeScreen()),
+              );
+            }
+          },
           borderRadius: BorderRadius.circular(24),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -233,7 +264,23 @@ class _QuestionScreenState extends State<QuestionScreen> {
 
       if (!mounted) return;
 
-      Navigator.of(context).pop();
+      // 이전 화면이 있는지 확인
+      try {
+        if (Navigator.of(context).canPop()) {
+          Navigator.of(context).pop();
+        } else {
+          // 이전 화면이 없으면 (알림에서 직접 온 경우) SubjectModeScreen으로 이동
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const SubjectModeScreen()),
+          );
+        }
+      } catch (e) {
+        // pop() 실패 시 SubjectModeScreen으로 이동
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const SubjectModeScreen()),
+        );
+      }
+      
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('잘했어요. 오늘 기록은 끝이에요.'),

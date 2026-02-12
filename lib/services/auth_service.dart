@@ -34,7 +34,7 @@ class AuthService extends ChangeNotifier {
       if (user != null) {
         _loadUserData(user.uid);
         // 로그인 시 일일 알림 스케줄링
-        NotificationService.instance.scheduleDailyNotifications().catchError((e) {
+        NotificationService.instance.checkAndScheduleIfNeeded(user.uid).catchError((e) {
           debugPrint('알림 스케줄링 오류 (무시): $e');
         });
       } else {
@@ -198,8 +198,8 @@ class AuthService extends ChangeNotifier {
           if (!isGranted) return; // 권한이 없으면 알림 표시하지 않음
         }
         
-        // 오늘 알림 체크 및 표시
-        await NotificationService.instance.checkAndShowTodayNotificationIfNeeded(userId);
+        // 오늘 알림 체크 및 스케줄링
+        await NotificationService.instance.checkAndScheduleIfNeeded(userId);
       } catch (e) {
         debugPrint('[AuthService] 로그인 후 오늘 알림 체크 오류: $e');
       }

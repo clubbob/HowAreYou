@@ -50,7 +50,7 @@ class _SplashScreenState extends State<SplashScreen> {
       // 로그인 상태 확인 후 일일 알림 스케줄링 (앱 재시작 시에도)
       final user = authService.user;
       if (user != null) {
-        NotificationService.instance.scheduleDailyNotifications().catchError((e) {
+        NotificationService.instance.checkAndScheduleIfNeeded(user.uid).catchError((e) {
           debugPrint('앱 시작 시 알림 스케줄링 오류 (무시): $e');
         });
       }

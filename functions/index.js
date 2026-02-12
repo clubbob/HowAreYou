@@ -127,17 +127,14 @@ async function sendResponseNotification(snap, context) {
       const subjectDisplayName = subjectData.displayName || '보호 대상';
       
       // slot 값으로 문구 결정 (하루 1회 응답 시 slot === 'daily')
-      const slot = promptData.slot || '';
-      const bodyText = (slot === 'daily')
-        ? `${subjectDisplayName}님이 오늘 컨디션을 기록했습니다`
-        : `${subjectDisplayName}님이 컨디션을 기록했습니다`;
+      const bodyText = `${subjectDisplayName}님이 컨디션을 기록 했습니다`;
 
       // 보호자별로 알림 발송 (FCM 토큰 정리 포함)
       const sendPromises = guardianUids.map(async (guardianUid) => {
         console.log(`[응답 알림] 보호자 ${guardianUid}에게 알림 발송 시도`);
         return await sendToGuardian(guardianUid, {
           notification: {
-            title: '상태 확인 알림',
+            title: '기록 알림',
             body: bodyText,
           },
           data: {

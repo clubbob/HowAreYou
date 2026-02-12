@@ -64,8 +64,8 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> {
         if (!isGranted) return; // 권한이 없으면 알림 표시하지 않음
       }
       
-      // 오늘 알림 체크 및 표시
-      await NotificationService.instance.checkAndShowTodayNotificationIfNeeded(user.uid);
+      // 오늘 알림 체크 및 스케줄링
+      await NotificationService.instance.checkAndScheduleIfNeeded(user.uid);
     } catch (e) {
       debugPrint('[보호대상자] 오늘 알림 체크 오류: $e');
     }

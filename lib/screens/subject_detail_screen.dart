@@ -8,6 +8,7 @@ import '../utils/button_styles.dart';
 import '../utils/constants.dart';
 import '../widgets/status_display_widgets.dart';
 import 'no_response_screen.dart';
+import 'guardian_dashboard_screen.dart';
 
 class SubjectDetailScreen extends StatefulWidget {
   final String subjectId;
@@ -246,7 +247,23 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
         foregroundColor: Colors.black87,
         leadingWidth: 80,
         leading: InkWell(
-          onTap: () => Navigator.of(context).pop(),
+          onTap: () {
+            try {
+              if (Navigator.of(context).canPop()) {
+                Navigator.of(context).pop();
+              } else {
+                // 이전 화면이 없으면 GuardianDashboardScreen으로 이동
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(builder: (_) => const GuardianDashboardScreen()),
+                );
+              }
+            } catch (e) {
+              // pop() 실패 시 GuardianDashboardScreen으로 이동
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (_) => const GuardianDashboardScreen()),
+              );
+            }
+          },
           borderRadius: BorderRadius.circular(24),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),

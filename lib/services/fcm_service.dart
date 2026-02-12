@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -6,6 +7,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../main.dart';
 import '../utils/permission_helper.dart';
 import '../screens/guardian_dashboard_screen.dart';
+import '../screens/subject_detail_screen.dart';
+import 'notification_service.dart';
+import 'guardian_service.dart';
+import 'mood_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class FCMService {
   static final FCMService _instance = FCMService._internal();
@@ -14,10 +20,17 @@ class FCMService {
 
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
+  
+  // NotificationService의 플러그인 인스턴스 사용 (중복 초기화 방지)
+  FlutterLocalNotificationsPlugin get _localNotifications => 
+      NotificationService.instance.getNotificationsPlugin();
 
   String? _fcmToken;
   String? _lastInitializedUserId; // 마지막으로 초기화한 사용자 ID
+
+  // 알림 액션 ID
+  static const String actionOpenDashboard = 'OPEN_DASHBOARD';
+  static const String actionDismiss = 'DISMISS';
 
   String? get fcmToken => _fcmToken;
 
@@ -57,6 +70,10 @@ class FCMService {
 
     // 보호자 알림 채널 생성 (Android)
     await _createGuardianNotificationChannel();
+
+    // 로컬 알림은 NotificationService에서 이미 초기화되었으므로
+    // 여기서는 다시 초기화하지 않음 (핸들러 충돌 방지)
+    // FCM 포그라운드 메시지는 _handleForegroundMessage에서 처리
 
     // FCM 토큰 가져오기 (알림 권한이 있어야 토큰을 받을 수 있음)
     try {
@@ -106,18 +123,18 @@ class FCMService {
         debugPrint('알림 채널 삭제 실패 (무시): $e');
       }
       
-      // 새 채널 생성 (소리 켜기)
+      // 새 채널 생성 (소리 켜기, 중요도 최대)
       const androidChannel = AndroidNotificationChannel(
         'guardian_notifications',
         '보호자 알림',
         description: '보호 대상의 상태 확인 및 미회신 알림',
-        importance: Importance.high,
+        importance: Importance.max,
         playSound: true,
         enableVibration: true,
       );
       
       await androidPlugin.createNotificationChannel(androidChannel);
-      debugPrint('알림 채널 생성 완료 (소리: 켜기)');
+      debugPrint('보호자 알림 채널 생성 완료 (소리: 켜기, 중요도: 최대)');
     }
   }
 
@@ -153,22 +170,63 @@ class FCMService {
     
     // 포그라운드에서도 알림 표시 (로컬 알림 사용)
     final notification = message.notification;
+    final data = message.data;
+    final type = data['type'];
+    
     if (notification != null) {
+      final notificationId = message.hashCode;
+      
+      // 보호 대상자 이름 가져오기 (보호자가 설정한 별칭 우선)
+      String subjectDisplayName = '보호 대상';
+      final subjectId = data['subjectId'];
+      final user = FirebaseAuth.instance.currentUser;
+      
+      if (subjectId != null && user != null) {
+        try {
+          // 보호자가 설정한 별칭 확인
+          final guardianService = GuardianService();
+          subjectDisplayName = await guardianService.getSubjectDisplayNameForGuardian(
+            subjectId,
+            user.uid,
+          );
+        } catch (e) {
+          debugPrint('[FCM 알림] 이름 가져오기 실패: $e');
+          // 실패 시 data의 이름 사용
+          subjectDisplayName = data['subjectDisplayName'] ?? '보호 대상';
+        }
+      } else {
+        // subjectId가 없으면 data의 이름 사용
+        subjectDisplayName = data['subjectDisplayName'] ?? '보호 대상';
+      }
+      
+      // 알림 제목과 본문 수정
+      final title = '기록 알림';
+      final body = '$subjectDisplayName님이 컨디션을 기록 했습니다';
+      
       final androidDetails = AndroidNotificationDetails(
         'guardian_notifications',
         '보호자 알림',
         channelDescription: '보호 대상의 상태 확인 및 미회신 알림',
-        importance: Importance.high,
-        priority: Priority.high,
+        importance: Importance.max,
+        priority: Priority.max,
         playSound: shouldPlaySound,
         enableVibration: shouldPlaySound,
+        vibrationPattern: Int64List.fromList([0, 500, 200, 500]),
+        category: AndroidNotificationCategory.alarm,
+        styleInformation: const BigTextStyleInformation(''),
+        autoCancel: true,
+        ongoing: false,
+        showWhen: true,
+        enableLights: true,
+        color: const Color(0xFF4285F4),
+        visibility: NotificationVisibility.public,
       );
       
       final iosDetails = DarwinNotificationDetails(
         presentAlert: true,
         presentBadge: true,
         presentSound: shouldPlaySound,
-        sound: 'default', // 명시적으로 소리 파일 지정
+        sound: 'default',
       );
       
       final details = NotificationDetails(
@@ -176,14 +234,26 @@ class FCMService {
         iOS: iosDetails,
       );
       
-      debugPrint('알림 표시 중... (소리: $shouldPlaySound)');
+      debugPrint('[FCM 알림] 알림 표시 중... (소리: $shouldPlaySound, 타입: $type, 이름: $subjectDisplayName)');
+      // payload에 type과 subjectId를 함께 전달 (subjectId가 있는 경우)
+      final payload = subjectId != null && subjectId.toString().isNotEmpty 
+          ? '$type|$subjectId' 
+          : type;
       await _localNotifications.show(
-        message.hashCode,
-        notification.title ?? '알림',
-        notification.body ?? '',
+        notificationId,
+        title,
+        body,
         details,
+        payload: payload,
       );
-      debugPrint('알림 표시 완료');
+      
+      // 10초 후 알림 자동 취소
+      Future.delayed(const Duration(seconds: 10), () {
+        _localNotifications.cancel(notificationId);
+        debugPrint('[FCM 알림] 알림 자동 취소 (10초 후, ID: $notificationId)');
+      });
+      
+      debugPrint('[FCM 알림] 알림 표시 완료 (ID: $notificationId)');
     } else {
       debugPrint('알림 데이터 없음');
     }
@@ -216,17 +286,60 @@ class FCMService {
     return await _getNotificationSoundEnabled();
   }
 
-  /// 알림 탭 시 처리 (앱이 열린 상태에서 알림을 탭한 경우)
+  /// 알림 탭 시 처리 (앱이 백그라운드에서 실행 중일 때 알림을 탭한 경우)
   void _handleNotificationTap(RemoteMessage message) {
     debugPrint('알림 탭: ${message.notification?.title}');
     final data = message.data;
     final type = data['type'];
+    final subjectId = data['subjectId']; // FCM data에서 subjectId 추출
     
     final navigator = MyApp.navigatorKey.currentState;
     if (navigator == null) return;
 
     if (type == 'RESPONSE_RECEIVED' || type == 'UNREACHABLE') {
-      // 알림 탭 시 바로 보호 대상 관리 화면으로 이동
+      // subjectId가 있고 현재 사용자가 보호자인 경우 상세 화면으로 이동
+      if (subjectId != null && subjectId.toString().isNotEmpty) {
+        final user = FirebaseAuth.instance.currentUser;
+        if (user != null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) async {
+            try {
+              final guardianService = GuardianService();
+              final moodService = MoodService();
+              
+              // 보호자가 해당 보호 대상자와 연결되어 있는지 확인
+              final subjectIds = await guardianService.getSubjectIdsForGuardian(user.uid);
+              if (subjectIds.contains(subjectId)) {
+                navigator.pushAndRemoveUntil(
+                  MaterialPageRoute(
+                    builder: (_) => SubjectDetailScreen(
+                      subjectId: subjectId.toString(),
+                      guardianUid: user.uid,
+                      guardianService: guardianService,
+                      moodService: moodService,
+                    ),
+                  ),
+                  (route) => false,
+                );
+                debugPrint('[FCM 알림] ✅ 보호 대상 상세 화면으로 이동 완료 (subjectId: $subjectId)');
+                return;
+              } else {
+                debugPrint('[FCM 알림] ⚠️ 보호자가 해당 보호 대상자와 연결되어 있지 않음: $subjectId');
+              }
+            } catch (e) {
+              debugPrint('[FCM 알림] ⚠️ 상세 화면 이동 실패: $e');
+            }
+            
+            // 상세 화면으로 이동할 수 없는 경우 대시보드로 이동
+            navigator.pushAndRemoveUntil(
+              MaterialPageRoute(builder: (_) => const GuardianDashboardScreen()),
+              (route) => false,
+            );
+          });
+          return;
+        }
+      }
+      
+      // subjectId가 없거나 상세 화면으로 이동할 수 없는 경우 대시보드로 이동
       navigator.pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const GuardianDashboardScreen()),
         (route) => false,
@@ -235,6 +348,9 @@ class FCMService {
       navigator.pushNamed('/question');
     }
   }
+
+  // 주의: 로컬 알림 응답 처리는 NotificationService의 통합 핸들러에서 처리됩니다.
+  // 이 메서드는 더 이상 사용되지 않습니다 (중복 초기화 방지를 위해 제거됨).
 
   Future<void> removeToken(String userId) async {
     if (_fcmToken != null) {
@@ -245,6 +361,99 @@ class FCMService {
       } catch (e) {
         debugPrint('FCM 토큰 제거 실패: $e');
       }
+    }
+  }
+
+  /// 테스트용: 보호자 알림 즉시 발송
+  Future<void> sendTestGuardianNotification() async {
+    try {
+      debugPrint('[테스트 알림] 보호자 알림 발송 시작');
+      
+      // 현재 사용자 ID 가져오기
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        debugPrint('[테스트 알림] 로그인하지 않은 사용자');
+        return;
+      }
+      
+      // 보호자가 연결한 첫 번째 보호 대상자 이름 가져오기 (보호자가 설정한 별칭 우선)
+      String subjectName = '보호 대상';
+      try {
+        final guardianService = GuardianService();
+        final subjectIds = await guardianService.getSubjectIdsForGuardian(user.uid);
+        if (subjectIds.isNotEmpty) {
+          subjectName = await guardianService.getSubjectDisplayNameForGuardian(
+            subjectIds.first,
+            user.uid,
+          );
+        }
+      } catch (e) {
+        debugPrint('[테스트 알림] 보호 대상자 이름 가져오기 실패: $e');
+      }
+      
+      const notificationId = 9998;
+      final title = '기록 알림';
+      final body = '$subjectName님이 컨디션을 기록 했습니다';
+      
+      // 테스트용: 첫 번째 보호 대상자의 ID를 payload에 포함
+      String? testSubjectId;
+      try {
+        final guardianService = GuardianService();
+        final subjectIds = await guardianService.getSubjectIdsForGuardian(user.uid);
+        if (subjectIds.isNotEmpty) {
+          testSubjectId = subjectIds.first;
+        }
+      } catch (e) {
+        debugPrint('[테스트 알림] 보호 대상자 ID 가져오기 실패: $e');
+      }
+      
+      // payload에 type과 subjectId를 함께 전달 (subjectId가 있는 경우)
+      final payload = testSubjectId != null && testSubjectId.isNotEmpty
+          ? 'RESPONSE_RECEIVED|$testSubjectId'
+          : 'RESPONSE_RECEIVED';
+      
+      await _localNotifications.show(
+        notificationId,
+        title,
+        body,
+        NotificationDetails(
+          android: AndroidNotificationDetails(
+            'guardian_notifications',
+            '보호자 알림',
+            channelDescription: '보호 대상의 상태 확인 및 미회신 알림',
+            importance: Importance.max,
+            priority: Priority.max,
+            playSound: true,
+            enableVibration: true,
+            vibrationPattern: Int64List.fromList([0, 500, 200, 500]),
+            category: AndroidNotificationCategory.alarm,
+            styleInformation: const BigTextStyleInformation(''),
+            autoCancel: true,
+            ongoing: false,
+            showWhen: true,
+            enableLights: true,
+            color: const Color(0xFF4285F4),
+            visibility: NotificationVisibility.public,
+          ),
+          iOS: const DarwinNotificationDetails(
+            presentAlert: true,
+            presentBadge: true,
+            presentSound: true,
+          ),
+        ),
+        payload: payload,
+      );
+      
+      // 10초 후 알림 자동 취소
+      Future.delayed(const Duration(seconds: 10), () {
+        _localNotifications.cancel(notificationId);
+        debugPrint('[테스트 알림] 보호자 알림 자동 취소 (10초 후)');
+      });
+      
+      debugPrint('[테스트 알림] 보호자 알림 발송 완료 (ID: $notificationId, 이름: $subjectName)');
+    } catch (e) {
+      debugPrint('[테스트 알림] 오류: $e');
+      rethrow;
     }
   }
 }

@@ -17,6 +17,7 @@ import '../utils/invite_link_helper.dart';
 import '../main.dart';
 import 'subject_detail_screen.dart';
 import 'auth_screen.dart';
+import 'guardian_mode_screen.dart';
 
 class GuardianDashboardScreen extends StatefulWidget {
   const GuardianDashboardScreen({super.key});
@@ -273,7 +274,23 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
         foregroundColor: Colors.black87,
         leadingWidth: 80,
         leading: InkWell(
-          onTap: () => Navigator.of(context).pop(),
+          onTap: () {
+            try {
+              if (Navigator.of(context).canPop()) {
+                Navigator.of(context).pop();
+              } else {
+                // 이전 화면이 없으면 GuardianModeScreen으로 이동
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(builder: (_) => const GuardianModeScreen()),
+                );
+              }
+            } catch (e) {
+              // pop() 실패 시 GuardianModeScreen으로 이동
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (_) => const GuardianModeScreen()),
+              );
+            }
+          },
           borderRadius: BorderRadius.circular(24),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -867,7 +884,23 @@ class _GuardianSettingsScreenState extends State<GuardianSettingsScreen> {
         foregroundColor: Colors.black87,
         leadingWidth: 80,
         leading: InkWell(
-          onTap: () => Navigator.of(context).pop(),
+          onTap: () {
+            try {
+              if (Navigator.of(context).canPop()) {
+                Navigator.of(context).pop();
+              } else {
+                // 이전 화면이 없으면 GuardianDashboardScreen으로 이동
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(builder: (_) => const GuardianDashboardScreen()),
+                );
+              }
+            } catch (e) {
+              // pop() 실패 시 GuardianDashboardScreen으로 이동
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (_) => const GuardianDashboardScreen()),
+              );
+            }
+          },
           borderRadius: BorderRadius.circular(24),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
