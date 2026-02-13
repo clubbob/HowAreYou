@@ -500,45 +500,56 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
                 return ListView(
                   padding: const EdgeInsets.all(24),
                   children: [
-                    // 해석 가이드 및 안전 신호 안내
-                    Container(
-                      margin: const EdgeInsets.only(bottom: 16),
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.shade50,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.blue.shade200, width: 1),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(Icons.info_outline, color: Colors.blue.shade700, size: 20),
-                              const SizedBox(width: 8),
-                              Text(
-                                '안내',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.blue.shade900,
+                    // 1. 보호 대상 목록
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '보호 대상 (${subjectIds.length}명)',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        ...subjectIds.map((subjectId) {
+                          return _SubjectListItem(
+                            subjectId: subjectId,
+                            guardianUid: userId,
+                            guardianService: _guardianService,
+                            moodService: _moodService,
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => SubjectDetailScreen(
+                                    subjectId: subjectId,
+                                    guardianUid: userId,
+                                    guardianService: _guardianService,
+                                    moodService: _moodService,
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            '이 서비스는 안부 전달을 위한 참고 정보만 제공합니다.\n판단이나 조치를 위한 용도가 아닙니다.',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.blue.shade900,
-                              fontWeight: FontWeight.w400,
-                            ),
-                          ),
-                        ],
+                              );
+                            },
+                          );
+                        }),
+                      ],
+                    ),
+                    // 2. 보호 대상 추가 버튼
+                    const SizedBox(height: 28),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: () => _showAddSubjectDialog(context, userId),
+                        icon: const Icon(Icons.person_add, size: 18),
+                        label: const Text('보호 대상 추가'),
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          backgroundColor: const Color(0xFF5C6BC0),
+                        ),
                       ),
                     ),
-                    // 링크로 보호 대상 초대 (보호자→보호대상자) - GuardianScreen과 통일된 UI
+                    // 3. 초대 영역
+                    const SizedBox(height: 32),
                     const Text(
                       '링크로 보호 대상 초대',
                       style: TextStyle(
@@ -581,18 +592,18 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
                         border: Border.all(color: Colors.grey.shade300),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
                             children: [
-                              Row(
-                                children: [
-                                  const Text(
-                                    '공유 예시 문구',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
+                              const Text(
+                                '공유 예시 문구',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                               const Spacer(),
                               IconButton(
                                 icon: const Icon(Icons.copy, size: 18),
@@ -624,53 +635,45 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 28),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '보호 대상 (${subjectIds.length}명)',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          width: double.infinity,
-                          child: FilledButton.icon(
-                            onPressed: () => _showAddSubjectDialog(context, userId),
-                            icon: const Icon(Icons.person_add, size: 18),
-                            label: const Text('보호 대상 추가'),
-                            style: FilledButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              backgroundColor: const Color(0xFF5C6BC0),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    ...subjectIds.map((subjectId) {
-                      return _SubjectListItem(
-                        subjectId: subjectId,
-                        guardianUid: userId,
-                        guardianService: _guardianService,
-                        moodService: _moodService,
-                        onTap: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => SubjectDetailScreen(
-                                subjectId: subjectId,
-                                guardianUid: userId,
-                                guardianService: _guardianService,
-                                moodService: _moodService,
+                    // 4. 안내
+                    const SizedBox(height: 32),
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 16),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.blue.shade200, width: 1),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.info_outline, color: Colors.blue.shade700, size: 20),
+                              const SizedBox(width: 8),
+                              Text(
+                                '안내',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.blue.shade900,
+                                ),
                               ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '이 서비스는 안부 전달을 위한 참고 정보만 제공합니다.\n판단이나 조치를 위한 용도가 아닙니다.',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.blue.shade900,
+                              fontWeight: FontWeight.w400,
                             ),
-                          );
-                        },
-                      );
-                    }),
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 );
               },

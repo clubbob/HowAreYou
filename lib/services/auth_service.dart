@@ -120,9 +120,33 @@ class AuthService extends ChangeNotifier {
       }
       debugPrint('verifyOTP: 완료');
       return null;
+    } on FirebaseAuthException catch (e) {
+      debugPrint('verifyOTP: FirebaseAuthException - 코드: ${e.code}, 메시지: ${e.message}');
+      // Firebase Auth 에러 코드를 한글 메시지로 변환
+      String errorMessage;
+      switch (e.code) {
+        case 'invalid-verification-code':
+          errorMessage = '인증 코드가 올바르지 않습니다. 문자로 받은 코드를 다시 확인해주세요.';
+          break;
+        case 'invalid-verification-id':
+          errorMessage = '인증 세션이 만료되었습니다. 전화번호를 다시 입력해주세요.';
+          break;
+        case 'session-expired':
+          errorMessage = '인증 세션이 만료되었습니다. 전화번호를 다시 입력해주세요.';
+          break;
+        case 'too-many-requests':
+          errorMessage = '너무 많은 요청이 발생했습니다. 잠시 후 다시 시도해주세요.';
+          break;
+        case 'network-request-failed':
+          errorMessage = '네트워크 연결을 확인해주세요.';
+          break;
+        default:
+          errorMessage = '인증에 실패했습니다. 잠시 후 다시 시도해주세요.';
+      }
+      return errorMessage;
     } catch (e) {
       debugPrint('verifyOTP: 오류 $e');
-      return e.toString();
+      return '오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
     }
   }
   

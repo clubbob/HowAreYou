@@ -422,184 +422,7 @@ class _GuardianScreenState extends State<GuardianScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Text(
-                        '링크로 보호자 초대',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        '링크를 보내면 보호자는 앱이 없어도 설치 후 자동 연결됩니다.',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.black54,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      SizedBox(
-                        height: _inputMinHeight,
-                        child: OutlinedButton.icon(
-                          onPressed: () {
-                            if (userId != null) {
-                              InviteLinkHelper.shareGuardianInvite(userId);
-                            }
-                          },
-                          icon: const Icon(Icons.link, size: 22),
-                          label: const Text('보호자에게 초대 링크 보내기'),
-                          style: OutlinedButton.styleFrom(
-                            padding: _inputPadding,
-                            alignment: Alignment.centerLeft,
-                            minimumSize: const Size(double.infinity, _inputMinHeight),
-                            foregroundColor: const Color(0xFF5C6BC0),
-                            side: const BorderSide(color: Color(0xFF5C6BC0), width: 1.5),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(_inputRadius),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade50,
-                          border: Border.all(color: Colors.grey.shade300),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                const Text(
-                                  '공유 예시 문구',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const Spacer(),
-                                IconButton(
-                                  icon: const Icon(Icons.copy, size: 18),
-                                  onPressed: () {
-                                    Clipboard.setData(
-                                      ClipboardData(text: InviteLinkHelper.suggestedMessageForGuardian),
-                                    );
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('문구가 복사되었습니다.'),
-                                        duration: Duration(seconds: 1),
-                                      ),
-                                    );
-                                  },
-                                  tooltip: '복사',
-                                  padding: EdgeInsets.zero,
-                                  constraints: const BoxConstraints(),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              InviteLinkHelper.suggestedMessageForGuardian,
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Colors.grey.shade700,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 28),
-                      const Text(
-                        '보호자 추가',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      SizedBox(
-                        height: _inputMinHeight,
-                        child: OutlinedButton.icon(
-                          onPressed: () => _showNameInputDialog(context),
-                          icon: const Icon(Icons.person, size: 22),
-                          label: Text(
-                            _nameController.text.isEmpty
-                                ? '보호자 이름 입력 (예: 와이프, 엄마)'
-                                : '보호자 이름: ${_nameController.text}',
-                          ),
-                          style: OutlinedButton.styleFrom(
-                            padding: _inputPadding,
-                            alignment: Alignment.centerLeft,
-                            minimumSize: const Size(double.infinity, _inputMinHeight),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(_inputRadius),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Padding(
-                        padding: const EdgeInsets.only(top: 8, bottom: 10),
-                        child: TextField(
-                          controller: _phoneController,
-                          decoration: InputDecoration(
-                            labelText: '보호자 전화번호',
-                            hintText: '01012345678 (숫자만)',
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(_inputRadius),
-                              borderSide: BorderSide(
-                                color: Colors.grey.shade400 ?? Colors.grey,
-                                width: 1.0,
-                              ),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(_inputRadius),
-                              borderSide: BorderSide(
-                                color: Colors.grey.shade400 ?? Colors.grey,
-                                width: 1.0,
-                              ),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(_inputRadius),
-                              borderSide: const BorderSide(
-                                color: Colors.blue,
-                                width: 1.5,
-                              ),
-                            ),
-                            filled: true,
-                            fillColor: Colors.white,
-                            contentPadding: const EdgeInsets.fromLTRB(
-                              16,
-                              20,
-                              16,
-                              16,
-                            ),
-                          ),
-                          keyboardType: TextInputType.number,
-                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                          canRequestFocus: true,
-                          onChanged: (_) => setState(() {}),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      SizedBox(
-                        height: _inputMinHeight,
-                        child: ElevatedButton(
-                          onPressed: _isLoading ? null : _addGuardian,
-                          style: AppButtonStyles.primaryElevated,
-                          child: _isLoading
-                              ? const SizedBox(
-                                  width: 24,
-                                  height: 24,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
-                                )
-                              : const Text('보호자 추가'),
-                        ),
-                      ),
-                      const SizedBox(height: 32),
+                      // 1. 등록된 보호자 목록
                       const Text(
                         '등록된 보호자',
                         style: TextStyle(
@@ -746,6 +569,225 @@ class _GuardianScreenState extends State<GuardianScreen> {
                             ),
                           );
                         }),
+                      // 2. 보호자 추가 버튼
+                      const SizedBox(height: 32),
+                      const Text(
+                        '보호자 추가',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        height: _inputMinHeight,
+                        child: OutlinedButton.icon(
+                          onPressed: () => _showNameInputDialog(context),
+                          icon: const Icon(Icons.person, size: 22),
+                          label: Text(
+                            _nameController.text.isEmpty
+                                ? '보호자 이름 입력 (예: 와이프, 엄마)'
+                                : '보호자 이름: ${_nameController.text}',
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            padding: _inputPadding,
+                            alignment: Alignment.centerLeft,
+                            minimumSize: const Size(double.infinity, _inputMinHeight),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(_inputRadius),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8, bottom: 10),
+                        child: TextField(
+                          controller: _phoneController,
+                          decoration: InputDecoration(
+                            labelText: '보호자 전화번호',
+                            hintText: '01012345678 (숫자만)',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(_inputRadius),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade400 ?? Colors.grey,
+                                width: 1.0,
+                              ),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(_inputRadius),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade400 ?? Colors.grey,
+                                width: 1.0,
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(_inputRadius),
+                              borderSide: const BorderSide(
+                                color: Colors.blue,
+                                width: 1.5,
+                              ),
+                            ),
+                            filled: true,
+                            fillColor: Colors.white,
+                            contentPadding: const EdgeInsets.fromLTRB(
+                              16,
+                              20,
+                              16,
+                              16,
+                            ),
+                          ),
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                          canRequestFocus: true,
+                          onChanged: (_) => setState(() {}),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        height: _inputMinHeight,
+                        child: ElevatedButton(
+                          onPressed: _isLoading ? null : _addGuardian,
+                          style: AppButtonStyles.primaryElevated,
+                          child: _isLoading
+                              ? const SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Text('보호자 추가'),
+                        ),
+                      ),
+                      // 3. 초대 영역
+                      const SizedBox(height: 32),
+                      const Text(
+                        '링크로 보호자 초대',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        '링크를 보내면 보호자는 앱이 없어도 설치 후 자동 연결됩니다.',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.black54,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        height: _inputMinHeight,
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            if (userId != null) {
+                              InviteLinkHelper.shareGuardianInvite(userId);
+                            }
+                          },
+                          icon: const Icon(Icons.link, size: 22),
+                          label: const Text('보호자에게 초대 링크 보내기'),
+                          style: OutlinedButton.styleFrom(
+                            padding: _inputPadding,
+                            alignment: Alignment.centerLeft,
+                            minimumSize: const Size(double.infinity, _inputMinHeight),
+                            foregroundColor: const Color(0xFF5C6BC0),
+                            side: const BorderSide(color: Color(0xFF5C6BC0), width: 1.5),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(_inputRadius),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          border: Border.all(color: Colors.grey.shade300),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Text(
+                                  '공유 예시 문구',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const Spacer(),
+                                IconButton(
+                                  icon: const Icon(Icons.copy, size: 18),
+                                  onPressed: () {
+                                    Clipboard.setData(
+                                      ClipboardData(text: InviteLinkHelper.suggestedMessageForGuardian),
+                                    );
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('문구가 복사되었습니다.'),
+                                        duration: Duration(seconds: 1),
+                                      ),
+                                    );
+                                  },
+                                  tooltip: '복사',
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              InviteLinkHelper.suggestedMessageForGuardian,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey.shade700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      // 4. 안내
+                      const SizedBox(height: 32),
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 16),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.blue.shade200, width: 1),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.info_outline, color: Colors.blue.shade700, size: 20),
+                                const SizedBox(width: 8),
+                                Text(
+                                  '안내',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.blue.shade900,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              '이 서비스는 안부 전달을 위한 참고 정보만 제공합니다.\n판단이나 조치를 위한 용도가 아닙니다.',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.blue.shade900,
+                                fontWeight: FontWeight.w400,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 );
