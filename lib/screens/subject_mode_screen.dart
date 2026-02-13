@@ -214,11 +214,50 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> {
         ],
       ),
       body: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              const SizedBox(height: 24),
+              // 부담 없음 메시지
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.blue.shade200, width: 1),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.favorite_outline, color: Colors.blue.shade700, size: 24),
+                        const SizedBox(width: 8),
+                        Text(
+                          '하루에 한 번, 버튼만 누르면 안부가 전달돼요.',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue.shade900,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      '자세한 내용은 전달되지 않아요.\n부담 없이 사용하세요.',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.blue.shade900,
+                        height: 1.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 40),
               Text(
                 '지금 어때?',
                 style: theme.textTheme.headlineLarge?.copyWith(
@@ -229,16 +268,7 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> {
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 40),
-              Text(
-                '하루 한 번이면 충분해요.',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey[700],
-                  fontWeight: FontWeight.w500,
-                ),
-                textAlign: TextAlign.center,
-              ),
+              const SizedBox(height: 24),
               const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,

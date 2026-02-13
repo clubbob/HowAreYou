@@ -21,7 +21,7 @@ class InviteLinkHelper {
 
   /// 카톡/문자로 보낼 때 쓸 문장 (보호자가 보호대상자에게)
   static const String suggestedMessage =
-      '하루 한 번 안부만 남기는 앱이에요.\n설치하면, 안부가 잘 전달됐는지 확인할 수 있어요.';
+      '하루에 한 번, 버튼만 누르면 안부가 전달돼요 🙂\n부담 없이 서로 안심하려고 만든 앱이에요.\n괜찮으면 설치해 주세요:';
 
   /// 보호대상자가 보호자에게 보낼 때 쓸 문장
   static const String suggestedMessageForGuardian =
@@ -34,6 +34,18 @@ class InviteLinkHelper {
       '$suggestedMessage\n\n$url',
       subject: '지금 어때? 앱 초대',
     );
+  }
+
+  /// 보호자용 공유 메시지 (링크 포함 전체 텍스트)
+  static String getFullInviteMessage(String guardianUid) {
+    final url = buildInviteUrl(guardianUid);
+    return '$suggestedMessage\n\n$url';
+  }
+
+  /// 보호대상자용 공유 메시지 (링크 포함 전체 텍스트)
+  static String getFullGuardianInviteMessage(String subjectUid) {
+    final url = buildGuardianInviteUrl(subjectUid);
+    return '${InviteLinkHelper.suggestedMessageForGuardian}\n\n$url';
   }
 
   /// 링크 + 문장을 한 번에 공유 (보호대상자 → 보호자). 앱 설치/미설치 모두 연계됨.

@@ -273,6 +273,20 @@ class _SubjectMyStatusScreenState extends State<SubjectMyStatusScreen> {
                               ),
                             ),
                           ],
+                          // 철학 메시지
+                          const SizedBox(height: 32),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            child: Text(
+                              '이 앱은 감시가 아닌, 안부 확인을 위한 서비스입니다.',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey.shade600,
+                                fontStyle: FontStyle.italic,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
                         ],
                       ],
                     ),

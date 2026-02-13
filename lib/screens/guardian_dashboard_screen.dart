@@ -178,13 +178,217 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
     }
   }
 
-  void _shareInviteLink(BuildContext context, String userId) {
-    InviteLinkHelper.shareInvite(userId);
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('초대 링크를 공유했습니다. 링크를 받은 분이 설치 후 열면 자동으로 보호 대상으로 연결됩니다.')),
-      );
-    }
+  void _showInviteBottomSheet(BuildContext context, String userId) {
+    final inviteUrl = InviteLinkHelper.buildInviteUrl(userId);
+    final screenHeight = MediaQuery.of(context).size.height;
+    
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        height: screenHeight * 0.8,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          children: [
+            // 드래그 핸들
+            Container(
+              margin: const EdgeInsets.symmetric(vertical: 12),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            // 헤더
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+              child: Row(
+                children: [
+                  const Text(
+                    '보호 대상 초대 링크',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(),
+            // 내용
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // 링크 표시 영역
+                    const Text(
+                      '초대 링크',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        border: Border.all(color: Colors.grey.shade300),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: SelectableText(
+                              inviteUrl,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: Colors.black87,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            icon: const Icon(Icons.copy, size: 20),
+                            onPressed: () {
+                              Clipboard.setData(ClipboardData(text: inviteUrl));
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('링크가 복사되었습니다'),
+                                  duration: Duration(seconds: 1),
+                                ),
+                              );
+                            },
+                            tooltip: '복사',
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    // 링크 복사 버튼
+                    SizedBox(
+                      height: 48,
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          Clipboard.setData(ClipboardData(text: inviteUrl));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('링크가 복사되었습니다'),
+                              duration: Duration(seconds: 1),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.copy, size: 18),
+                        label: const Text('링크 복사'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF5C6BC0),
+                          side: const BorderSide(color: Color(0xFF5C6BC0), width: 1.5),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    // 안내 문구
+                    Text(
+                      '보호대상자에게 이렇게 전달됩니다',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    // 공유 예시 문구 카드
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        border: Border.all(color: Colors.grey.shade300),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Text(
+                                '공유 예시 문구',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const Spacer(),
+                              IconButton(
+                                icon: const Icon(Icons.copy, size: 18),
+                                onPressed: () {
+                                  final fullMessage = '${InviteLinkHelper.suggestedMessage}\n\n$inviteUrl';
+                                  Clipboard.setData(
+                                    ClipboardData(text: fullMessage),
+                                  );
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('문구가 복사되었습니다'),
+                                      duration: Duration(seconds: 1),
+                                    ),
+                                  );
+                                },
+                                tooltip: '복사',
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '${InviteLinkHelper.suggestedMessage}\n\n$inviteUrl',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    // 공유 버튼
+                    SizedBox(
+                      height: 56,
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
+                          await InviteLinkHelper.shareInvite(userId);
+                          if (context.mounted) {
+                            Navigator.pop(context);
+                          }
+                        },
+                        icon: const Icon(Icons.share, size: 22),
+                        label: const Text('공유하기'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF5C6BC0),
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -317,6 +521,7 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        // 1. 보호 대상 목록 (빈 상태)
                         Icon(Icons.people_outline, size: 64, color: Colors.grey[400]),
                         const SizedBox(height: 16),
                         Text(
@@ -324,95 +529,8 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
                           style: TextStyle(fontSize: 16, color: Colors.grey[600]),
                           textAlign: TextAlign.center,
                         ),
+                        // 2. 보호 대상 추가 버튼
                         const SizedBox(height: 32),
-                        // 링크로 보호 대상 초대 (빈 상태에서도 동일한 UI 패턴)
-                        const Text(
-                          '링크로 보호 대상 초대',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          '링크를 보내면 보호대상자는 앱이 없어도 설치 후 자동 연결됩니다.',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.black54,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          height: 56,
-                          child: OutlinedButton.icon(
-                            onPressed: () => _shareInviteLink(context, userId),
-                            icon: const Icon(Icons.link, size: 22),
-                            label: const Text('보호 대상에게 초대 링크 보내기'),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                              alignment: Alignment.centerLeft,
-                              minimumSize: const Size(double.infinity, 56),
-                              foregroundColor: const Color(0xFF5C6BC0),
-                              side: const BorderSide(color: Color(0xFF5C6BC0), width: 1.5),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade50,
-                            border: Border.all(color: Colors.grey.shade300),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  const Text(
-                                    '공유 예시 문구',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  const Spacer(),
-                                  IconButton(
-                                    icon: const Icon(Icons.copy, size: 18),
-                                    onPressed: () {
-                                      Clipboard.setData(
-                                        ClipboardData(text: InviteLinkHelper.suggestedMessage),
-                                      );
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(
-                                          content: Text('문구가 복사되었습니다.'),
-                                          duration: Duration(seconds: 1),
-                                        ),
-                                      );
-                                    },
-                                    tooltip: '복사',
-                                    padding: EdgeInsets.zero,
-                                    constraints: const BoxConstraints(),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                InviteLinkHelper.suggestedMessage,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: Colors.grey.shade700,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 28),
-                        // 보호 대상 추가 섹션
                         const Text(
                           '보호 대상 추가',
                           style: TextStyle(
@@ -524,6 +642,81 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
                                     ),
                                   )
                                 : const Text('보호 대상 추가'),
+                          ),
+                        ),
+                        // 3. 초대 영역
+                        const SizedBox(height: 32),
+                        const Text(
+                          '링크로 보호 대상 초대',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          '링크를 보내면 보호대상자는 앱이 없어도 설치 후 자동 연결됩니다.',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.black54,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          height: 56,
+                          child: OutlinedButton.icon(
+                            onPressed: () => _showInviteBottomSheet(context, userId),
+                            icon: const Icon(Icons.link, size: 22),
+                            label: const Text('보호 대상에게 초대 링크 보내기'),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                              alignment: Alignment.centerLeft,
+                              minimumSize: const Size(double.infinity, 56),
+                              foregroundColor: const Color(0xFF5C6BC0),
+                              side: const BorderSide(color: Color(0xFF5C6BC0), width: 1.5),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
+                        ),
+                        // 4. 안내
+                        const SizedBox(height: 32),
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 16),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade50,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.blue.shade200, width: 1),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(Icons.info_outline, color: Colors.blue.shade700, size: 20),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    '안내',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.blue.shade900,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                '이 서비스는 안부 전달을 위한 참고 정보만 제공합니다.\n판단이나 조치를 위한 용도가 아닙니다.',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.blue.shade900,
+                                  fontWeight: FontWeight.w400,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
@@ -705,7 +898,7 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
                     SizedBox(
                       height: 56,
                       child: OutlinedButton.icon(
-                        onPressed: () => _shareInviteLink(context, userId),
+                        onPressed: () => _showInviteBottomSheet(context, userId),
                         icon: const Icon(Icons.link, size: 22),
                         label: const Text('보호 대상에게 초대 링크 보내기'),
                         style: OutlinedButton.styleFrom(
@@ -718,57 +911,6 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade50,
-                        border: Border.all(color: Colors.grey.shade300),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              const Text(
-                                '공유 예시 문구',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const Spacer(),
-                              IconButton(
-                                icon: const Icon(Icons.copy, size: 18),
-                                onPressed: () {
-                                  Clipboard.setData(
-                                    ClipboardData(text: InviteLinkHelper.suggestedMessage),
-                                  );
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('문구가 복사되었습니다.'),
-                                      duration: Duration(seconds: 1),
-                                    ),
-                                  );
-                                },
-                                tooltip: '복사',
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            InviteLinkHelper.suggestedMessage,
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.grey.shade700,
-                            ),
-                          ),
-                        ],
                       ),
                     ),
                     // 4. 안내

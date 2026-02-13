@@ -277,10 +277,11 @@ class _QuestionScreenState extends State<QuestionScreen> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            '※ 이 메모는 보호자에게 전달되지 않습니다.',
+                            '※ 입력 내용은 보호자에게 전달되지 않습니다.',
                             style: TextStyle(
                               fontSize: 11,
                               color: Colors.grey.shade600,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
                         ],
