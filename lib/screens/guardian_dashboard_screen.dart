@@ -31,6 +31,19 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
   final GuardianService _guardianService = GuardianService();
   final MoodService _moodService = MoodService();
   Future<List<String>>? _subjectIdsFuture;
+  final _nameController = TextEditingController();
+  final _phoneController = TextEditingController();
+  bool _isAdding = false;
+
+  static const double _inputRadius = 12;
+  static const double _inputMinHeight = 56;
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _phoneController.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -84,155 +97,84 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
     });
   }
 
-  Future<void> _showAddSubjectDialog(BuildContext context, String userId) async {
-    final authService = Provider.of<AuthService>(context, listen: false);
-    final phoneController = TextEditingController();
-    final nameController = TextEditingController();
-    final formKey = GlobalKey<FormState>();
-    bool isAdding = false;
-    final added = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) {
-          return AlertDialog(
-            title: const Text('보호 대상 추가'),
-            content: Form(
-              key: formKey,
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '이름(별칭)과 전화번호를 입력하세요. 본인 번호는 추가할 수 없습니다.',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: nameController,
-                      decoration: const InputDecoration(
-                        labelText: '이름(별칭)',
-                        hintText: '예: 엄마, 아빠 (선택)',
-                      ),
-                      textCapitalization: TextCapitalization.words,
-                      keyboardType: TextInputType.name,
-                      autofocus: true,
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: phoneController,
-                      decoration: const InputDecoration(
-                        labelText: '보호 대상 전화번호',
-                        hintText: '01012345678',
-                      ),
-                      keyboardType: TextInputType.phone,
-                      validator: (v) {
-                        if (v == null || v.trim().isEmpty) {
-                          return '전화번호를 입력하세요.';
-                        }
-                        return null;
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: isAdding ? null : () => Navigator.pop(ctx, false),
-                child: const Text('취소'),
-              ),
-              FilledButton(
-                onPressed: isAdding
-                    ? null
-                    : () async {
-                        if (!formKey.currentState!.validate()) return;
-                        setDialogState(() => isAdding = true);
-                        try {
-                          final subjectId = await _guardianService
-                              .addMeAsGuardianToSubject(
-                            subjectPhone: phoneController.text.trim(),
-                            guardianUid: userId,
-                            guardianPhone: authService.userModel?.phone ??
-                                authService.user?.phoneNumber ??
-                                '',
-                            guardianDisplayName:
-                                authService.userModel?.displayName,
-                          ).timeout(
-                            const Duration(seconds: 15),
-                            onTimeout: () => throw TimeoutException(
-                              '요청이 지연되고 있습니다. 네트워크를 확인한 뒤 다시 시도해 주세요.',
-                            ),
-                          );
-                          final name = nameController.text.trim();
-                          if (name.isNotEmpty && ctx.mounted) {
-                            await _guardianService
-                                .setSubjectDisplayNameByGuardian(
-                              guardianUid: userId,
-                              subjectId: subjectId,
-                              displayName: name,
-                            ).timeout(
-                              const Duration(seconds: 10),
-                              onTimeout: () {},
-                            );
-                          }
-                          if (ctx.mounted) Navigator.pop(ctx, true);
-                        } catch (e, stack) {
-                          if (ctx.mounted) {
-                            setDialogState(() => isAdding = false);
-                            debugPrint('보호대상자 추가 오류: $e');
-                            debugPrint('$stack');
-                            if (e is NoSubjectUserException) {
-                              await showDialog<void>(
-                                context: ctx,
-                                builder: (c) => AlertDialog(
-                                  icon: Icon(Icons.warning_amber_rounded, color: Colors.orange[700], size: 48),
-                                  title: const Text('경고'),
-                                  content: Text(e.message),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () => Navigator.pop(c),
-                                      child: const Text('확인'),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            } else {
-                              ScaffoldMessenger.of(ctx).showSnackBar(
-                                const SnackBar(
-                                  content: Text('등록에 실패했습니다. 잠시 후 다시 시도해 주세요.'),
-                                  duration: Duration(seconds: 5),
-                                ),
-                              );
-                            }
-                          }
-                        }
-                      },
-                style: AppButtonStyles.primaryFilled,
-                child: isAdding
-                    ? const SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Text('추가'),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-    if (added == true && mounted) {
-      _refreshList(userId);
+  Future<void> _addSubject(BuildContext context, String userId) async {
+    if (_phoneController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('보호 대상이 추가되었습니다.')),
+        const SnackBar(content: Text('전화번호를 입력해주세요.')),
       );
+      return;
+    }
+
+    setState(() => _isAdding = true);
+
+    try {
+      final authService = Provider.of<AuthService>(context, listen: false);
+      final subjectId = await _guardianService.addMeAsGuardianToSubject(
+        subjectPhone: _phoneController.text.trim(),
+        guardianUid: userId,
+        guardianPhone: authService.userModel?.phone ??
+            authService.user?.phoneNumber ??
+            '',
+        guardianDisplayName: authService.userModel?.displayName,
+      ).timeout(
+        const Duration(seconds: 15),
+        onTimeout: () => throw TimeoutException(
+          '요청이 지연되고 있습니다. 네트워크를 확인한 뒤 다시 시도해 주세요.',
+        ),
+      );
+
+      final name = _nameController.text.trim();
+      if (name.isNotEmpty && mounted) {
+        await _guardianService.setSubjectDisplayNameByGuardian(
+          guardianUid: userId,
+          subjectId: subjectId,
+          displayName: name,
+        ).timeout(
+          const Duration(seconds: 10),
+          onTimeout: () {},
+        );
+      }
+
+      if (mounted) {
+        _nameController.clear();
+        _phoneController.clear();
+        _refreshList(userId);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('보호 대상이 추가되었습니다.')),
+        );
+      }
+    } catch (e, stack) {
+      if (mounted) {
+        debugPrint('보호대상자 추가 오류: $e');
+        debugPrint('$stack');
+        if (e is NoSubjectUserException) {
+          await showDialog<void>(
+            context: context,
+            builder: (c) => AlertDialog(
+              icon: Icon(Icons.warning_amber_rounded, color: Colors.orange[700], size: 48),
+              title: const Text('경고'),
+              content: Text(e.message),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(c),
+                  child: const Text('확인'),
+                ),
+              ],
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('등록에 실패했습니다. 잠시 후 다시 시도해 주세요.'),
+              duration: Duration(seconds: 5),
+            ),
+          );
+        }
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isAdding = false);
+      }
     }
   }
 
@@ -478,17 +420,110 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          width: double.infinity,
-                          child: FilledButton.icon(
-                            onPressed: () => _showAddSubjectDialog(context, userId),
-                            icon: const Icon(Icons.person_add, size: 18),
-                            label: const Text('보호 대상 추가'),
-                            style: FilledButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              backgroundColor: const Color(0xFF5C6BC0),
+                        const SizedBox(height: 16),
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8, bottom: 10),
+                          child: TextField(
+                            controller: _nameController,
+                            decoration: InputDecoration(
+                              labelText: '보호 대상 이름(별칭)',
+                              hintText: '예: 엄마, 아빠 (선택)',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(_inputRadius),
+                                borderSide: BorderSide(
+                                  color: Colors.grey.shade400 ?? Colors.grey,
+                                  width: 1.0,
+                                ),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(_inputRadius),
+                                borderSide: BorderSide(
+                                  color: Colors.grey.shade400 ?? Colors.grey,
+                                  width: 1.0,
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(_inputRadius),
+                                borderSide: const BorderSide(
+                                  color: Colors.blue,
+                                  width: 1.5,
+                                ),
+                              ),
+                              filled: true,
+                              fillColor: Colors.white,
+                              contentPadding: const EdgeInsets.fromLTRB(
+                                16,
+                                20,
+                                16,
+                                16,
+                              ),
                             ),
+                            keyboardType: TextInputType.text,
+                            textCapitalization: TextCapitalization.words,
+                            canRequestFocus: true,
+                            onChanged: (_) => setState(() {}),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8, bottom: 10),
+                          child: TextField(
+                            controller: _phoneController,
+                            decoration: InputDecoration(
+                              labelText: '보호 대상 전화번호',
+                              hintText: '01012345678 (숫자만)',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(_inputRadius),
+                                borderSide: BorderSide(
+                                  color: Colors.grey.shade400 ?? Colors.grey,
+                                  width: 1.0,
+                                ),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(_inputRadius),
+                                borderSide: BorderSide(
+                                  color: Colors.grey.shade400 ?? Colors.grey,
+                                  width: 1.0,
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(_inputRadius),
+                                borderSide: const BorderSide(
+                                  color: Colors.blue,
+                                  width: 1.5,
+                                ),
+                              ),
+                              filled: true,
+                              fillColor: Colors.white,
+                              contentPadding: const EdgeInsets.fromLTRB(
+                                16,
+                                20,
+                                16,
+                                16,
+                              ),
+                            ),
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                            canRequestFocus: true,
+                            onChanged: (_) => setState(() {}),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        SizedBox(
+                          height: _inputMinHeight,
+                          child: ElevatedButton(
+                            onPressed: _isAdding ? null : () => _addSubject(context, userId),
+                            style: AppButtonStyles.primaryElevated,
+                            child: _isAdding
+                                ? const SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Text('보호 대상 추가'),
                           ),
                         ),
                       ],
@@ -536,16 +571,117 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
                     ),
                     // 2. 보호 대상 추가 버튼
                     const SizedBox(height: 28),
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton.icon(
-                        onPressed: () => _showAddSubjectDialog(context, userId),
-                        icon: const Icon(Icons.person_add, size: 18),
-                        label: const Text('보호 대상 추가'),
-                        style: FilledButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          backgroundColor: const Color(0xFF5C6BC0),
+                    const Text(
+                      '보호 대상 추가',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8, bottom: 10),
+                      child: TextField(
+                        controller: _nameController,
+                        decoration: InputDecoration(
+                          labelText: '보호 대상 이름(별칭)',
+                          hintText: '예: 엄마, 아빠 (선택)',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(_inputRadius),
+                            borderSide: BorderSide(
+                              color: Colors.grey.shade400 ?? Colors.grey,
+                              width: 1.0,
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(_inputRadius),
+                            borderSide: BorderSide(
+                              color: Colors.grey.shade400 ?? Colors.grey,
+                              width: 1.0,
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(_inputRadius),
+                            borderSide: const BorderSide(
+                              color: Colors.blue,
+                              width: 1.5,
+                            ),
+                          ),
+                          filled: true,
+                          fillColor: Colors.white,
+                          contentPadding: const EdgeInsets.fromLTRB(
+                            16,
+                            20,
+                            16,
+                            16,
+                          ),
                         ),
+                        keyboardType: TextInputType.text,
+                        textCapitalization: TextCapitalization.words,
+                        canRequestFocus: true,
+                        onChanged: (_) => setState(() {}),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8, bottom: 10),
+                      child: TextField(
+                        controller: _phoneController,
+                        decoration: InputDecoration(
+                          labelText: '보호 대상 전화번호',
+                          hintText: '01012345678 (숫자만)',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(_inputRadius),
+                            borderSide: BorderSide(
+                              color: Colors.grey.shade400 ?? Colors.grey,
+                              width: 1.0,
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(_inputRadius),
+                            borderSide: BorderSide(
+                              color: Colors.grey.shade400 ?? Colors.grey,
+                              width: 1.0,
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(_inputRadius),
+                            borderSide: const BorderSide(
+                              color: Colors.blue,
+                              width: 1.5,
+                            ),
+                          ),
+                          filled: true,
+                          fillColor: Colors.white,
+                          contentPadding: const EdgeInsets.fromLTRB(
+                            16,
+                            20,
+                            16,
+                            16,
+                          ),
+                        ),
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                        canRequestFocus: true,
+                        onChanged: (_) => setState(() {}),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      height: _inputMinHeight,
+                      child: ElevatedButton(
+                        onPressed: _isAdding ? null : () => _addSubject(context, userId),
+                        style: AppButtonStyles.primaryElevated,
+                        child: _isAdding
+                            ? const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Text('보호 대상 추가'),
                       ),
                     ),
                     // 3. 초대 영역

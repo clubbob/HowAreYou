@@ -38,26 +38,6 @@ class _GuardianScreenState extends State<GuardianScreen> {
     super.dispose();
   }
 
-  /// 지정자 이름을 다이얼로그에서 입력 (전용 StatefulWidget + FocusNode로 입력 보장)
-  Future<void> _showNameInputDialog(BuildContext context) async {
-    final initialName = _nameController.text;
-
-    final result = await showDialog<String>(
-      context: context,
-      barrierDismissible: false,
-      useSafeArea: true,
-      builder: (ctx) => _GuardianNameDialog(initialName: initialName),
-    );
-
-    if (result != null) {
-      _nameController.text = result;
-      if (mounted) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) setState(() {});
-        });
-      }
-    }
-  }
 
   /// 목록 표시용: E.164(82...) 등을 010XXXXXXXX 형태로
   /// 821063914520 → 0 + 1063914520 = 01063914520 (82 다음이 10이면 0 하나만 붙임)
@@ -221,13 +201,6 @@ class _GuardianScreenState extends State<GuardianScreen> {
   }
 
   Future<void> _addGuardian() async {
-    if (_nameController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('보호자 이름을 먼저 입력해 주세요. (버튼을 눌러 이름 입력)')),
-      );
-      return;
-    }
     if (_phoneController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('전화번호를 입력해주세요.')),
@@ -579,24 +552,47 @@ class _GuardianScreenState extends State<GuardianScreen> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      SizedBox(
-                        height: _inputMinHeight,
-                        child: OutlinedButton.icon(
-                          onPressed: () => _showNameInputDialog(context),
-                          icon: const Icon(Icons.person, size: 22),
-                          label: Text(
-                            _nameController.text.isEmpty
-                                ? '보호자 이름 입력 (예: 와이프, 엄마)'
-                                : '보호자 이름: ${_nameController.text}',
-                          ),
-                          style: OutlinedButton.styleFrom(
-                            padding: _inputPadding,
-                            alignment: Alignment.centerLeft,
-                            minimumSize: const Size(double.infinity, _inputMinHeight),
-                            shape: RoundedRectangleBorder(
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8, bottom: 10),
+                        child: TextField(
+                          controller: _nameController,
+                          decoration: InputDecoration(
+                            labelText: '보호자 이름(별칭)',
+                            hintText: '예: 와이프, 엄마 (선택)',
+                            border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(_inputRadius),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade400 ?? Colors.grey,
+                                width: 1.0,
+                              ),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(_inputRadius),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade400 ?? Colors.grey,
+                                width: 1.0,
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(_inputRadius),
+                              borderSide: const BorderSide(
+                                color: Colors.blue,
+                                width: 1.5,
+                              ),
+                            ),
+                            filled: true,
+                            fillColor: Colors.white,
+                            contentPadding: const EdgeInsets.fromLTRB(
+                              16,
+                              20,
+                              16,
+                              16,
                             ),
                           ),
+                          keyboardType: TextInputType.text,
+                          textCapitalization: TextCapitalization.words,
+                          canRequestFocus: true,
+                          onChanged: (_) => setState(() {}),
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -793,129 +789,6 @@ class _GuardianScreenState extends State<GuardianScreen> {
                 );
               },
             ),
-    );
-  }
-}
-
-/// 보호자 이름 입력 다이얼로그 (StatefulWidget + FocusNode로 에뮬/기기에서 입력 보장)
-class _GuardianNameDialog extends StatefulWidget {
-  const _GuardianNameDialog({required this.initialName});
-
-  final String initialName;
-
-  @override
-  State<_GuardianNameDialog> createState() => _GuardianNameDialogState();
-}
-
-class _GuardianNameDialogState extends State<_GuardianNameDialog> {
-  late final TextEditingController _controller;
-  late final FocusNode _focusNode;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = TextEditingController(text: widget.initialName);
-    _focusNode = FocusNode();
-    
-    // 다이얼로그가 완전히 렌더링된 후 포커스 요청 (여러 번 시도)
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      // 즉시 포커스 요청
-      if (mounted && _focusNode.canRequestFocus) {
-        _focusNode.requestFocus();
-      }
-      // 추가 지연 후 포커스 요청
-      Future.delayed(const Duration(milliseconds: 100), () {
-        if (mounted && _focusNode.canRequestFocus && !_focusNode.hasFocus) {
-          _focusNode.requestFocus();
-        }
-      });
-      Future.delayed(const Duration(milliseconds: 300), () {
-        if (mounted && _focusNode.canRequestFocus && !_focusNode.hasFocus) {
-          _focusNode.requestFocus();
-        }
-      });
-      Future.delayed(const Duration(milliseconds: 500), () {
-        if (mounted && _focusNode.canRequestFocus && !_focusNode.hasFocus) {
-          _focusNode.requestFocus();
-        }
-      });
-    });
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    _focusNode.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('보호자 이름'),
-      contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
-      insetPadding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
-      scrollable: false,
-      content: FocusScope(
-        autofocus: true,
-        child: SizedBox(
-          width: double.maxFinite,
-          child: TextField(
-            controller: _controller,
-            focusNode: _focusNode,
-            decoration: const InputDecoration(
-              labelText: '이름(별칭)',
-              hintText: '예: 와이프, 엄마',
-              border: OutlineInputBorder(),
-              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-            ),
-            keyboardType: TextInputType.text,
-            textInputAction: TextInputAction.done,
-            textCapitalization: TextCapitalization.words,
-            autofocus: true,
-            enabled: true,
-            readOnly: false,
-            canRequestFocus: true,
-            enableInteractiveSelection: true,
-            onTap: () {
-              // 탭 시 명시적으로 포커스 요청
-              if (!_focusNode.hasFocus) {
-                _focusNode.requestFocus();
-              }
-            },
-            onChanged: (value) {
-              // 입력이 변경될 때 포커스 확인 및 유지
-              if (mounted) {
-                if (!_focusNode.hasFocus) {
-                  _focusNode.requestFocus();
-                }
-                setState(() {});
-              }
-            },
-            onSubmitted: (value) {
-              if (mounted) {
-                Navigator.of(context).pop(value.trim());
-              }
-            },
-          ),
-        ),
-      ),
-      actionsPadding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('취소'),
-        ),
-        FilledButton(
-          onPressed: () {
-            if (mounted) {
-              Navigator.of(context).pop(_controller.text.trim());
-            }
-          },
-          style: AppButtonStyles.primaryFilled,
-          child: const Text('확인'),
-        ),
-      ],
     );
   }
 }
