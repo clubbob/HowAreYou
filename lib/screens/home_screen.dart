@@ -167,7 +167,7 @@ class _HomeScreenState extends State<HomeScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const Text(
-                '버튼 하나로\n안부를 전하는 앱입니다.',
+                '버튼 하나로\n안부를 전해요.',
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
@@ -187,7 +187,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 24),
               const Text(
-                '어느 쪽으로 사용하시겠어요?',
+                '어떤 역할로 시작할까요?',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w500,
@@ -197,7 +197,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                '선택은 언제든 변경할 수 있습니다.',
+                '언제든 바꿀 수 있어요.',
                 style: TextStyle(
                   fontSize: 13,
                   color: Colors.grey.shade600,
@@ -217,7 +217,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       Text('보호대상자', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
                       SizedBox(height: 6),
-                      Text('안부를 남깁니다.', style: TextStyle(fontSize: 16)),
+                      Text('안부를 남겨요.', style: TextStyle(fontSize: 16)),
                     ],
                   ),
                   style: FilledButton.styleFrom(
@@ -245,7 +245,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       Text('보호자', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
                       SizedBox(height: 6),
-                      Text('안부를 확인합니다.', style: TextStyle(fontSize: 16)),
+                      Text('전달된 안부를 확인해요.', style: TextStyle(fontSize: 16)),
                     ],
                   ),
                   style: FilledButton.styleFrom(

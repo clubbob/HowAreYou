@@ -232,15 +232,18 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Icon(Icons.favorite_outline, color: Colors.blue.shade700, size: 24),
                         const SizedBox(width: 8),
-                        Text(
-                          '하루에 한 번, 버튼만 누르면 안부가 전달돼요.',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.blue.shade900,
+                        Expanded(
+                          child: Text(
+                            '하루에 한 번, 버튼만 누르면 안부가 전달돼요.',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue.shade900,
+                            ),
                           ),
                         ),
                       ],
@@ -430,7 +433,8 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> {
         ),
       );
       if (choice != 'retry' || !mounted) return;
-      await _moodService.deleteTodayResponse(userId);
+      // "다시 선택하기"를 선택한 경우, 삭제하지 않고 화면만 열기
+      // saveMoodResponse가 이미 덮어쓰므로 저장할 때 자동으로 처리됨
     }
 
     if (mounted) {

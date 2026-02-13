@@ -91,8 +91,8 @@ class NotificationService {
       // 매일 저녁 7시 알림 스케줄링
       await _scheduleNotification(
         id: 1,
-        title: '지금 어때?',
-        body: '오늘 컨디션을 등록했나요?',
+        title: '',
+        body: '오늘 안부 남겨볼까요?',
         hour: 19,
         minute: 0,
       );
@@ -379,8 +379,8 @@ class NotificationService {
       const notificationId = 9999;
       await _notifications.show(
         notificationId,
-        '지금 어때?',
-        '오늘 컨디션을 등록했나요?',
+        '',
+        '오늘 안부 남겨볼까요?',
         NotificationDetails(
           android: AndroidNotificationDetails(
             'daily_mood_check',

@@ -199,9 +199,9 @@ class FCMService {
         subjectDisplayName = data['subjectDisplayName'] ?? '보호 대상';
       }
       
-      // 알림 제목과 본문 수정
-      final title = '기록 알림';
-      final body = '$subjectDisplayName님이 컨디션을 기록 했습니다';
+      // 알림 제목과 본문 수정 (제목 없이)
+      final title = '';
+      final body = '$subjectDisplayName님이 오늘 안부를 남겼어요.';
       
       final androidDetails = AndroidNotificationDetails(
         'guardian_notifications',
@@ -392,8 +392,8 @@ class FCMService {
       }
       
       const notificationId = 9998;
-      final title = '기록 알림';
-      final body = '$subjectName님이 컨디션을 기록 했습니다';
+      final title = '';
+      final body = '$subjectName님이 오늘 안부를 남겼어요.';
       
       // 테스트용: 첫 번째 보호 대상자의 ID를 payload에 포함
       String? testSubjectId;
