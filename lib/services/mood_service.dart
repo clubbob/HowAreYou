@@ -20,6 +20,7 @@ class MoodService {
   }
 
   /// 응답 저장. 24시 기준 하루 1회 → 문서 id = yyyy-MM-dd, slot = daily.
+  /// 저장 성공 시 subjects 문서의 리마인드 필드도 업데이트함.
   Future<void> saveMoodResponse({
     required String subjectId,
     required TimeSlot slot,
@@ -38,12 +39,31 @@ class MoodService {
       note: note,
     );
 
+    // 응답 저장
     await _firestore
         .collection('subjects')
         .doc(subjectId)
         .collection('prompts')
         .doc(docId)
         .set(response.toMap());
+
+    // 리마인드 필드 업데이트: 기록하면 오늘 리마인드 대상에서 즉시 제외
+    final nowKorea = tz.TZDateTime.now(tz.getLocation('Asia/Seoul'));
+    final tomorrow = tz.TZDateTime(
+      tz.getLocation('Asia/Seoul'),
+      nowKorea.year,
+      nowKorea.month,
+      nowKorea.day + 1,
+      19,
+      0,
+    );
+    
+    await _firestore.collection('subjects').doc(subjectId).update({
+      'lastResponseAt': Timestamp.fromDate(now),
+      'lastResponseDate': dateStr,
+      'reminderSentForDate': dateStr, // 오늘 발송 완료로 표시
+      'nextReminderAt': Timestamp.fromDate(tomorrow.toUtc()), // 내일 19:00으로 설정 (UTC 변환)
+    });
   }
 
   /// 오늘 이미 응답했는지 (24시 기준 하루 1회)

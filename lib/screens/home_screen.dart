@@ -316,6 +316,20 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ],
                     ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () => _sendTestEscalationNotification(),
+                        icon: const Icon(Icons.warning_amber_rounded, size: 18),
+                        label: const Text('3일 미응답 시뮬레이션'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.orange.shade800,
+                          side: BorderSide(color: Colors.orange.shade400),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -358,6 +372,30 @@ class _HomeScreenState extends State<HomeScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('보호자 테스트 알림이 발송되었습니다.'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('알림 발송 실패: $e'),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
+  /// 테스트용: 3일 미응답 시 보호자 알림 시뮬레이션
+  Future<void> _sendTestEscalationNotification() async {
+    try {
+      await FCMService.instance.sendTestEscalationNotification();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('3일 미응답 알림 시뮬레이션이 발송되었습니다.'),
             duration: Duration(seconds: 2),
           ),
         );

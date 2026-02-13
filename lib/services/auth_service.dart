@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:timezone/timezone.dart' as tz;
 import 'dart:io' show Platform;
 import '../models/user_model.dart';
 import 'fcm_service.dart';
@@ -110,6 +111,8 @@ class AuthService extends ChangeNotifier {
         debugPrint('verifyOTP: 사용자 문서 확보 시도');
         await _ensureUserDocument(user.uid, phoneNumber);
         debugPrint('verifyOTP: 사용자 문서 확보 완료');
+        await _ensureSubjectDocument(user.uid);
+        debugPrint('verifyOTP: 보호대상자 문서 확보 완료');
         await _saveLastLoginPhone(phoneNumber);
         // FCM은 로그인 완료 후 백그라운드에서 초기화 (에뮬레이터에서 getToken 지연 시 로딩 멈춤 방지)
         FCMService.instance.initialize(user.uid).catchError((e) {
@@ -208,6 +211,62 @@ class AuthService extends ChangeNotifier {
         {'phone': normalizedPhone},
         SetOptions(merge: true),
       );
+    }
+  }
+
+  /// subjects 문서 초기화 및 리마인드 필드 설정
+  /// 신규 사용자: nextReminderAt을 오늘/내일 19:00으로 설정
+  /// 기존 사용자: 필드가 없으면 초기화
+  Future<void> _ensureSubjectDocument(String uid) async {
+    try {
+      final subjectRef = _firestore.collection('subjects').doc(uid);
+      final doc = await subjectRef.get();
+      
+      // 현재 시간 (Asia/Seoul 기준)
+      final now = tz.TZDateTime.now(tz.getLocation('Asia/Seoul'));
+      final today = DateTime(now.year, now.month, now.day);
+      final todayStr = '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+      
+      // 19:00 이전이면 오늘 19:00, 이후면 내일 19:00
+      final reminderTime = now.hour < 19
+          ? tz.TZDateTime(tz.getLocation('Asia/Seoul'), now.year, now.month, now.day, 19, 0)
+          : tz.TZDateTime(tz.getLocation('Asia/Seoul'), now.year, now.month, now.day + 1, 19, 0);
+      
+      if (!doc.exists) {
+        // 신규 사용자: subjects 문서 생성 및 리마인드 필드 초기화
+        await subjectRef.set({
+          'nextReminderAt': Timestamp.fromDate(reminderTime),
+          'reminderSentForDate': null,
+          'lastResponseAt': null,
+          'lastResponseDate': null,
+        }, SetOptions(merge: true));
+        debugPrint('_ensureSubjectDocument: 신규 사용자 subjects 문서 생성 완료');
+      } else {
+        // 기존 사용자: 필드가 없으면 초기화
+        final data = doc.data();
+        final needsUpdate = <String, dynamic>{};
+        
+        if (data == null || !data.containsKey('nextReminderAt')) {
+          needsUpdate['nextReminderAt'] = Timestamp.fromDate(reminderTime);
+        }
+        if (data == null || !data.containsKey('reminderSentForDate')) {
+          needsUpdate['reminderSentForDate'] = null;
+        }
+        if (data == null || !data.containsKey('lastResponseAt')) {
+          needsUpdate['lastResponseAt'] = null;
+        }
+        if (data == null || !data.containsKey('lastResponseDate')) {
+          needsUpdate['lastResponseDate'] = null;
+        }
+        
+        if (needsUpdate.isNotEmpty) {
+          await subjectRef.update(needsUpdate);
+          debugPrint('_ensureSubjectDocument: 기존 사용자 필드 초기화 완료');
+        }
+      }
+    } catch (e) {
+      debugPrint('_ensureSubjectDocument 오류: $e');
+      // 오류가 발생해도 로그인 플로우는 계속 진행
     }
   }
 

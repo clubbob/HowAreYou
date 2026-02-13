@@ -456,4 +456,83 @@ class FCMService {
       rethrow;
     }
   }
+
+  /// 테스트용: 3일 미응답 시 보호자 알림 시뮬레이션
+  Future<void> sendTestEscalationNotification() async {
+    try {
+      debugPrint('[테스트 알림] 3일 미응답 시뮬레이션 발송 시작');
+
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        debugPrint('[테스트 알림] 로그인하지 않은 사용자');
+        return;
+      }
+
+      String subjectName = '보호 대상';
+      String? testSubjectId;
+      try {
+        final guardianService = GuardianService();
+        final subjectIds = await guardianService.getSubjectIdsForGuardian(user.uid);
+        if (subjectIds.isNotEmpty) {
+          subjectName = await guardianService.getSubjectDisplayNameForGuardian(
+            subjectIds.first,
+            user.uid,
+          );
+          testSubjectId = subjectIds.first;
+        }
+      } catch (e) {
+        debugPrint('[테스트 알림] 보호 대상자 정보 가져오기 실패: $e');
+      }
+
+      const notificationId = 9997;
+      const title = '지금 어때?';
+      final body = '$subjectName님이 3일째 안부를 남기지 않았습니다. 확인이 필요합니다.';
+
+      final payload = testSubjectId != null && testSubjectId.isNotEmpty
+          ? 'ESCALATION_3DAYS|$testSubjectId'
+          : 'ESCALATION_3DAYS';
+
+      await _localNotifications.show(
+        notificationId,
+        title,
+        body,
+        NotificationDetails(
+          android: AndroidNotificationDetails(
+            'guardian_notifications',
+            '보호자 알림',
+            channelDescription: '보호 대상의 상태 확인 및 미회신 알림',
+            importance: Importance.max,
+            priority: Priority.max,
+            playSound: true,
+            enableVibration: true,
+            vibrationPattern: Int64List.fromList([0, 500, 200, 500]),
+            category: AndroidNotificationCategory.alarm,
+            styleInformation: const BigTextStyleInformation(''),
+            autoCancel: true,
+            ongoing: false,
+            showWhen: true,
+            enableLights: true,
+            color: const Color(0xFF4285F4),
+            visibility: NotificationVisibility.public,
+          ),
+          iOS: const DarwinNotificationDetails(
+            presentAlert: true,
+            presentBadge: true,
+            presentSound: true,
+          ),
+        ),
+        payload: payload,
+      );
+
+      Future.delayed(const Duration(seconds: 10), () {
+        _localNotifications.cancel(notificationId);
+        debugPrint('[테스트 알림] 3일 미응답 시뮬레이션 자동 취소 (10초 후)');
+      });
+
+      debugPrint('[테스트 알림] 3일 미응답 시뮬레이션 발송 완료 (ID: $notificationId, 이름: $subjectName)');
+    } catch (e) {
+      debugPrint('[테스트 알림] 오류: $e');
+      rethrow;
+    }
+  }
 }

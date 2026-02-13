@@ -39,6 +39,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
   DateTime? _codeSentTime;
   bool _canResend = false;
 
+
   @override
   void initState() {
     super.initState();
@@ -587,7 +588,8 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                   controller: _phoneController,
                   decoration: InputDecoration(
                     labelText: '전화번호',
-                    hintText: '010-1234-5678',
+                    hintText: '01012345678',
+                    helperText: '숫자만 입력하세요',
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),

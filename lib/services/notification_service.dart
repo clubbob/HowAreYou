@@ -197,7 +197,7 @@ class NotificationService {
       
       // 보호대상자 알림인 경우 오늘 알림 무시 상태 저장
       final payload = response.payload;
-      if (payload != 'RESPONSE_RECEIVED' && payload != 'UNREACHABLE') {
+      if (payload != 'RESPONSE_RECEIVED' && payload != 'UNREACHABLE' && payload != 'ESCALATION_3DAYS') {
         final prefs = await SharedPreferences.getInstance();
         final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
         await prefs.setString('notification_dismissed_date', today);
@@ -228,8 +228,8 @@ class NotificationService {
     // 알림 탭 (actionId가 null인 경우) - payload로 구분
     if (response.actionId == null) {
       final payload = response.payload;
-      if (payload == 'RESPONSE_RECEIVED' || payload == 'UNREACHABLE' || 
-          (payload != null && (payload.startsWith('RESPONSE_RECEIVED') || payload.startsWith('UNREACHABLE')))) {
+      if (payload == 'RESPONSE_RECEIVED' || payload == 'UNREACHABLE' || payload == 'ESCALATION_3DAYS' ||
+          (payload != null && (payload.startsWith('RESPONSE_RECEIVED') || payload.startsWith('UNREACHABLE') || payload.startsWith('ESCALATION_3DAYS')))) {
         debugPrint('[알림] ✅ 보호자 알림 탭 - 상세 화면으로 이동');
         if (response.id != null) {
           await _notifications.cancel(response.id!);
@@ -262,7 +262,7 @@ class NotificationService {
         }
       }
 
-      // payload에서 subjectId 추출 (형식: "RESPONSE_RECEIVED|subjectId" 또는 "UNREACHABLE|subjectId")
+      // payload에서 subjectId 추출 (형식: "RESPONSE_RECEIVED|subjectId", "UNREACHABLE|subjectId", "ESCALATION_3DAYS|subjectId")
       String? subjectId;
       if (payload != null && payload.contains('|')) {
         final parts = payload.split('|');
