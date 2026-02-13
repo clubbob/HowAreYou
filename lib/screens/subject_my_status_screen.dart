@@ -252,10 +252,10 @@ class _SubjectMyStatusScreenState extends State<SubjectMyStatusScreen> {
                           _buildSummaryText(_historyResponses!),
                           const SizedBox(height: 12),
                           StatusHistoryTable(historyResponses: _historyResponses),
-                          // 최근 7일 메모 섹션 (그래프 아래)
+                          // 최근 나의 한 줄 섹션 (요약형, 그래프 아래)
                           if (_historyResponses != null) ...[
                             const SizedBox(height: 32),
-                            _buildMemoSection(_historyResponses!),
+                            _buildRecentMemoSummary(_historyResponses!),
                           ],
                           // 더 보기 버튼 (7일만 보여줄 때만 표시)
                           if (!_showExtendedHistory && _historyResponses!.length == 7) ...[
@@ -329,8 +329,8 @@ class _SubjectMyStatusScreenState extends State<SubjectMyStatusScreen> {
     );
   }
 
-  /// 최근 7일 메모 섹션 빌드 (메모가 있는 날짜만 표시)
-  Widget _buildMemoSection(Map<String, Map<TimeSlot, MoodResponseModel?>> historyResponses) {
+  /// 최근 나의 한 줄 섹션 빌드 (요약형, 최대 3개)
+  Widget _buildRecentMemoSummary(Map<String, Map<TimeSlot, MoodResponseModel?>> historyResponses) {
     // 메모가 있는 날짜만 필터링 (날짜 내림차순)
     final memosWithDate = <MapEntry<String, String>>[];
     
@@ -350,21 +350,61 @@ class _SubjectMyStatusScreenState extends State<SubjectMyStatusScreen> {
     // 날짜 내림차순 정렬 (최신순)
     memosWithDate.sort((a, b) => b.key.compareTo(a.key));
     
-    // 최근 7일만 표시
-    final recentMemos = memosWithDate.take(7).toList();
-    
-    // 메모 섹션은 항상 표시 (메모가 없어도 섹션은 보여줌)
+    // 최대 3개만 표시
+    final recentMemos = memosWithDate.take(3).toList();
     
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          '최근 7일 메모',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: Colors.grey.shade700,
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              '최근 나의 한 줄',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey.shade700,
+              ),
+            ),
+            if (memosWithDate.length > 3)
+              TextButton(
+                onPressed: () {
+                  // 메모 상세 보기 화면으로 이동
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => MemoDetailScreen(
+                        subjectId: widget.subjectId,
+                      ),
+                    ),
+                  );
+                },
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '전체 보기',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey.shade600,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(width: 2),
+                    Icon(
+                      Icons.chevron_right,
+                      size: 16,
+                      color: Colors.grey.shade600,
+                    ),
+                  ],
+                ),
+              ),
+          ],
         ),
         const SizedBox(height: 12),
         if (recentMemos.isEmpty)
@@ -380,7 +420,7 @@ class _SubjectMyStatusScreenState extends State<SubjectMyStatusScreen> {
                 Icon(Icons.note_outlined, size: 20, color: Colors.grey.shade600),
                 const SizedBox(width: 12),
                 Text(
-                  '최근 7일 동안 기록된 메모가 없습니다.',
+                  '최근 기록된 한 줄이 없습니다.',
                   style: TextStyle(
                     fontSize: 14,
                     color: Colors.grey.shade600,
@@ -391,90 +431,76 @@ class _SubjectMyStatusScreenState extends State<SubjectMyStatusScreen> {
           )
         else
           ...recentMemos.map((entry) {
-          final dateStr = entry.key;
-          final memo = entry.value;
-          
-          // 날짜 파싱 및 포맷팅
-          DateTime? date;
-          try {
-            date = DateFormat('yyyy-MM-dd').parse(dateStr);
-          } catch (_) {
-            date = null;
-          }
-          
-          final formattedDate = date != null
-              ? DateFormat('M/d', 'ko_KR').format(date)
-              : dateStr;
-          
-          // 해당 날짜의 mood 찾기
-          Mood? mood;
-          final dayResponses = historyResponses[dateStr];
-          if (dayResponses != null) {
-            for (final response in dayResponses.values) {
-              if (response != null) {
-                mood = response.mood;
-                break;
+            final dateStr = entry.key;
+            final memo = entry.value;
+            
+            // 날짜 파싱 및 포맷팅
+            DateTime? date;
+            try {
+              date = DateFormat('yyyy-MM-dd').parse(dateStr);
+            } catch (_) {
+              date = null;
+            }
+            
+            final formattedDate = date != null
+                ? DateFormat('M/d', 'ko_KR').format(date)
+                : dateStr;
+            
+            // 해당 날짜의 mood 찾기
+            Mood? mood;
+            final dayResponses = historyResponses[dateStr];
+            if (dayResponses != null) {
+              for (final response in dayResponses.values) {
+                if (response != null) {
+                  mood = response.mood;
+                  break;
+                }
               }
             }
-          }
-          
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: InkWell(
-              onTap: () {
-                // 메모 상세 보기 화면으로 이동
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => MemoDetailScreen(
-                      subjectId: widget.subjectId,
-                      initialDate: dateStr,
+            
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: InkWell(
+                onTap: () {
+                  // 메모 상세 보기 화면으로 이동
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => MemoDetailScreen(
+                        subjectId: widget.subjectId,
+                        initialDate: dateStr,
+                      ),
                     ),
+                  );
+                },
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey.shade200, width: 1),
                   ),
-                );
-              },
-              borderRadius: BorderRadius.circular(12),
-              child: Card(
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(color: Colors.grey.shade200, width: 1),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // 날짜와 이모지
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      Row(
                         children: [
-                          Row(
-                            children: [
-                              Text(
-                                formattedDate,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.grey.shade800,
-                                ),
-                              ),
-                              if (mood != null) ...[
-                                const SizedBox(width: 8),
-                                Text(
-                                  mood.emoji,
-                                  style: const TextStyle(fontSize: 16),
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  mood.label,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey.shade600,
-                                  ),
-                                ),
-                              ],
-                            ],
+                          Text(
+                            formattedDate,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey.shade700,
+                            ),
                           ),
+                          if (mood != null) ...[
+                            const SizedBox(width: 6),
+                            Text(
+                              mood.emoji,
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                          ],
                         ],
                       ),
                       const SizedBox(width: 12),
@@ -487,23 +513,16 @@ class _SubjectMyStatusScreenState extends State<SubjectMyStatusScreen> {
                             color: Colors.grey.shade800,
                             height: 1.4,
                           ),
-                          maxLines: 2,
+                          maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      Icon(
-                        Icons.chevron_right,
-                        size: 20,
-                        color: Colors.grey.shade400,
                       ),
                     ],
                   ),
                 ),
               ),
-            ),
-          );
-        }),
+            );
+          }),
       ],
     );
   }

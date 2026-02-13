@@ -126,7 +126,7 @@ class AuthService extends ChangeNotifier {
       String errorMessage;
       switch (e.code) {
         case 'invalid-verification-code':
-          errorMessage = '인증 코드가 올바르지 않습니다. 문자로 받은 코드를 다시 확인해주세요.';
+          errorMessage = '인증번호가 일치하지 않아요.\n다시 한 번 확인해 주세요.';
           break;
         case 'invalid-verification-id':
           errorMessage = '인증 세션이 만료되었습니다. 전화번호를 다시 입력해주세요.';

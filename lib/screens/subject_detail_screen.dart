@@ -294,62 +294,7 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 해석 가이드 및 안전 신호 안내
-                Container(
-                  margin: const EdgeInsets.only(bottom: 16),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.blue.shade200, width: 1),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.info_outline, color: Colors.blue.shade700, size: 20),
-                          const SizedBox(width: 8),
-                          Text(
-                            '안내',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.blue.shade900,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        '이 정보는 참고용이며, 판단이나 조치를 의미하지 않습니다.',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.blue.shade900,
-                          fontWeight: FontWeight.w400,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        '보호자는 기록이 전달되었는지 정도만 확인하며, 구체적인 내용은 공유되지 않습니다.',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.blue.shade900,
-                          fontWeight: FontWeight.w400,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        '최근 기록이 있다는 것은, 일상적인 활동이 있었을 수 있다는 신호로 이해할 수 있습니다.',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.blue.shade900,
-                          fontWeight: FontWeight.w400,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                // 대상 이름
                 Row(
                   children: [
                     Expanded(
@@ -373,7 +318,8 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 24),
+                // 오늘 기록 상태 (최상단 강조 영역)
                 TodayStatusWidget(
                   responses: _responses,
                   onNoResponseTap: (slot) =>
@@ -381,6 +327,7 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
                   noResponseSubjectName: subjectName,
                   isGuardianView: true,
                 ),
+                // 최근 7일 기록 그래프
                 if (_historyResponses != null &&
                     _historyResponses!.isNotEmpty) ...[
                   const SizedBox(height: 24),
@@ -389,6 +336,34 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
                     isGuardianView: true,
                   ),
                 ],
+                const SizedBox(height: 32),
+                // 안내 박스 (하단 보조 영역)
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50.withOpacity(0.6),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.blue.shade200.withOpacity(0.5), width: 1),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.info_outline, color: Colors.blue.shade700, size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          '최근 안부가 기록되었는지만 확인할 수 있어요.\n자세한 내용은 공유되지 않습니다.',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.blue.shade900,
+                            fontWeight: FontWeight.w400,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           );

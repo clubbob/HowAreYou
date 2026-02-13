@@ -27,18 +27,57 @@ class AuthScreen extends StatefulWidget {
   State<AuthScreen> createState() => _AuthScreenState();
 }
 
-class _AuthScreenState extends State<AuthScreen> {
+class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateMixin {
   final _phoneController = TextEditingController();
   final _codeController = TextEditingController();
+  final _codeFocusNode = FocusNode();
   String? _verificationId;
   bool _isLoading = false;
   bool _codeSent = false;
+  String? _errorMessage;
+  AnimationController? _shakeController;
+  DateTime? _codeSentTime;
+  bool _canResend = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _shakeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    _shakeController!.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        _shakeController!.reset();
+      }
+    });
+    // 6자리 입력 시 자동 인증 시도
+    _codeController.addListener(() {
+      // 에러 메시지가 있으면 입력 시 제거
+      if (_errorMessage != null && _codeController.text.isNotEmpty) {
+        setState(() {
+          _errorMessage = null;
+        });
+      }
+      if (_codeController.text.length == 6 && !_isLoading && _verificationId != null) {
+        _verifyOTP();
+      }
+    });
+  }
 
   @override
   void dispose() {
     _phoneController.dispose();
     _codeController.dispose();
+    _codeFocusNode.dispose();
+    _shakeController?.dispose();
     super.dispose();
+  }
+
+  void _shakeInput() {
+    if (mounted && _shakeController != null && !_shakeController!.isAnimating) {
+      _shakeController!.forward(from: 0.0);
+    }
   }
 
   /// 로그인 성공 후: 초대 링크로 들어왔으면 보호대상자/보호자 연결 후 해당 화면, 아니면 Home
@@ -341,6 +380,21 @@ class _AuthScreenState extends State<AuthScreen> {
               _verificationId = verificationId;
               _codeSent = true;
               _isLoading = false;
+              _errorMessage = null;
+              _codeSentTime = DateTime.now();
+              _canResend = false;
+            });
+            // 30초 후 재전송 가능하도록 설정
+            Future.delayed(const Duration(seconds: 30), () {
+              if (mounted) {
+                setState(() {
+                  _canResend = true;
+                });
+              }
+            });
+            // 자동 포커스 및 숫자 키패드 표시
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _codeFocusNode.requestFocus();
             });
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
@@ -357,6 +411,20 @@ class _AuthScreenState extends State<AuthScreen> {
               _verificationId = verificationId;
               _codeSent = true;
               _isLoading = false;
+              _codeSentTime = DateTime.now();
+              _canResend = false;
+            });
+            // 30초 후 재전송 가능하도록 설정
+            Future.delayed(const Duration(seconds: 30), () {
+              if (mounted) {
+                setState(() {
+                  _canResend = true;
+                });
+              }
+            });
+            // 자동 포커스 및 숫자 키패드 표시
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _codeFocusNode.requestFocus();
             });
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
@@ -389,14 +457,16 @@ class _AuthScreenState extends State<AuthScreen> {
 
   Future<void> _verifyOTP() async {
     if (_codeController.text.isEmpty || _verificationId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('인증 코드를 입력해주세요.')),
-      );
+      setState(() {
+        _errorMessage = '인증번호를 입력해 주세요.';
+      });
+      _shakeInput();
       return;
     }
 
     setState(() {
       _isLoading = true;
+      _errorMessage = null;
     });
 
     try {
@@ -416,8 +486,14 @@ class _AuthScreenState extends State<AuthScreen> {
           final authService = Provider.of<AuthService>(context, listen: false);
           await _navigateAfterLogin(context, authService);
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(error), duration: const Duration(seconds: 5)),
+          setState(() {
+            _errorMessage = error;
+          });
+          _shakeInput();
+          // 입력값 전체 선택
+          _codeController.selection = TextSelection(
+            baseOffset: 0,
+            extentOffset: _codeController.text.length,
           );
         }
       }
@@ -425,11 +501,43 @@ class _AuthScreenState extends State<AuthScreen> {
       if (mounted) {
         setState(() {
           _isLoading = false;
+          _errorMessage = e is TimeoutException 
+              ? (e.message ?? '요청이 지연되었습니다. 네트워크를 확인해 주세요.') 
+              : '오류가 발생했습니다. 잠시 후 다시 시도해 주세요.';
         });
-        final msg = e is TimeoutException ? (e.message ?? '요청이 지연되었습니다. 네트워크를 확인해 주세요.') : '오류가 발생했습니다. 잠시 후 다시 시도해 주세요.';
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(msg), duration: const Duration(seconds: 5)),
+        _shakeInput();
+        // 입력값 전체 선택
+        _codeController.selection = TextSelection(
+          baseOffset: 0,
+          extentOffset: _codeController.text.length,
         );
+      }
+    }
+  }
+
+  Future<void> _resendCode() async {
+    if (!_canResend || _isLoading) return;
+    
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+      _codeController.clear();
+      _canResend = false;
+    });
+
+    try {
+      await _sendOTP();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('인증번호를 다시 보냈어요.'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
       }
     }
   }
@@ -438,7 +546,8 @@ class _AuthScreenState extends State<AuthScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('로그인'),
+        // 타이틀 제거 - 시작 화면이므로 불필요
+        automaticallyImplyLeading: false,
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -449,7 +558,7 @@ class _AuthScreenState extends State<AuthScreen> {
             children: [
               const SizedBox(height: 40),
               Text(
-                _codeSent ? '인증 코드 입력' : '지금 어때?',
+                _codeSent ? '인증번호 입력' : '지금 어때?',
                 style: const TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.w600,
@@ -461,11 +570,14 @@ class _AuthScreenState extends State<AuthScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                _codeSent ? '문자로 받은 6자리 코드를 입력하세요' : '전화번호로 로그인하세요',
+                _codeSent 
+                    ? '문자로 받은 6자리 인증번호를 입력해 주세요.' 
+                    : '하루 한 번이면 충분해요.\n전화번호로 시작하세요.',
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w400,
                   color: Colors.grey.shade600,
+                  height: 1.4,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -508,32 +620,100 @@ class _AuthScreenState extends State<AuthScreen> {
                             valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                           ),
                         )
-                      : const Text('인증 코드 전송'),
+                      : const Text('인증번호 받기'),
                 ),
               ] else ...[
-                TextField(
-                  controller: _codeController,
-                  decoration: InputDecoration(
-                    hintText: '000000',
-                    counterText: '',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                _shakeController != null
+                    ? AnimatedBuilder(
+                        animation: _shakeController!,
+                        builder: (context, child) {
+                          final offset = _shakeController!.value;
+                          // 부드러운 좌우 흔들림 효과
+                          final shakeOffset = 8.0 * (offset < 0.5 
+                              ? -offset * 2 
+                              : (offset - 0.5) * 2 - 1);
+                          return Transform.translate(
+                            offset: Offset(shakeOffset, 0),
+                            child: child,
+                          );
+                        },
+                        child: TextField(
+                          controller: _codeController,
+                          focusNode: _codeFocusNode,
+                          decoration: InputDecoration(
+                            hintText: '000000',
+                            counterText: '',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            filled: true,
+                            fillColor: Colors.grey.shade50,
+                            contentPadding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
+                          ),
+                          keyboardType: TextInputType.number,
+                          maxLength: 6,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 12,
+                            color: Color(0xFF202124),
+                          ),
+                        ),
+                      )
+                    : TextField(
+                        controller: _codeController,
+                        focusNode: _codeFocusNode,
+                        decoration: InputDecoration(
+                          hintText: '000000',
+                          counterText: '',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          filled: true,
+                          fillColor: Colors.grey.shade50,
+                          contentPadding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
+                        ),
+                        keyboardType: TextInputType.number,
+                        maxLength: 6,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 12,
+                          color: Color(0xFF202124),
+                        ),
+                      ),
+                if (_errorMessage != null) ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFDECEC),
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                    filled: true,
-                    fillColor: Colors.grey.shade50,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
+                    child: Text(
+                      _errorMessage!,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFFD32F2F),
+                        height: 1.4,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
                   ),
-                  keyboardType: TextInputType.number,
-                  maxLength: 6,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 12,
-                    color: Color(0xFF202124),
+                ] else ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    '인증번호는 안전하게 처리됩니다.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey.shade600,
+                    ),
+                    textAlign: TextAlign.center,
                   ),
-                ),
-                const SizedBox(height: 28),
+                ],
+                const SizedBox(height: 20),
                 ElevatedButton(
                   onPressed: _isLoading ? null : _verifyOTP,
                   style: ElevatedButton.styleFrom(
@@ -551,24 +731,41 @@ class _AuthScreenState extends State<AuthScreen> {
                             valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                           ),
                         )
-                      : const Text('인증 확인'),
+                      : const Text('로그인하기'),
                 ),
                 const SizedBox(height: 12),
-                TextButton(
-                  onPressed: () {
-                    setState(() {
-                      _codeSent = false;
-                      _codeController.clear();
-                    });
-                  },
-                  child: Text(
-                    '전화번호 다시 입력',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey.shade700,
-                      decoration: TextDecoration.none,
+                Column(
+                  children: [
+                    TextButton(
+                      onPressed: () {
+                        setState(() {
+                          _codeSent = false;
+                          _codeController.clear();
+                          _errorMessage = null;
+                        });
+                      },
+                      child: Text(
+                        '전화번호 다시 입력',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey.shade700,
+                          decoration: TextDecoration.none,
+                        ),
+                      ),
                     ),
-                  ),
+                    if (_canResend)
+                      TextButton(
+                        onPressed: _isLoading ? null : _resendCode,
+                        child: Text(
+                          '인증번호 다시 받기',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Theme.of(context).colorScheme.primary,
+                            decoration: TextDecoration.none,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ],
               const SizedBox(height: 40),
