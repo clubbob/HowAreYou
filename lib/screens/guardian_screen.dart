@@ -92,84 +92,6 @@ class _GuardianScreenState extends State<GuardianScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // 링크 표시 영역
-                    const Text(
-                      '초대 링크',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade50,
-                        border: Border.all(color: Colors.grey.shade300),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: SelectableText(
-                              inviteUrl,
-                              style: const TextStyle(
-                                fontSize: 14,
-                                color: Colors.black87,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          IconButton(
-                            icon: const Icon(Icons.copy, size: 20),
-                            onPressed: () {
-                              Clipboard.setData(ClipboardData(text: inviteUrl));
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('링크가 복사되었습니다'),
-                                  duration: Duration(seconds: 1),
-                                ),
-                              );
-                            },
-                            tooltip: '복사',
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    // 링크 복사 버튼
-                    SizedBox(
-                      height: 48,
-                      child: OutlinedButton.icon(
-                        onPressed: () {
-                          Clipboard.setData(ClipboardData(text: inviteUrl));
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('링크가 복사되었습니다'),
-                              duration: Duration(seconds: 1),
-                            ),
-                          );
-                        },
-                        icon: const Icon(Icons.copy, size: 18),
-                        label: const Text('링크 복사'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: const Color(0xFF5C6BC0),
-                          side: const BorderSide(color: Color(0xFF5C6BC0), width: 1.5),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 32),
-                    // 안내 문구
-                    Text(
-                      '보호자에게 이렇게 전달됩니다',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey.shade600,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
                     // 공유 예시 문구 카드
                     Container(
                       padding: const EdgeInsets.all(16),
@@ -194,7 +116,7 @@ class _GuardianScreenState extends State<GuardianScreen> {
                               IconButton(
                                 icon: const Icon(Icons.copy, size: 18),
                                 onPressed: () {
-                                  final fullMessage = '${InviteLinkHelper.suggestedMessageForGuardian}\n\n$inviteUrl';
+                                  final fullMessage = InviteLinkHelper.getFullGuardianInviteMessage(userId);
                                   Clipboard.setData(
                                     ClipboardData(text: fullMessage),
                                   );
@@ -213,7 +135,7 @@ class _GuardianScreenState extends State<GuardianScreen> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            '${InviteLinkHelper.suggestedMessageForGuardian}\n\n$inviteUrl',
+                            InviteLinkHelper.getFullGuardianInviteMessage(userId),
                             style: TextStyle(
                               fontSize: 13,
                               color: Colors.grey.shade700,

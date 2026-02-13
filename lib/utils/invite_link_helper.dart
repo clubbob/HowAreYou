@@ -21,7 +21,7 @@ class InviteLinkHelper {
 
   /// 카톡/문자로 보낼 때 쓸 문장 (보호자가 보호대상자에게)
   static const String suggestedMessage =
-      '하루에 한 번, 버튼만 누르면 안부가 전달돼요 🙂\n부담 없이 서로 안심하려고 만든 앱이에요.\n괜찮으면 설치해 주세요:';
+      '하루에 한 번, 버튼만 누르면 안부가 전달돼요 🙂\n부담 없이 서로 안심하려고 만든 앱이에요.';
 
   /// 보호대상자가 보호자에게 보낼 때 쓸 문장
   static const String suggestedMessageForGuardian =

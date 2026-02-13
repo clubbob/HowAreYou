@@ -53,9 +53,9 @@ class _SubjectMyStatusScreenState extends State<SubjectMyStatusScreen> {
 
     String summaryText;
     if (totalDaysWithRecord == 0) {
-      summaryText = '최근 $dayLabel 동안 남겨진 기록이 아직 없어요.';
+      summaryText = '최근 $dayLabel 기록이 없어요.\n오늘 한 번 남겨볼까요?';
     } else {
-      summaryText = '최근 $dayLabel 동안 기록이 있었습니다.';
+      summaryText = '최근 $dayLabel 중 $totalDaysWithRecord일 기록했어요 👍';
     }
     
     return Container(
@@ -76,6 +76,7 @@ class _SubjectMyStatusScreenState extends State<SubjectMyStatusScreen> {
                 fontSize: 14,
                 color: Colors.blue.shade900,
                 fontWeight: FontWeight.w500,
+                height: 1.4,
               ),
             ),
           ),
@@ -241,8 +242,6 @@ class _SubjectMyStatusScreenState extends State<SubjectMyStatusScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // 기록 회수 가능성 안내
-                        _buildRecordInfoBanner(),
                         // 오늘 상태
                         TodayStatusWidget(responses: _todayResponses),
                         // 최근 이력 그래프
@@ -420,7 +419,7 @@ class _SubjectMyStatusScreenState extends State<SubjectMyStatusScreen> {
                 Icon(Icons.note_outlined, size: 20, color: Colors.grey.shade600),
                 const SizedBox(width: 12),
                 Text(
-                  '최근 기록된 한 줄이 없습니다.',
+                  '아직 남긴 한 줄이 없어요.',
                   style: TextStyle(
                     fontSize: 14,
                     color: Colors.grey.shade600,
