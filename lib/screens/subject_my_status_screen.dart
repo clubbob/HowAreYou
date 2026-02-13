@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import '../services/mood_service.dart';
 import '../services/auth_service.dart';
 import '../services/guardian_service.dart';
@@ -7,6 +8,7 @@ import '../models/mood_response_model.dart';
 import '../widgets/status_display_widgets.dart';
 import '../main.dart';
 import 'auth_screen.dart';
+import 'memo_detail_screen.dart';
 
 /// 보호 대상자 자신의 상태 이력 화면
 class SubjectMyStatusScreen extends StatefulWidget {
@@ -250,6 +252,11 @@ class _SubjectMyStatusScreenState extends State<SubjectMyStatusScreen> {
                           _buildSummaryText(_historyResponses!),
                           const SizedBox(height: 12),
                           StatusHistoryTable(historyResponses: _historyResponses),
+                          // 최근 7일 메모 섹션 (그래프 아래)
+                          if (_historyResponses != null) ...[
+                            const SizedBox(height: 32),
+                            _buildMemoSection(_historyResponses!),
+                          ],
                           // 더 보기 버튼 (7일만 보여줄 때만 표시)
                           if (!_showExtendedHistory && _historyResponses!.length == 7) ...[
                             const SizedBox(height: 16),
@@ -305,6 +312,185 @@ class _SubjectMyStatusScreenState extends State<SubjectMyStatusScreen> {
                     ),
                   ),
                 ),
+    );
+  }
+
+  /// 최근 7일 메모 섹션 빌드 (메모가 있는 날짜만 표시)
+  Widget _buildMemoSection(Map<String, Map<TimeSlot, MoodResponseModel?>> historyResponses) {
+    // 메모가 있는 날짜만 필터링 (날짜 내림차순)
+    final memosWithDate = <MapEntry<String, String>>[];
+    
+    for (final entry in historyResponses.entries) {
+      final dateStr = entry.key;
+      final dayResponses = entry.value;
+      
+      // 해당 날짜의 응답 중 메모가 있는 것 찾기
+      for (final response in dayResponses.values) {
+        if (response != null && response.note != null && response.note!.trim().isNotEmpty) {
+          memosWithDate.add(MapEntry(dateStr, response.note!));
+          break; // 하루에 하나만 추가
+        }
+      }
+    }
+    
+    // 날짜 내림차순 정렬 (최신순)
+    memosWithDate.sort((a, b) => b.key.compareTo(a.key));
+    
+    // 최근 7일만 표시
+    final recentMemos = memosWithDate.take(7).toList();
+    
+    // 메모 섹션은 항상 표시 (메모가 없어도 섹션은 보여줌)
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '최근 7일 메모',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: Colors.grey.shade700,
+          ),
+        ),
+        const SizedBox(height: 12),
+        if (recentMemos.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey.shade200, width: 1),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.note_outlined, size: 20, color: Colors.grey.shade600),
+                const SizedBox(width: 12),
+                Text(
+                  '최근 7일 동안 기록된 메모가 없습니다.',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
+          ...recentMemos.map((entry) {
+          final dateStr = entry.key;
+          final memo = entry.value;
+          
+          // 날짜 파싱 및 포맷팅
+          DateTime? date;
+          try {
+            date = DateFormat('yyyy-MM-dd').parse(dateStr);
+          } catch (_) {
+            date = null;
+          }
+          
+          final formattedDate = date != null
+              ? DateFormat('M/d', 'ko_KR').format(date)
+              : dateStr;
+          
+          // 해당 날짜의 mood 찾기
+          Mood? mood;
+          final dayResponses = historyResponses[dateStr];
+          if (dayResponses != null) {
+            for (final response in dayResponses.values) {
+              if (response != null) {
+                mood = response.mood;
+                break;
+              }
+            }
+          }
+          
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: InkWell(
+              onTap: () {
+                // 메모 상세 보기 화면으로 이동
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => MemoDetailScreen(
+                      subjectId: widget.subjectId,
+                      initialDate: dateStr,
+                    ),
+                  ),
+                );
+              },
+              borderRadius: BorderRadius.circular(12),
+              child: Card(
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(color: Colors.grey.shade200, width: 1),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // 날짜와 이모지
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                formattedDate,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.grey.shade800,
+                                ),
+                              ),
+                              if (mood != null) ...[
+                                const SizedBox(width: 8),
+                                Text(
+                                  mood.emoji,
+                                  style: const TextStyle(fontSize: 16),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  mood.label,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(width: 12),
+                      // 메모 내용
+                      Expanded(
+                        child: Text(
+                          memo,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey.shade800,
+                            height: 1.4,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Icon(
+                        Icons.chevron_right,
+                        size: 20,
+                        color: Colors.grey.shade400,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        }),
+      ],
     );
   }
 }

@@ -745,8 +745,9 @@ class _SubjectListItemState extends State<_SubjectListItem> {
   }
 
   Future<void> _loadResponses() async {
-    final today = await widget.moodService.getTodayResponses(widget.subjectId);
-    final last7 = await widget.moodService.getLast7DaysResponses(widget.subjectId);
+    // 보호자용: note 필드 제외
+    final today = await widget.moodService.getTodayResponses(widget.subjectId, excludeNote: true);
+    final last7 = await widget.moodService.getLast7DaysResponses(widget.subjectId, excludeNote: true);
     DateTime? latest;
     for (final dayMap in last7.values) {
       for (final r in dayMap.values) {

@@ -75,9 +75,11 @@ class MoodService {
   }
 
   /// 오늘 상태 1건 (하루 1회). 키는 TimeSlot.daily 하나.
+  /// [excludeNote] = true면 note 필드를 제외 (보호자용)
   Future<Map<TimeSlot, MoodResponseModel?>> getTodayResponses(
-    String subjectId,
-  ) async {
+    String subjectId, {
+    bool excludeNote = false,
+  }) async {
     final dateStr = DateFormat('yyyy-MM-dd').format(_nowKorea());
     final result = <TimeSlot, MoodResponseModel?>{};
     final doc = await _firestore
@@ -92,6 +94,7 @@ class MoodService {
         doc.data() as Map<String, dynamic>,
         dateStr,
         subjectUid: subjectId,
+        excludeNote: excludeNote,
       );
     } else {
       result[TimeSlot.daily] = null;
@@ -100,10 +103,12 @@ class MoodService {
   }
 
   /// 최근 7일 이력. 날짜별로 1건씩, 키는 TimeSlot.daily.
+  /// [excludeNote] = true면 note 필드를 제외 (보호자용)
   Future<Map<String, Map<TimeSlot, MoodResponseModel?>>> getLast7DaysResponses(
-    String subjectId,
-  ) async {
-    return _getLastNDaysResponses(subjectId, 7);
+    String subjectId, {
+    bool excludeNote = false,
+  }) async {
+    return _getLastNDaysResponses(subjectId, 7, excludeNote: excludeNote);
   }
 
   /// 최근 30일 이력. 날짜별로 1건씩, 키는 TimeSlot.daily.
@@ -114,10 +119,12 @@ class MoodService {
   }
 
   /// 최근 N일 이력 조회 (내부 헬퍼 메서드)
+  /// [excludeNote] = true면 note 필드를 제외 (보호자용)
   Future<Map<String, Map<TimeSlot, MoodResponseModel?>>> _getLastNDaysResponses(
     String subjectId,
-    int days,
-  ) async {
+    int days, {
+    bool excludeNote = false,
+  }) async {
     final now = _nowKorea();
     final result = <String, Map<TimeSlot, MoodResponseModel?>>{};
 
@@ -137,6 +144,7 @@ class MoodService {
           doc.data() as Map<String, dynamic>,
           dateStr,
           subjectUid: subjectId,
+          excludeNote: excludeNote,
         );
       } else {
         dayResponses[TimeSlot.daily] = null;

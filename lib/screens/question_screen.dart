@@ -27,6 +27,8 @@ class _QuestionScreenState extends State<QuestionScreen> {
   final MoodService _moodService = MoodService();
   final GuardianService _guardianService = GuardianService();
   bool _isSaving = false;
+  final TextEditingController _memoController = TextEditingController();
+  final FocusNode _memoFocusNode = FocusNode();
 
   @override
   void initState() {
@@ -37,6 +39,13 @@ class _QuestionScreenState extends State<QuestionScreen> {
         _checkAlreadyResponded();
       });
     }
+  }
+
+  @override
+  void dispose() {
+    _memoController.dispose();
+    _memoFocusNode.dispose();
+    super.dispose();
   }
 
   Future<void> _checkAlreadyResponded() async {
@@ -155,6 +164,10 @@ class _QuestionScreenState extends State<QuestionScreen> {
                               setState(() {
                                 _selectedMood = mood;
                               });
+                              // 감정 선택 시 메모 입력창에 자동 포커스
+                              WidgetsBinding.instance.addPostFrameCallback((_) {
+                                _memoFocusNode.requestFocus();
+                              });
                             },
                             child: Container(
                               width: double.infinity,
@@ -203,6 +216,76 @@ class _QuestionScreenState extends State<QuestionScreen> {
                         );
                       }).toList(),
                     ),
+                    // 감정 선택 후에만 메모 입력창 표시
+                    if (_selectedMood != null) ...[
+                      const SizedBox(height: 24),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            '한 줄 메모 (선택)',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          TextField(
+                            controller: _memoController,
+                            focusNode: _memoFocusNode,
+                            maxLength: 50,
+                            maxLines: null,
+                            textInputAction: TextInputAction.done,
+                            decoration: InputDecoration(
+                              hintText: '필요하면 한 줄만 남겨요.',
+                              hintStyle: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey.shade500,
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(
+                                  color: Colors.grey.shade300,
+                                  width: 1,
+                                ),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(
+                                  color: Colors.grey.shade300,
+                                  width: 1,
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(
+                                  color: Colors.blue.shade400,
+                                  width: 2,
+                                ),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                              counterText: '',
+                            ),
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '※ 이 메모는 보호자에게 전달되지 않습니다.',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                     const SizedBox(height: 8),
                     Text(
                       '선택 내용은 해석되거나 평가되지 않습니다.',
@@ -256,10 +339,15 @@ class _QuestionScreenState extends State<QuestionScreen> {
         return;
       }
 
+      // 메모 텍스트 가져오기 (빈 값이면 null)
+      final memoText = _memoController.text.trim();
+      final memo = memoText.isEmpty ? null : memoText;
+
       await _moodService.saveMoodResponse(
         subjectId: userId,
         slot: widget.timeSlot,
         mood: _selectedMood!,
+        note: memo,
       );
 
       if (!mounted) return;

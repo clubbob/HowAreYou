@@ -62,8 +62,9 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
   }
 
   Future<void> _loadResponses() async {
+    // 보호자용: note 필드 제외
     final responses =
-        await widget.moodService.getTodayResponses(widget.subjectId);
+        await widget.moodService.getTodayResponses(widget.subjectId, excludeNote: true);
     if (mounted) {
       setState(() {
         _responses = responses;
@@ -72,9 +73,9 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
   }
 
   Future<void> _loadHistory() async {
-    // 보호자는 항상 최근 7일 기록 여부만 확인
+    // 보호자는 항상 최근 7일 기록 여부만 확인 (note 필드 제외)
     final history =
-        await widget.moodService.getLast7DaysResponses(widget.subjectId);
+        await widget.moodService.getLast7DaysResponses(widget.subjectId, excludeNote: true);
     if (mounted) {
       setState(() {
         _historyResponses = history;

@@ -139,7 +139,13 @@ class MoodResponseModel {
   });
 
   /// [id] = document id (YYYY-MM-DD 또는 YYYY-MM-DD_slot). [subjectUid] = 보호대상자 Auth UID from path (PRD §9); omit for legacy docs.
-  factory MoodResponseModel.fromMap(Map<String, dynamic> map, String id, {String? subjectUid}) {
+  /// [excludeNote] = true면 note 필드를 null로 설정 (보호자용)
+  factory MoodResponseModel.fromMap(
+    Map<String, dynamic> map,
+    String id, {
+    String? subjectUid,
+    bool excludeNote = false,
+  }) {
     final parts = id.split('_');
     final slotValue = parts.length > 1 ? parts[1] : 'daily';
     final moodVal = map['mood'] as int?;
@@ -162,7 +168,7 @@ class MoodResponseModel {
       ),
       answeredAt: (map['answeredAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       mood: mood,
-      note: map['note'],
+      note: excludeNote ? null : map['note'],
     );
   }
 
