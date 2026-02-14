@@ -13,7 +13,11 @@ const firebaseConfig = {
 let app: FirebaseApp | null = null;
 
 if (typeof window !== 'undefined' && firebaseConfig.apiKey) {
-  app = getApps().length === 0 ? initializeApp(firebaseConfig) : (getApps()[0] as FirebaseApp);
+  try {
+    app = getApps().length === 0 ? initializeApp(firebaseConfig) : (getApps()[0] as FirebaseApp);
+  } catch {
+    app = null;
+  }
 }
 
 export const firestore = app ? getFirestore(app) : null;

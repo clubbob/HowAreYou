@@ -17,6 +17,7 @@ export function HeroSection() {
             width={80}
             height={80}
             priority
+            unoptimized
             className="h-20 w-20 object-contain md:h-24 md:w-24"
           />
         </div>
