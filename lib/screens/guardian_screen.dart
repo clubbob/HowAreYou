@@ -335,7 +335,13 @@ class _GuardianScreenState extends State<GuardianScreen> {
   }
 
   Future<void> _addGuardian() async {
-    if (_phoneController.text.isEmpty) {
+    if (_nameController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('이름을 입력해주세요.')),
+      );
+      return;
+    }
+    if (_phoneController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('전화번호를 입력해주세요.')),
       );
@@ -692,7 +698,7 @@ class _GuardianScreenState extends State<GuardianScreen> {
                           controller: _nameController,
                           decoration: InputDecoration(
                             labelText: '보호자 이름(별칭)',
-                            hintText: '예: 와이프, 엄마 (선택)',
+                            hintText: '예: 와이프, 엄마',
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(_inputRadius),
                               borderSide: BorderSide(

@@ -220,47 +220,6 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const SizedBox(height: 24),
-              // 부담 없음 메시지
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.blue.shade200, width: 1),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Icon(Icons.favorite_outline, color: Colors.blue.shade700, size: 24),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            '하루에 한 번, 버튼만 누르면 안부가 전달돼요.',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.blue.shade900,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      '자세한 내용은 전달되지 않아요.\n부담 없이 사용하세요.',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.blue.shade900,
-                        height: 1.5,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 40),
               Text(
                 '지금 어때?',
                 style: theme.textTheme.headlineLarge?.copyWith(
@@ -276,23 +235,35 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> {
               SizedBox(
                 width: double.infinity,
                 height: 88,
-                child: FilledButton.icon(
+                child: FilledButton(
                   onPressed: () => _navigateToQuestion(),
-                  icon: const Icon(Icons.sentiment_satisfied_rounded, size: 40),
-                  label: const Text('오늘 컨디션 기록하기'),
                   style: FilledButton.styleFrom(
                     backgroundColor: primaryColor,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 32),
+                    padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 24),
                     elevation: 6,
                     shadowColor: primaryColor.withOpacity(0.5),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    textStyle: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1,
+                  ),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.sentiment_satisfied_rounded, size: 40),
+                        const SizedBox(width: 12),
+                        Text(
+                          '오늘 컨디션 기록하기',
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -354,7 +325,35 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 24),
+              // 안내 문구
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.blue.shade200, width: 1),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.favorite_outline, color: Colors.blue.shade700, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '하루 한 번, 버튼만 누르면 안부가 전달돼요.',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.blue.shade900,
+                          height: 1.4,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
               Text(
                 '보호자에게 기록 내용은 공유되지 않으며, 안부가 전달되었는지만 표시됩니다.',
                 style: TextStyle(

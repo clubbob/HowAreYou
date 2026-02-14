@@ -654,7 +654,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                           ),
                           keyboardType: TextInputType.number,
                           maxLength: 6,
-                          textAlign: TextAlign.center,
+                          textAlign: TextAlign.start,
                           style: const TextStyle(
                             fontSize: 28,
                             fontWeight: FontWeight.w600,
@@ -678,7 +678,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                         ),
                         keyboardType: TextInputType.number,
                         maxLength: 6,
-                        textAlign: TextAlign.center,
+                        textAlign: TextAlign.start,
                         style: const TextStyle(
                           fontSize: 28,
                           fontWeight: FontWeight.w600,

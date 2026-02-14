@@ -98,6 +98,12 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
   }
 
   Future<void> _addSubject(BuildContext context, String userId) async {
+    if (_nameController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('이름을 입력해주세요.')),
+      );
+      return;
+    }
     if (_phoneController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('전화번호를 입력해주세요.')),
@@ -417,11 +423,12 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          // 보호 대상 목록
-          Expanded(
-            child: FutureBuilder<List<String>>(
+      body: SafeArea(
+        child: Column(
+          children: [
+            // 보호 대상 목록
+            Expanded(
+              child: FutureBuilder<List<String>>(
               future: _subjectIdsFuture,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
@@ -439,7 +446,12 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
                 final subjectIds = snapshot.data!;
                 if (subjectIds.isEmpty) {
                   return SingleChildScrollView(
-                    padding: const EdgeInsets.all(24),
+                    padding: EdgeInsets.fromLTRB(
+                      24,
+                      24,
+                      24,
+                      24 + MediaQuery.of(context).padding.bottom + 24,
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
@@ -467,7 +479,7 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
                             controller: _nameController,
                             decoration: InputDecoration(
                               labelText: '보호 대상 이름(별칭)',
-                              hintText: '예: 엄마, 아빠 (선택)',
+                              hintText: '예: 엄마, 아빠',
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(_inputRadius),
                                 borderSide: BorderSide(
@@ -605,7 +617,6 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
                         // 4. 안내
                         const SizedBox(height: 32),
                         Container(
-                          margin: const EdgeInsets.only(bottom: 16),
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
                             color: Colors.blue.shade50,
@@ -648,7 +659,12 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
 
                 // 보호 대상이 1명 이상이면 목록 표시 (선택 시 상세 화면으로 이동)
                 return ListView(
-                  padding: const EdgeInsets.all(24),
+                  padding: EdgeInsets.fromLTRB(
+                    24,
+                    24,
+                    24,
+                    24 + MediaQuery.of(context).padding.bottom + 24,
+                  ),
                   children: [
                     // 1. 보호 대상 목록
                     Column(
@@ -838,7 +854,6 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
                     // 4. 안내
                     const SizedBox(height: 32),
                     Container(
-                      margin: const EdgeInsets.only(bottom: 16),
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         color: Colors.blue.shade50,
@@ -880,6 +895,7 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
             ),
           ),
         ],
+        ),
       ),
     );
   }
