@@ -8,7 +8,6 @@ import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../services/guardian_service.dart';
 import '../services/invite_pending_service.dart';
-import '../utils/button_styles.dart';
 import 'home_screen.dart';
 import 'subject_mode_screen.dart';
 import 'guardian_mode_screen.dart';
@@ -28,6 +27,9 @@ class AuthScreen extends StatefulWidget {
 }
 
 class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateMixin {
+  static const _termsAssetPath = 'assets/terms_content.txt';
+  static const _privacyAssetPath = 'assets/privacy_content.txt';
+
   final _phoneController = TextEditingController();
   final _codeController = TextEditingController();
   final _codeFocusNode = FocusNode();
@@ -38,7 +40,9 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
   AnimationController? _shakeController;
   DateTime? _codeSentTime;
   bool _canResend = false;
-
+  bool _agreedToTerms = false;
+  bool _agreedToPrivacy = false;
+  bool _showTermsCheckboxes = true; // 최초/재가입 시 true, 일반 재로그인 시 false
 
   @override
   void initState() {
@@ -52,6 +56,10 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
         _shakeController!.reset();
       }
     });
+    _phoneController.addListener(_onPhoneChanged);
+    _phoneController.addListener(_checkAgreedPhone);
+    // 이전 로그인 전화번호로 미리 채우기
+    WidgetsBinding.instance.addPostFrameCallback((_) => _prefillLastPhone());
     // 6자리 입력 시 자동 인증 시도
     _codeController.addListener(() {
       // 에러 메시지가 있으면 입력 시 제거
@@ -66,8 +74,44 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
     });
   }
 
+  void _onPhoneChanged() {
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _checkAgreedPhone() async {
+    final phone = _phoneController.text.trim();
+    if (phone.isEmpty) {
+      if (mounted) setState(() {
+        _agreedToTerms = false;
+        _agreedToPrivacy = false;
+        _showTermsCheckboxes = true;
+      });
+      return;
+    }
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final agreed = await authService.isPhoneAgreed(phone);
+    if (mounted) setState(() {
+      _showTermsCheckboxes = !agreed; // 일반 재로그인: 체크박스 숨김 / 최초·탈퇴 후 재가입: 체크박스 표시
+      _agreedToTerms = agreed;
+      _agreedToPrivacy = agreed;
+    });
+  }
+
+  Future<void> _prefillLastPhone() async {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final last = await authService.getLastLoginPhone();
+    if (last == null || !mounted) return;
+    final formatted = _formatPhoneNumber(last);
+    if (_phoneController.text != formatted) {
+      _phoneController.text = formatted;
+    }
+    _checkAgreedPhone();
+  }
+
   @override
   void dispose() {
+    _phoneController.removeListener(_onPhoneChanged);
+    _phoneController.removeListener(_checkAgreedPhone);
     _phoneController.dispose();
     _codeController.dispose();
     _codeFocusNode.dispose();
@@ -79,6 +123,205 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
     if (mounted && _shakeController != null && !_shakeController!.isAnimating) {
       _shakeController!.forward(from: 0.0);
     }
+  }
+
+  Future<void> _showTermsPopup() async {
+    String content;
+    try {
+      content = await rootBundle.loadString(_termsAssetPath);
+    } catch (_) {
+      content = '이용약관 내용을 불러올 수 없습니다.';
+    }
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+        title: const Text('이용약관'),
+        content: SingleChildScrollView(
+          child: SizedBox(
+            width: double.maxFinite,
+            child: Text(
+              content,
+              style: TextStyle(fontSize: 14, height: 1.5, color: Colors.grey.shade800),
+            ),
+          ),
+        ),
+        actions: [
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text('확인'),
+            ),
+          ),
+        ],
+      ),
+    ),
+    );
+  }
+
+  Future<void> _showPrivacyPopup() async {
+    String content;
+    try {
+      content = await rootBundle.loadString(_privacyAssetPath);
+    } catch (_) {
+      content = '개인정보처리방침 내용을 불러올 수 없습니다.';
+    }
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+        title: const Text('개인정보처리방침'),
+        content: SingleChildScrollView(
+          child: SizedBox(
+            width: double.maxFinite,
+            child: Text(
+              content,
+              style: TextStyle(fontSize: 14, height: 1.5, color: Colors.grey.shade800),
+            ),
+          ),
+        ),
+        actions: [
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text('확인'),
+            ),
+          ),
+        ],
+      ),
+    ),
+    );
+  }
+
+  /// 최초 가입 시 약관 동의 다이얼로그 표시 후 회원가입 완료
+  Future<void> _showAgreementAndComplete(BuildContext context, AuthService authService, User user) async {
+    bool agreedTerms = false;
+    bool agreedPrivacy = false;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: const Text('서비스 이용을 위한 약관 동의'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      '계정 생성 전에 이용약관과 개인정보처리방침에 동의해 주세요.',
+                      style: TextStyle(fontSize: 14, height: 1.4),
+                    ),
+                    const SizedBox(height: 16),
+                    Theme(
+                      data: Theme.of(context).copyWith(
+                        listTileTheme: ListTileThemeData(
+                          visualDensity: const VisualDensity(horizontal: 0, vertical: -4),
+                        ),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CheckboxListTile(
+                            value: agreedTerms,
+                            onChanged: (v) => setState(() => agreedTerms = v ?? false),
+                            controlAffinity: ListTileControlAffinity.leading,
+                            contentPadding: EdgeInsets.zero,
+                            title: Row(
+                              children: [
+                                const Text('이용약관에 동의합니다. ', style: TextStyle(fontSize: 14)),
+                                TextButton(
+                                  style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                                  onPressed: _showTermsPopup,
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text('보기', style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.primary, decoration: TextDecoration.underline)),
+                                      Text(' (필수)', style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.primary, decoration: TextDecoration.none)),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          CheckboxListTile(
+                            value: agreedPrivacy,
+                            onChanged: (v) => setState(() => agreedPrivacy = v ?? false),
+                            controlAffinity: ListTileControlAffinity.leading,
+                            contentPadding: EdgeInsets.zero,
+                            title: Row(
+                              children: [
+                                const Text('개인정보처리방침에 동의합니다. ', style: TextStyle(fontSize: 14)),
+                                TextButton(
+                                  style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                                  onPressed: _showPrivacyPopup,
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text('보기', style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.primary, decoration: TextDecoration.underline)),
+                                      Text(' (필수)', style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.primary, decoration: TextDecoration.none)),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () async {
+                    await authService.signOut();
+                    if (ctx.mounted) Navigator.of(ctx).pop(false);
+                  },
+                  child: const Text('취소'),
+                ),
+                ElevatedButton(
+                  onPressed: agreedTerms && agreedPrivacy
+                      ? () => Navigator.of(ctx).pop(true)
+                      : null,
+                  child: const Text('동의하고 계정 생성'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+    if (confirmed != true || !context.mounted) return;
+    final err = await authService.completeNewUserSignUp(
+      user,
+      termsAgreedAt: DateTime.now(),
+      privacyAgreedAt: DateTime.now(),
+    );
+    if (err != null && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
+      return;
+    }
+    if (context.mounted) await _navigateAfterLogin(context, authService);
   }
 
   /// 로그인 성공 후: 초대 링크로 들어왔으면 보호대상자/보호자 연결 후 해당 화면, 아니면 Home
@@ -180,7 +423,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
   Future<void> _sendOTP() async {
     if (_phoneController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('전화번호를 입력해주세요.')),
+        const SnackBar(content: Text('핸드폰 번호를 입력해주세요.')),
       );
       return;
     }
@@ -205,7 +448,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
               SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  '다른 전화번호로 로그인',
+                  '다른 핸드폰 번호로 로그인',
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -242,7 +485,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
               ),
               const SizedBox(height: 16),
               const Text(
-                '다른 전화번호로 로그인하면 기존 계정과 다른 계정으로 로그인됩니다. 계속하시겠습니까?',
+                '다른 핸드폰 번호로 로그인하면 기존 계정과 다른 계정으로 로그인됩니다. 계속하시겠습니까?',
                 style: TextStyle(
                   fontSize: 14,
                   color: Colors.black87,
@@ -335,8 +578,20 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
           debugPrint('자동 인증 완료: ${credential.smsCode}');
           if (mounted) setState(() => _isLoading = false);
           final authService = Provider.of<AuthService>(context, listen: false);
-          await authService.verifyOTP('', credential.smsCode ?? '');
-          if (mounted) await _navigateAfterLogin(context, authService);
+          try {
+            final err = await authService.verifyWithCredential(
+              credential,
+              termsAgreedAt: _agreedToTerms ? DateTime.now() : null,
+              privacyAgreedAt: _agreedToPrivacy ? DateTime.now() : null,
+            );
+            if (err != null && mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
+              return;
+            }
+            if (mounted) await _navigateAfterLogin(context, authService);
+          } on NeedAgreementException catch (e) {
+            if (mounted) await _showAgreementAndComplete(context, authService, e.user);
+          }
         },
         verificationFailed: (FirebaseAuthException e) {
           debugPrint('인증 실패 - 코드: ${e.code}, 메시지: ${e.message}');
@@ -347,10 +602,10 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
             // 에러 코드에 따른 구체적인 메시지
             switch (e.code) {
               case 'invalid-phone-number':
-                errorMessage = '전화번호 형식이 올바르지 않습니다.\n\n입력한 번호: ${_phoneController.text}\n변환된 번호: $phoneNumber\n\nFirebase Console에 테스트 전화번호가 등록되어 있는지 확인해주세요.\n\n테스트 번호:\n- +821011112222 (인증 코드: 111111)\n- +821033334444 (인증 코드: 333333)';
+                errorMessage = '핸드폰 번호 형식이 올바르지 않습니다.\n\n입력한 번호: ${_phoneController.text}\n변환된 번호: $phoneNumber\n\nFirebase Console에 테스트 번호가 등록되어 있는지 확인해주세요.\n\n테스트 번호:\n- +821011112222 (인증 코드: 111111)\n- +821033334444 (인증 코드: 333333)';
                 break;
               case 'missing-phone-number':
-                errorMessage = '전화번호를 입력해주세요.';
+                errorMessage = '핸드폰 번호를 입력해주세요.';
                 break;
               case 'quota-exceeded':
                 errorMessage = '일일 인증 횟수를 초과했습니다. 잠시 후 다시 시도해주세요.';
@@ -359,7 +614,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                 errorMessage = '너무 많은 요청이 발생했습니다. 5-10분 후 다시 시도해주세요.';
                 break;
               default:
-                errorMessage = '인증 실패: ${e.message ?? e.code}\n\n전화번호: $phoneNumber\n\nFirebase Console에서 테스트 전화번호가 등록되어 있는지 확인해주세요.\n\n테스트 번호:\n- +821011112222 (인증 코드: 111111)\n- +821033334444 (인증 코드: 333333)';
+                errorMessage = '인증 실패: ${e.message ?? e.code}\n\n핸드폰 번호: $phoneNumber\n\nFirebase Console에서 테스트 번호가 등록되어 있는지 확인해주세요.\n\n테스트 번호:\n- +821011112222 (인증 코드: 111111)\n- +821033334444 (인증 코드: 333333)';
             }
             
             ScaffoldMessenger.of(context).showSnackBar(
@@ -472,42 +727,44 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
 
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
-      final error = await authService
-          .verifyOTP(_verificationId!, _codeController.text)
+      final error = await authService.verifyOTP(
+        _verificationId!,
+        _codeController.text,
+        termsAgreedAt: _agreedToTerms ? DateTime.now() : null,
+        privacyAgreedAt: _agreedToPrivacy ? DateTime.now() : null,
+      )
           .timeout(
             const Duration(seconds: 20),
             onTimeout: () => '로그인 요청이 지연되고 있습니다. 네트워크를 확인한 뒤 다시 시도해 주세요.',
           );
 
       if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+        setState(() => _isLoading = false);
         if (error == null) {
-          final authService = Provider.of<AuthService>(context, listen: false);
           await _navigateAfterLogin(context, authService);
         } else {
-          setState(() {
-            _errorMessage = error;
-          });
+          setState(() => _errorMessage = error);
           _shakeInput();
-          // 입력값 전체 선택
           _codeController.selection = TextSelection(
             baseOffset: 0,
             extentOffset: _codeController.text.length,
           );
         }
       }
+    } on NeedAgreementException catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        await _showAgreementAndComplete(context, Provider.of<AuthService>(context, listen: false), e.user);
+      }
     } catch (e) {
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _errorMessage = e is TimeoutException 
-              ? (e.message ?? '요청이 지연되었습니다. 네트워크를 확인해 주세요.') 
+          _errorMessage = e is TimeoutException
+              ? '요청이 지연되었습니다. 네트워크를 확인해 주세요.'
               : '오류가 발생했습니다. 잠시 후 다시 시도해 주세요.';
         });
         _shakeInput();
-        // 입력값 전체 선택
         _codeController.selection = TextSelection(
           baseOffset: 0,
           extentOffset: _codeController.text.length,
@@ -573,7 +830,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
               Text(
                 _codeSent 
                     ? '문자로 받은 6자리 인증번호를 입력해 주세요.' 
-                    : '하루 한 번이면 충분해요.\n전화번호로 시작하세요.',
+                    : '하루 한 번이면 충분해요.\n본인 핸드폰 번호로 바로 이용 가능해요.',
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w400,
@@ -584,29 +841,105 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
               ),
               const SizedBox(height: 40),
               if (!_codeSent) ...[
-                TextField(
-                  controller: _phoneController,
-                  decoration: InputDecoration(
-                    labelText: '전화번호',
-                    hintText: '01012345678',
-                    helperText: '숫자만 입력하세요',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextField(
+                      controller: _phoneController,
+                      decoration: InputDecoration(
+                        labelText: '핸드폰 번호',
+                        hintText: '01012345678',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        filled: true,
+                        fillColor: Colors.grey.shade50,
+                      ),
+                      keyboardType: TextInputType.phone,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w400,
+                        color: Color(0xFF202124),
+                      ),
                     ),
-                    filled: true,
-                    fillColor: Colors.grey.shade50,
-                  ),
-                  keyboardType: TextInputType.phone,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w400,
-                    color: Color(0xFF202124),
-                  ),
+                    const SizedBox(height: 12),
+                    Text(
+                      '숫자만 입력하세요',
+                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 20),
+                if (_showTermsCheckboxes) ...[
+                  Theme(
+                    data: Theme.of(context).copyWith(
+                      listTileTheme: ListTileThemeData(
+                        visualDensity: const VisualDensity(horizontal: 0, vertical: -4),
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CheckboxListTile(
+                          value: _agreedToTerms,
+                          onChanged: (v) => setState(() => _agreedToTerms = v ?? false),
+                          controlAffinity: ListTileControlAffinity.leading,
+                          contentPadding: EdgeInsets.zero,
+                          title: Row(
+                            children: [
+                              Text('이용약관에 동의합니다. ', style: TextStyle(fontSize: 14, color: Colors.grey.shade800)),
+                              TextButton(
+                                style: TextButton.styleFrom(
+                                  padding: EdgeInsets.zero,
+                                  minimumSize: Size.zero,
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                ),
+                                onPressed: _showTermsPopup,
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text('보기', style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.primary, decoration: TextDecoration.underline)),
+                                    Text(' (필수)', style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.primary, decoration: TextDecoration.none)),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        CheckboxListTile(
+                          value: _agreedToPrivacy,
+                          onChanged: (v) => setState(() => _agreedToPrivacy = v ?? false),
+                          controlAffinity: ListTileControlAffinity.leading,
+                          contentPadding: EdgeInsets.zero,
+                          title: Row(
+                            children: [
+                              Text('개인정보처리방침에 동의합니다. ', style: TextStyle(fontSize: 14, color: Colors.grey.shade800)),
+                              TextButton(
+                                style: TextButton.styleFrom(
+                                  padding: EdgeInsets.zero,
+                                  minimumSize: Size.zero,
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                ),
+                                onPressed: _showPrivacyPopup,
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text('보기', style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.primary, decoration: TextDecoration.underline)),
+                                    Text(' (필수)', style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.primary, decoration: TextDecoration.none)),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
                 ElevatedButton(
-                  onPressed: _isLoading ? null : _sendOTP,
+                  onPressed: (_isLoading || _phoneController.text.trim().isEmpty || (_showTermsCheckboxes && (!_agreedToTerms || !_agreedToPrivacy))) ? null : _sendOTP,
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
@@ -623,6 +956,15 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                           ),
                         )
                       : const Text('인증번호 받기'),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '휴대폰 번호 인증 시 계정이 생성됩니다.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                  ),
+                  textAlign: TextAlign.center,
                 ),
               ] else ...[
                 _shakeController != null
@@ -733,7 +1075,16 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                             valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                           ),
                         )
-                      : const Text('로그인하기'),
+                      : const Text('인증하기'),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '휴대폰 번호 인증 시 계정이 생성됩니다.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                  ),
+                  textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 12),
                 Column(
@@ -747,7 +1098,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                         });
                       },
                       child: Text(
-                        '전화번호 다시 입력',
+                        '핸드폰 번호 다시 입력',
                         style: TextStyle(
                           fontSize: 14,
                           color: Colors.grey.shade700,

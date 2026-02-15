@@ -6,73 +6,112 @@ export const metadata: Metadata = {
   description: '지금 어때 서비스의 개인정보처리방침입니다.',
 };
 
-const EMAIL = 'clubbob@naver.com';
+const PRIVACY_CONTENT = `최종 업데이트일: 2026년 02월 15일
+
+새봄인터내셔널 (이하 "회사")은 이용자의 개인정보를 중요하게 생각하며, 「개인정보 보호법」 등 관련 법령을 준수합니다. 회사는 본 개인정보처리방침을 통해 이용자의 개인정보가 어떠한 용도와 방식으로 이용되고 있으며,
+보호를 위해 어떠한 조치가 취해지고 있는지 알려드립니다.
+
+1. 수집하는 개인정보 항목
+
+① 필수 수집 항목
+- 휴대폰 번호
+- Firebase 고유 식별자(UID)
+- 서비스 이용 기록
+- 접속 로그 및 기기 정보(기기 모델, OS 버전 등)
+
+② 서비스 이용 과정에서 자동 수집되는 정보
+- 푸시 알림 토큰
+- 앱 사용 기록
+- 오류 로그
+
+2. 개인정보 수집 및 이용 목적
+
+회사는 수집한 개인정보를 다음 목적에 한해 이용합니다.
+1) 회원 식별 및 본인 인증
+2) 보호자-보호대상자 연결 기능 제공
+3) 상태 기록 저장 및 공유 기능 제공
+4) 알림 서비스 제공
+5) 서비스 개선 및 오류 대응
+6) 법령 준수 및 분쟁 대응
+
+3. 개인정보의 보유 및 이용 기간
+
+회사는 개인정보를 원칙적으로 회원 탈퇴 시까지 보유합니다.
+단, 관계 법령에 따른 보존 의무가 있는 경우 해당 기간 동안 보관할 수 있습니다.
+회원 탈퇴 시에는 지체 없이 해당 정보를 삭제합니다.
+
+4. 개인정보의 제3자 제공
+
+회사는 이용자의 개인정보를 원칙적으로 외부에 제공하지 않습니다.
+단, 이용자가 사전에 동의한 경우 또는 법령에 의거한 경우에는 예외로 합니다.
+
+5. 개인정보 처리의 위탁
+
+회사는 원활한 서비스 제공을 위해 다음과 같이 개인정보 처리를 위탁할 수 있습니다.
+- Google Firebase: 사용자 인증, 데이터 저장, 푸시 알림
+- Google Cloud: 서버 인프라 운영
+
+회사는 위탁계약 체결 시 개인정보 보호 관련 법령을 준수하도록 관리·감독합니다.
+
+6. 이용자의 권리 및 행사 방법
+
+이용자는 언제든지 다음 권리를 행사할 수 있습니다.
+1) 개인정보 열람 요구
+2) 개인정보 수정 요구
+3) 개인정보 삭제(회원 탈퇴) 요구
+4) 처리 정지 요구
+
+회원은 앱 내 설정 메뉴에서 직접 회원 탈퇴를 신청할 수 있습니다.
+
+7. 개인정보의 파기 절차 및 방법
+
+개인정보 보유기간 경과 또는 처리 목적 달성 시 지체 없이 파기합니다.
+
+- 전자적 파일 형태: 복구 불가능한 방식으로 영구 삭제
+- 문서 형태: 분쇄 또는 소각
+
+8. 개인정보의 안전성 확보 조치
+
+회사는 개인정보 보호를 위해 다음 조치를 취합니다.
+- 접근 권한 최소화
+- 인증 및 암호화 기술 적용
+- 접근 기록 보관
+- 보안 업데이트 및 점검
+
+9. 만 14세 미만 아동의 개인정보
+
+본 서비스는 만 14세 미만 아동을 대상으로 하지 않으며, 만 14세 미만 아동의 개인정보를 의도적으로 수집하지 않습니다.
+
+10. 개인정보 보호책임자
+
+- 상호: 새봄인터내셔널 (129-09-53285)
+- 대표자: 박진희
+- 개인정보 보호책임자: 고형석
+- 이메일: clubbob@naver.com
+- 연락처: 010-6391-4520
+
+11. 정책 변경에 관한 사항
+
+본 개인정보처리방침은 법령 또는 서비스 변경사항에 따라 수정될 수 있으며, 변경 시 앱 내 공지를 통해 안내합니다.
+
+[기존 개인정보처리방침 대비 변경 사항]
+없음`;
 
 export default function PrivacyPage() {
   return (
-    <main className="min-h-screen bg-white">
-      <div className="mx-auto max-w-3xl px-6 py-12 md:py-16">
-        <div className="mb-8">
-          <Link href="/" className="text-primary-600 hover:underline">
-            ← 홈으로
-          </Link>
-        </div>
-        <h1 className="mb-8 text-2xl font-bold text-gray-900">개인정보처리방침</h1>
-
-        <div className="prose prose-gray max-w-none space-y-8">
-          <section>
-            <h2 className="text-lg font-semibold text-gray-900">1. 수집 항목</h2>
-            <ul className="mt-2 list-inside list-disc space-y-1 text-gray-700">
-              <li>이메일 (베타 신청 시)</li>
-              <li>전화번호 (회원가입 시)</li>
-              <li>상태 기록 데이터 (앱 사용 시)</li>
-              <li>기기 정보 (푸시 알림용)</li>
-            </ul>
-          </section>
-
-          <section>
-            <h2 className="text-lg font-semibold text-gray-900">2. 수집 목적</h2>
-            <ul className="mt-2 list-inside list-disc space-y-1 text-gray-700">
-              <li>안부 기록 저장 및 보호자 알림 제공</li>
-              <li>베타 테스트·출시 안내 (이메일)</li>
-              <li>서비스 운영 및 개선</li>
-            </ul>
-          </section>
-
-          <section>
-            <h2 className="text-lg font-semibold text-gray-900">3. 보관 기간</h2>
-            <p className="mt-2 text-gray-700">
-              사용자 탈퇴 시 해당 정보를 삭제합니다. 법령에 따라 보존이 필요한 경우 해당 기간 동안 보관합니다.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-lg font-semibold text-gray-900">4. 제3자 제공 여부</h2>
-            <p className="mt-2 text-gray-700">
-              개인정보를 제3자에게 제공하지 않습니다. (단, 법령에 의한 요청 시 예외)
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-lg font-semibold text-gray-900">5. 이용자 권리 (열람·삭제)</h2>
-            <p className="mt-2 text-gray-700">
-              이용자는 본인의 개인정보에 대해 열람·정정·삭제를 요청할 수 있습니다. 문의처로 요청하시면 처리해 드립니다.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-lg font-semibold text-gray-900">6. 문의처</h2>
-            <p className="mt-2 text-gray-700">
-              이메일: <a href={`mailto:${EMAIL}`} className="text-primary-600 hover:underline">{EMAIL}</a>
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-lg font-semibold text-gray-900">7. 시행일</h2>
-            <p className="mt-2 text-gray-700">
-              2026년 2월 15일
-            </p>
-          </section>
+    <main className="min-h-screen bg-cream-50">
+      <div className="mx-auto max-w-2xl px-6 py-16 md:py-20">
+        <Link
+          href="/"
+          className="mb-10 inline-flex items-center gap-1 text-sm font-medium text-primary-600 transition-colors hover:text-primary-800"
+        >
+          ← 홈으로
+        </Link>
+        <h1 className="mb-10 text-2xl font-bold tracking-tight text-primary-900 md:text-3xl">
+          개인정보처리방침
+        </h1>
+        <div className="whitespace-pre-line text-base leading-relaxed text-primary-800/90">
+          {PRIVACY_CONTENT}
         </div>
       </div>
     </main>

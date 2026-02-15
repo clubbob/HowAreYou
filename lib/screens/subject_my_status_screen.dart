@@ -5,10 +5,12 @@ import '../services/mood_service.dart';
 import '../services/auth_service.dart';
 import '../services/guardian_service.dart';
 import '../models/mood_response_model.dart';
+import '../widgets/mood_face_icon.dart';
 import '../widgets/status_display_widgets.dart';
 import '../main.dart';
 import 'auth_screen.dart';
 import 'memo_detail_screen.dart';
+import 'subject_settings_screen.dart';
 
 /// 보호 대상자 자신의 상태 이력 화면
 class SubjectMyStatusScreen extends StatefulWidget {
@@ -187,7 +189,15 @@ class _SubjectMyStatusScreenState extends State<SubjectMyStatusScreen> {
           ),
         ),
         actions: [
-          // 로그아웃 버튼 (테스트용)
+          IconButton(
+            icon: const Icon(Icons.settings),
+            tooltip: '설정',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const SubjectSettingsScreen()),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: '로그아웃',
@@ -198,13 +208,26 @@ class _SubjectMyStatusScreenState extends State<SubjectMyStatusScreen> {
                   title: const Text('로그아웃'),
                   content: const Text('로그아웃하시겠습니까?'),
                   actions: [
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(false),
-                      child: const Text('취소'),
-                    ),
-                    ElevatedButton(
-                      onPressed: () => Navigator.of(context).pop(true),
-                      child: const Text('로그아웃'),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () => Navigator.of(context).pop(false),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.grey.shade300,
+                              foregroundColor: Colors.grey.shade800,
+                            ),
+                            child: const Text('취소'),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () => Navigator.of(context).pop(true),
+                            child: const Text('로그아웃'),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -251,7 +274,7 @@ class _SubjectMyStatusScreenState extends State<SubjectMyStatusScreen> {
                           _buildSummaryText(_historyResponses!),
                           const SizedBox(height: 12),
                           StatusHistoryTable(historyResponses: _historyResponses),
-                          // 최근 나의 한 줄 섹션 (요약형, 그래프 아래)
+                          // 나의 한 줄 메모 섹션 (요약형, 그래프 아래)
                           if (_historyResponses != null) ...[
                             const SizedBox(height: 32),
                             _buildRecentMemoSummary(_historyResponses!),
@@ -314,7 +337,7 @@ class _SubjectMyStatusScreenState extends State<SubjectMyStatusScreen> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          '안부를 전달하려면 먼저 보호자를 지정해주세요.\n\n보호 대상자 모드에서 "보호자 지정" 메뉴를 이용해주세요.',
+                          '안부를 전달하려면 먼저 보호자를 지정해주세요.\n\n보호 대상자 모드에서 "보호자 관리" 메뉴를 이용해주세요.',
                           style: TextStyle(
                             fontSize: 14,
                             color: Colors.grey[600],
@@ -328,7 +351,7 @@ class _SubjectMyStatusScreenState extends State<SubjectMyStatusScreen> {
     );
   }
 
-  /// 최근 나의 한 줄 섹션 빌드 (요약형, 최대 3개)
+  /// 나의 한 줄 메모 섹션 빌드 (요약형, 최대 3개)
   Widget _buildRecentMemoSummary(Map<String, Map<TimeSlot, MoodResponseModel?>> historyResponses) {
     // 메모가 있는 날짜만 필터링 (날짜 내림차순)
     final memosWithDate = <MapEntry<String, String>>[];
@@ -359,7 +382,7 @@ class _SubjectMyStatusScreenState extends State<SubjectMyStatusScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              '최근 나의 한 줄',
+              '나의 한 줄 메모',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
@@ -495,9 +518,10 @@ class _SubjectMyStatusScreenState extends State<SubjectMyStatusScreen> {
                           ),
                           if (mood != null) ...[
                             const SizedBox(width: 6),
-                            Text(
-                              mood.emoji,
-                              style: const TextStyle(fontSize: 14),
+                            MoodFaceIcon(
+                              mood: mood.displayAsSelectable,
+                              size: 24,
+                              withShadow: false,
                             ),
                           ],
                         ],

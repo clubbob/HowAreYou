@@ -6,25 +6,29 @@ export function ServiceSection() {
   ];
 
   return (
-    <section className="bg-primary-50 px-6 py-16 md:py-20">
-      <div className="mx-auto max-w-3xl">
-        <h2 className="mb-10 text-center text-xl font-bold text-gray-900 md:text-2xl">
+    <section className="relative bg-primary-50/50 px-6 py-20 md:py-28">
+      <div className="mx-auto max-w-2xl">
+        <h2 className="mb-12 text-center text-2xl font-bold tracking-tight text-primary-900 md:text-3xl">
           지금 어때는 이렇게 작동합니다
         </h2>
+
         <div className="space-y-4">
           {steps.map((s) => (
             <div
               key={s.num}
-              className="flex items-center gap-4 rounded-xl bg-white p-4 shadow-sm"
+              className="flex items-center gap-5 rounded-2xl bg-white/90 px-6 py-5 shadow-soft backdrop-blur-sm transition-all duration-200 hover:shadow-card"
             >
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-500 text-lg font-bold text-white">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary-600 text-lg font-bold text-white shadow-soft">
                 {s.num}
               </span>
-              <span className="text-gray-800">{s.title}</span>
+              <span className="text-base font-medium text-primary-800 md:text-lg">
+                {s.title}
+              </span>
             </div>
           ))}
         </div>
-        <p className="mt-8 text-center text-sm text-gray-600">
+
+        <p className="mt-10 text-center text-sm font-medium text-primary-700/80">
           감시하지 않습니다 · 평가하지 않습니다 · 일상 확인만을 위한 구조입니다
         </p>
       </div>

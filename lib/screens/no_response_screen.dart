@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/mood_response_model.dart';
+import 'guardian_dashboard_screen.dart';
 
 /// 회신이 없을 때 보호자가 보는 화면
 class NoResponseScreen extends StatelessWidget {
@@ -38,6 +39,17 @@ class NoResponseScreen extends StatelessWidget {
             ),
           ),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            tooltip: '설정',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const GuardianSettingsScreen()),
+              );
+            },
+          ),
+        ],
       ),
       body: SafeArea(
         child: Padding(
@@ -93,7 +105,7 @@ class NoResponseScreen extends StatelessWidget {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          '$subjectName님에게 전화해 보세요. (전화번호는 보호자 관리에서 확인)',
+          '$subjectName님에게 전화해 보세요. (핸드폰 번호는 보호자 관리에서 확인)',
         ),
       ),
     );

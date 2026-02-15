@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io' show Platform;
 import '../services/auth_service.dart';
 import '../services/mood_service.dart';
+import '../services/guardian_service.dart';
 import '../services/notification_service.dart';
 import '../models/mood_response_model.dart';
 import '../utils/button_styles.dart';
@@ -14,9 +15,10 @@ import 'question_screen.dart';
 import 'guardian_screen.dart';
 import 'home_screen.dart';
 import 'subject_my_status_screen.dart';
+import 'subject_settings_screen.dart';
 import 'auth_screen.dart';
 
-/// 보호대상자 모드 화면 (상태 알려주기, 보호자 지정)
+/// 보호대상자 모드 화면 (상태 알려주기, 보호자 관리)
 class SubjectModeScreen extends StatefulWidget {
   const SubjectModeScreen({super.key});
 
@@ -26,6 +28,7 @@ class SubjectModeScreen extends StatefulWidget {
 
 class _SubjectModeScreenState extends State<SubjectModeScreen> {
   final MoodService _moodService = MoodService();
+  final GuardianService _guardianService = GuardianService();
   bool _hasShownWelcomeDialog = false;
 
   @override
@@ -169,7 +172,15 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> {
           ),
         ),
         actions: [
-          // 로그아웃 버튼 (테스트용)
+          IconButton(
+            icon: const Icon(Icons.settings),
+            tooltip: '설정',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const SubjectSettingsScreen()),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: '로그아웃',
@@ -180,13 +191,26 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> {
                   title: const Text('로그아웃'),
                   content: const Text('로그아웃하시겠습니까?'),
                   actions: [
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(false),
-                      child: const Text('취소'),
-                    ),
-                    ElevatedButton(
-                      onPressed: () => Navigator.of(context).pop(true),
-                      child: const Text('로그아웃'),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () => Navigator.of(context).pop(false),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.grey.shade300,
+                              foregroundColor: Colors.grey.shade800,
+                            ),
+                            child: const Text('취소'),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () => Navigator.of(context).pop(true),
+                            child: const Text('로그아웃'),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -310,7 +334,7 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> {
                     );
                   },
                   icon: const Icon(Icons.person_add_rounded, size: 22),
-                  label: const Text('보호자 지정'),
+                  label: const Text('보호자 관리'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: primaryColor,
                     side: const BorderSide(color: primaryColor, width: 1.5),
@@ -409,6 +433,17 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> {
 
     if (userId == null) return;
 
+    // 보호자 미등록 시 안내 화면으로 이동
+    final hasGuardian = await _guardianService.hasGuardian(userId);
+    if (!hasGuardian && mounted) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => const _NoGuardianHintScreen(),
+        ),
+      );
+      return;
+    }
+
     final hasResponded = await _moodService.hasRespondedToday(subjectId: userId);
     if (hasResponded && mounted) {
       final choice = await showDialog<String>(
@@ -446,5 +481,106 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> {
         ),
       );
     }
+  }
+}
+
+/// 보호자 미등록 시 표시하는 안내 화면
+class _NoGuardianHintScreen extends StatelessWidget {
+  const _NoGuardianHintScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.grey.shade50,
+      appBar: AppBar(
+        title: const Text('오늘 컨디션 기록하기'),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        foregroundColor: Colors.black87,
+        leadingWidth: 80,
+        leading: InkWell(
+          onTap: () => Navigator.of(context).pop(),
+          borderRadius: BorderRadius.circular(24),
+          child: const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.arrow_back_ios_new, size: 18),
+                SizedBox(width: 4),
+                Text('뒤로', style: TextStyle(fontSize: 16)),
+              ],
+            ),
+          ),
+        ),
+      ),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.person_add_outlined,
+                size: 64,
+                color: Colors.grey[400],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                '보호자가 지정되지 않았습니다',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey[700],
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '안부를 전달하려면 먼저 보호자를 지정해주세요.',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '보호 대상자 모드에서 "보호자 관리" 메뉴를 이용해주세요.',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const GuardianScreen(),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.person_add_rounded, size: 22),
+                  label: const Text('보호자 관리'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF5C6BC0),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

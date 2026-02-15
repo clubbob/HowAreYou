@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/mood_service.dart';
 import '../models/mood_response_model.dart';
+import '../widgets/mood_face_icon.dart';
 
 /// 메모 상세 보기 화면 (1주일 단위 표시)
 class MemoDetailScreen extends StatefulWidget {
@@ -289,11 +290,12 @@ class _MemoDetailScreenState extends State<MemoDetailScreen> {
                                 ),
                                 if (mood != null) ...[
                                   const SizedBox(width: 12),
-                                  Text(
-                                    mood.emoji,
-                                    style: const TextStyle(fontSize: 18),
+                                  MoodFaceIcon(
+                                    mood: mood.displayAsSelectable,
+                                    size: 28,
+                                    withShadow: false,
                                   ),
-                                  const SizedBox(width: 6),
+                                  const SizedBox(width: 8),
                                   Text(
                                     mood.label,
                                     style: TextStyle(

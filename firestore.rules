@@ -20,8 +20,8 @@ service cloud.firestore {
       // 보호자: 연결된 경우에만 읽기 가능
       function isGuardian() {
         return request.auth != null
-          && resource.data.pairedGuardianUids != null
-          && request.auth.uid in resource.data.pairedGuardianUids;
+          && 'pairedGuardianUids' in resource.data
+          && request.auth.uid in resource.data.get('pairedGuardianUids', []);
       }
       
       // 보호자가 자신을 pairedGuardianUids에 추가하는 경우 허용
@@ -29,17 +29,14 @@ service cloud.firestore {
       function canAddSelfAsGuardian() {
         return request.auth != null
           && request.auth.uid != subjectUid  // 본인 문서가 아님
+          && 'pairedGuardianUids' in request.resource.data
+          && request.auth.uid in request.resource.data.pairedGuardianUids
           && (
             // 새 문서 생성 시
-            (!resource.exists 
-             && request.resource.data.pairedGuardianUids != null 
-             && request.auth.uid in request.resource.data.pairedGuardianUids)
-            // 기존 문서 업데이트 시 - pairedGuardianUids에 자신이 추가되는 경우
-            || (resource.exists 
-                && request.resource.data.pairedGuardianUids != null 
-                && request.auth.uid in request.resource.data.pairedGuardianUids
-                && (resource.data.pairedGuardianUids == null 
-                    || !(request.auth.uid in resource.data.pairedGuardianUids)))
+            !resource.exists
+            // 기존 문서 업데이트 시 - 아직 보호자 목록에 없는 경우만 허용
+            || !('pairedGuardianUids' in resource.data)
+            || !(request.auth.uid in resource.data.get('pairedGuardianUids', []))
           );
       }
       
@@ -52,9 +49,20 @@ service cloud.firestore {
       // 보호자가 보호 대상자 추가 시 기존 문서를 읽어야 하므로: 본인이 아닌 인증 사용자는 읽기 허용
       allow read: if request.auth != null && request.auth.uid != subjectUid;
       
+      // 보호자가 자신을 pairedGuardianUids에서 제거하는 경우(계정 삭제 시) 쓰기 허용
+      function canRemoveSelfAsGuardian() {
+        return request.auth != null
+          && resource.exists
+          && request.auth.uid != subjectUid
+          && 'pairedGuardianUids' in resource.data
+          && request.auth.uid in resource.data.get('pairedGuardianUids', []);
+      }
       // 보호자가 자신을 pairedGuardianUids에 추가하는 경우 쓰기 허용
       // 변경 가능한 필드: pairedGuardianUids, guardianInfos, displayName, phone만 허용
-      allow write: if canAddSelfAsGuardian()
+      allow write: if canRemoveSelfAsGuardian()
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['pairedGuardianUids', 'guardianInfos'])
+      || canAddSelfAsGuardian()
         && (
           !resource.exists  // 문서가 없으면 모든 필드 허용
           || request.resource.data.diff(resource.data).affectedKeys()
@@ -91,6 +99,16 @@ service cloud.firestore {
         request.auth.uid in resource.data.guardianUids;
     }
 
+    // 대기 초대 (미가입자 등록 - 가입 시 Cloud Functions에서 자동 연결)
+    match /pending_guardian_invites/{docId} {
+      allow create: if request.auth != null && request.resource.data.guardianUid == request.auth.uid;
+      allow read, update, delete: if false;
+    }
+    match /pending_subject_invites/{docId} {
+      allow create: if request.auth != null && request.resource.data.subjectUid == request.auth.uid;
+      allow read, update, delete: if false;
+    }
+
     // 홈페이지 베타 대기목록 - 누구나 생성 가능 (이메일만 수집)
     match /waitlist/{docId} {
       allow create: if true;
@@ -102,11 +120,11 @@ service cloud.firestore {
       allow read: if true;
       allow write: if false;
     }
-  }
-  
-  // 알림 요청 컬렉션 (Cloud Functions 전용, 앱에서만 생성)
-  match /notification_requests/{requestId} {
-    allow create: if request.auth != null;
-    allow read, update: if false; // Functions만 읽기/업데이트 가능
+
+    // 알림 요청 컬렉션 (Cloud Functions 전용, 앱에서만 생성)
+    match /notification_requests/{requestId} {
+      allow create: if request.auth != null;
+      allow read, update: if false; // Functions만 읽기/업데이트 가능
+    }
   }
 }

@@ -3,6 +3,101 @@ const admin = require('firebase-admin');
 
 admin.initializeApp();
 
+const db = admin.firestore();
+
+/** 전화번호 E.164 정규화 (매칭용) */
+function normalizePhone(phone) {
+  if (!phone || typeof phone !== 'string') return '';
+  const digits = phone.replace(/\D/g, '');
+  if (digits.length === 0) return '';
+  if (digits.startsWith('82') && digits.length >= 11) return '+' + digits;
+  if (digits.startsWith('010') && digits.length >= 9) return '+82' + digits.substring(1);
+  if (digits.startsWith('0') && digits.length >= 10) return '+82' + digits.substring(1);
+  if (!phone.trim().startsWith('+')) return '+82' + digits;
+  return phone.trim();
+}
+
+/**
+ * 신규 가입 시 대기 초대 처리 (가입 시 자동 연결)
+ * - 보호자→대상자: 새 사용자 = 대상자 → pending_guardian_invites에서 guardian 추가
+ * - 대상자→보호자: 새 사용자 = 보호자 → pending_subject_invites에서 subject에 self 추가
+ */
+exports.processPendingInvitesOnSignup = functions.auth.user().onCreate(async (user) => {
+  const uid = user.uid;
+  const phone = user.phoneNumber || '';
+  const normalized = normalizePhone(phone);
+  if (!normalized) {
+    console.log('[대기초대] 전화번호 없음, 스킵:', uid);
+    return null;
+  }
+  console.log('[대기초대] 신규 가입 처리 uid=', uid, 'phone=', normalized);
+
+  try {
+    // 1. pending_guardian_invites: 이 번호를 subject로 등록하려 했던 보호자들이 있다면 연결
+    const guardianInvitesSnap = await db.collection('pending_guardian_invites')
+      .where('subjectPhone', '==', normalized)
+      .get();
+
+    for (const doc of guardianInvitesSnap.docs) {
+      const data = doc.data();
+      const guardianUid = data.guardianUid;
+      if (!guardianUid || guardianUid === uid) continue;
+      try {
+        const subjectRef = db.collection('subjects').doc(uid);
+        const subjectSnap = await subjectRef.get();
+        const existing = subjectSnap.data() || {};
+        const paired = [...(existing.pairedGuardianUids || [])];
+        const infos = { ...(existing.guardianInfos || {}) };
+        if (paired.includes(guardianUid)) continue;
+        paired.push(guardianUid);
+        infos[guardianUid] = {
+          phone: data.guardianPhone || '',
+          displayName: data.guardianDisplayName || '',
+        };
+        await subjectRef.set({ pairedGuardianUids: paired, guardianInfos: infos }, { merge: true });
+        console.log('[대기초대] 보호자 연결 완료 subject=', uid, 'guardian=', guardianUid);
+      } catch (e) {
+        console.error('[대기초대] 보호자 연결 실패:', e);
+      }
+      await doc.ref.delete();
+    }
+
+    // 2. pending_subject_invites: 이 번호를 guardian으로 등록하려 했던 대상자들이 있다면 연결
+    const subjectInvitesSnap = await db.collection('pending_subject_invites')
+      .where('guardianPhone', '==', normalized)
+      .get();
+
+    const guardianUserDoc = await db.collection('users').doc(uid).get();
+    const guardianData = guardianUserDoc.exists ? guardianUserDoc.data() : {};
+    const guardianPhone = guardianData.phone || normalized;
+    const guardianDisplayName = guardianData.displayName || '';
+
+    for (const doc of subjectInvitesSnap.docs) {
+      const data = doc.data();
+      const subjectUid = data.subjectUid;
+      if (!subjectUid || subjectUid === uid) continue;
+      try {
+        const subjectRef = db.collection('subjects').doc(subjectUid);
+        const subjectSnap = await subjectRef.get();
+        const existing = subjectSnap.data() || {};
+        const paired = [...(existing.pairedGuardianUids || [])];
+        const infos = { ...(existing.guardianInfos || {}) };
+        if (paired.includes(uid)) continue;
+        paired.push(uid);
+        infos[uid] = { phone: guardianPhone, displayName: guardianDisplayName };
+        await subjectRef.set({ pairedGuardianUids: paired, guardianInfos: infos }, { merge: true });
+        console.log('[대기초대] 보호대상자 연결 완료 subject=', subjectUid, 'guardian=', uid);
+      } catch (e) {
+        console.error('[대기초대] 보호대상자 연결 실패:', e);
+      }
+      await doc.ref.delete();
+    }
+  } catch (error) {
+    console.error('[대기초대] 오류:', error);
+  }
+  return null;
+});
+
 /**
  * 보호자에게 FCM 알림 발송 및 invalid 토큰 정리
  * @param {string} guardianUid 보호자 UID

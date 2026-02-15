@@ -6,21 +6,24 @@ export function ProblemSection() {
   ];
 
   return (
-    <section className="px-6 py-16 md:py-20">
-      <div className="mx-auto max-w-3xl">
-        <h2 className="mb-10 text-center text-xl font-bold text-gray-900 md:text-2xl">
+    <section className="relative px-6 py-20 md:py-28">
+      <div className="mx-auto max-w-2xl">
+        <h2 className="mb-12 text-center text-2xl font-bold tracking-tight text-primary-900 md:text-3xl">
           이런 상황이 걱정되시나요?
         </h2>
+
         <ul className="space-y-4">
           {items.map((text, i) => (
             <li
               key={i}
-              className="flex items-start gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+              className="group flex items-start gap-4 rounded-2xl border border-primary-100/80 bg-white p-5 shadow-soft transition-all duration-200 hover:border-primary-200/60 hover:shadow-card"
             >
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-100 text-sm font-bold text-primary-600">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-100 text-sm font-bold text-primary-700">
                 {i + 1}
               </span>
-              <span className="pt-0.5 text-gray-700">{text}</span>
+              <span className="pt-1.5 text-base leading-relaxed text-primary-800/90">
+                {text}
+              </span>
             </li>
           ))}
         </ul>

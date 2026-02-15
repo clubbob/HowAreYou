@@ -278,6 +278,17 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
             ),
           ),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            tooltip: '설정',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const GuardianSettingsScreen()),
+              );
+            },
+          ),
+        ],
       ),
       body: StreamBuilder<String>(
         stream: _nameStream,

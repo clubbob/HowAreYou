@@ -1,12 +1,31 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --primary: #3b82f6;
-  --primary-soft: #eff6ff;
+  --primary: #2d7d63;
+  --primary-soft: #f0f7f4;
+  --cream: #faf9f7;
+  --surface: #ffffff;
+  --ink: #1a1a1a;
+  --ink-muted: #5c5c5c;
 }
 
 body {
-  @apply text-gray-900 antialiased;
+  @apply antialiased;
+  font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+  color: var(--ink);
+  background: var(--cream);
+}
+
+/* 부드러운 스크롤 */
+html {
+  scroll-behavior: smooth;
+}
+
+/* 선택 영역 */
+::selection {
+  background-color: rgba(45, 125, 99, 0.2);
 }

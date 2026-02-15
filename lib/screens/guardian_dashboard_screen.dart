@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart' show FirebaseException;
 import 'package:intl/intl.dart';
 import '../services/auth_service.dart';
 import '../services/guardian_service.dart';
@@ -106,7 +107,7 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
     }
     if (_phoneController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('전화번호를 입력해주세요.')),
+        const SnackBar(content: Text('핸드폰 번호를 입력해주세요.')),
       );
       return;
     }
@@ -152,30 +153,71 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
     } catch (e, stack) {
       if (mounted) {
         debugPrint('보호대상자 추가 오류: $e');
-        debugPrint('$stack');
-        if (e is NoSubjectUserException) {
-          await showDialog<void>(
-            context: context,
-            builder: (c) => AlertDialog(
-              icon: Icon(Icons.warning_amber_rounded, color: Colors.orange[700], size: 48),
-              title: const Text('경고'),
-              content: Text(e.message),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(c),
-                  child: const Text('확인'),
-                ),
-              ],
-            ),
-          );
-        } else {
+        debugPrint('stack: $stack');
+        if (e is PendingInviteCreatedException) {
+          _nameController.clear();
+          _phoneController.clear();
+          _refreshList(userId);
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('등록에 실패했습니다. 잠시 후 다시 시도해 주세요.'),
-              duration: Duration(seconds: 5),
-            ),
+            SnackBar(content: Text(e.message), backgroundColor: Colors.green.shade700),
           );
+          return;
         }
+        String message = '등록에 실패했습니다.';
+        if (e is NoSubjectUserException) {
+          message = e.message;
+        } else if (e is PendingInviteCreatedException) {
+          message = e.message;
+        } else if (e is FirebaseException) {
+          final fe = e as FirebaseException;
+          if (fe.code == 'permission-denied') {
+            message = '접근 권한이 없습니다. Firestore 규칙을 확인해 주세요.';
+          } else {
+            message = fe.message ?? fe.code;
+          }
+        } else if (e is TimeoutException) {
+          message = '요청 시간이 초과되었습니다. 네트워크를 확인해 주세요.';
+        } else {
+          final str = e.toString();
+          if (str.startsWith('Exception: ')) {
+            message = str.substring('Exception: '.length).split('\n').first.trim();
+          } else if (str.contains('permission-denied')) {
+            message = '접근 권한이 없습니다. Firestore 규칙을 확인해 주세요.';
+          } else if (str.contains('이미 보호 대상') || str.contains('이미 등록')) {
+            message = '이미 보호 대상으로 등록된 분입니다.';
+          } else if (str.contains('본인 핸드폰 번호')) {
+            message = '본인 핸드폰 번호는 추가할 수 없습니다.';
+          } else {
+            final first = str.split(RegExp(r' at |\n')).first.trim();
+            if (first.length > 0 && first.length < 200) message = first;
+          }
+        }
+        // 실제 오류 원인 표시 (진단용 - 다음 등록 시도 시 원인 확인)
+        final rawError = e.toString().split('\n').first;
+        await showDialog<void>(
+          context: context,
+          builder: (c) => AlertDialog(
+            icon: Icon(Icons.warning_amber_rounded, color: Colors.orange[700], size: 48),
+            title: const Text('보호 대상 추가 실패'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(message),
+                  const SizedBox(height: 12),
+                  Text('오류: $rawError', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(c),
+                child: const Text('확인'),
+              ),
+            ],
+          ),
+        );
       }
     } finally {
       if (mounted) {
@@ -379,10 +421,18 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
           ),
         ),
         actions: [
-          // 로그아웃 버튼 (테스트용)
-          TextButton.icon(
-            icon: const Icon(Icons.logout, size: 18),
-            label: const Text('로그아웃', style: TextStyle(fontSize: 14)),
+          IconButton(
+            icon: const Icon(Icons.settings),
+            tooltip: '설정',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const GuardianSettingsScreen()),
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: '로그아웃',
             onPressed: () async {
               final confirmed = await showDialog<bool>(
                 context: context,
@@ -390,13 +440,26 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
                   title: const Text('로그아웃'),
                   content: const Text('로그아웃하시겠습니까?'),
                   actions: [
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(false),
-                      child: const Text('취소'),
-                    ),
-                    ElevatedButton(
-                      onPressed: () => Navigator.of(context).pop(true),
-                      child: const Text('로그아웃'),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () => Navigator.of(context).pop(false),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.grey.shade300,
+                              foregroundColor: Colors.grey.shade800,
+                            ),
+                            child: const Text('취소'),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () => Navigator.of(context).pop(true),
+                            child: const Text('로그아웃'),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -522,7 +585,7 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
                           child: TextField(
                             controller: _phoneController,
                             decoration: InputDecoration(
-                              labelText: '보호 대상 전화번호',
+                              labelText: '보호 대상 핸드폰 번호',
                               hintText: '01012345678 (숫자만)',
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(_inputRadius),
@@ -759,7 +822,7 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
                       child: TextField(
                         controller: _phoneController,
                         decoration: InputDecoration(
-                          labelText: '보호 대상 전화번호',
+                          labelText: '보호 대상 핸드폰 번호',
                           hintText: '01012345678 (숫자만)',
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(_inputRadius),
@@ -1087,6 +1150,131 @@ class _GuardianSettingsScreenState extends State<GuardianSettingsScreen> {
     }
   }
 
+  Future<void> _showDeleteAccountDialog(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('회원 탈퇴'),
+        content: const Text(
+          '계정과 모든 데이터가 영구적으로 삭제됩니다.\n\n'
+          '• 사용자 정보 삭제\n'
+          '• 보호대상자/보호자 연결 해제\n'
+          '• 기록 데이터 삭제\n\n'
+          '이 작업은 취소할 수 없습니다. 계속하시겠습니까?',
+        ),
+        actions: [
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () => Navigator.of(ctx).pop(false),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.grey.shade300,
+                    foregroundColor: Colors.grey.shade800,
+                  ),
+                  child: const Text('취소'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () => Navigator.of(ctx).pop(true),
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                  child: const Text('탈퇴'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    final authService = Provider.of<AuthService>(context, listen: false);
+    var error = await authService.deleteAccount();
+    if (!context.mounted) return;
+
+    if (error == null) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const AuthScreen()),
+        (route) => false,
+      );
+      return;
+    }
+
+    if (error == 'REQUIRES_REAUTH') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('인증번호를 전송 중입니다...')),
+      );
+      final verificationId = await authService.sendReauthOTP();
+      if (!context.mounted) return;
+      if (verificationId == null || verificationId.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('인증번호 전송에 실패했습니다. 잠시 후 다시 시도해 주세요.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('인증번호를 전송했습니다. 6자리를 입력해 주세요.')),
+      );
+
+      final smsCode = await showDialog<String>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) {
+          final controller = TextEditingController();
+          return AlertDialog(
+            title: const Text('본인 인증'),
+            content: TextField(
+              controller: controller,
+              keyboardType: TextInputType.number,
+              maxLength: 6,
+              autofocus: true,
+              decoration: const InputDecoration(
+                hintText: '인증번호 6자리',
+                counterText: '',
+              ),
+              onSubmitted: (v) => Navigator.of(ctx).pop(v),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('취소'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.of(ctx).pop(controller.text),
+                child: const Text('확인'),
+              ),
+            ],
+          );
+        },
+      );
+      if (smsCode == null || smsCode.length != 6 || !context.mounted) return;
+
+      error = await authService.reauthenticateAndDeleteAccount(verificationId, smsCode);
+      if (!context.mounted) return;
+      if (error != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error), backgroundColor: Colors.red),
+        );
+        return;
+      }
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const AuthScreen()),
+        (route) => false,
+      );
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(error), backgroundColor: Colors.red),
+    );
+  }
+
   Future<void> _toggleNotificationSound(bool value) async {
     setState(() {
       _notificationSoundEnabled = value;
@@ -1149,6 +1337,21 @@ class _GuardianSettingsScreenState extends State<GuardianSettingsScreen> {
                       value: _notificationSoundEnabled,
                       onChanged: _toggleNotificationSound,
                     ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Card(
+                  child: ListTile(
+                    leading: Icon(Icons.delete_forever, color: Colors.red.shade700),
+                    title: Text(
+                      '회원 탈퇴',
+                      style: TextStyle(
+                        color: Colors.red.shade700,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    subtitle: const Text('계정 및 모든 데이터가 영구적으로 삭제됩니다'),
+                    onTap: () => _showDeleteAccountDialog(context),
                   ),
                 ),
               ],

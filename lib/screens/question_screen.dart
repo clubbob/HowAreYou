@@ -7,6 +7,7 @@ import '../models/mood_response_model.dart';
 import '../widgets/mood_face_icon.dart';
 import '../utils/button_styles.dart';
 import 'subject_mode_screen.dart';
+import 'subject_settings_screen.dart';
 
 class QuestionScreen extends StatefulWidget {
   final TimeSlot timeSlot;
@@ -119,6 +120,17 @@ class _QuestionScreenState extends State<QuestionScreen> {
             ),
           ),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            tooltip: '설정',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const SubjectSettingsScreen()),
+              );
+            },
+          ),
+        ],
       ),
       resizeToAvoidBottomInset: true,
       body: SafeArea(

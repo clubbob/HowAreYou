@@ -10,6 +10,22 @@ class NoSubjectUserException implements Exception {
   String toString() => message;
 }
 
+/// 보호자 전화번호로 사용자를 찾지 못했을 때
+class NoGuardianUserException implements Exception {
+  final String message;
+  NoGuardianUserException(this.message);
+  @override
+  String toString() => message;
+}
+
+/// 대기 초대 생성됨 (가입 시 자동 연결)
+class PendingInviteCreatedException implements Exception {
+  final String message;
+  PendingInviteCreatedException(this.message);
+  @override
+  String toString() => message;
+}
+
 /// 보호자가 담당하는 대상자(subject) 목록·이름 조회 및 보호 대상 추가.
 /// PRD §9: subjects/{subjectUid} 문서 ID = 보호대상자 Firebase Auth UID (users/{uid}와 동일).
 class GuardianService {
@@ -91,6 +107,44 @@ class GuardianService {
         .get();
   }
 
+  /// 보호자→대상자 대기 초대 생성 (대상자 미가입 시)
+  Future<void> _createPendingGuardianInvite({
+    required String subjectPhone,
+    required String guardianUid,
+    required String guardianPhone,
+    String? guardianDisplayName,
+  }) async {
+    final normalized = _toE164Internal(subjectPhone);
+    if (normalized.isEmpty) return;
+    await _firestore.collection(AppConstants.pendingGuardianInvitesCollection).add({
+      'subjectPhone': normalized,
+      'guardianUid': guardianUid,
+      'guardianPhone': guardianPhone,
+      'guardianDisplayName': guardianDisplayName?.trim() ?? '',
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+    debugPrint('GuardianService: 대기 초대 생성 subjectPhone=$normalized guardianUid=$guardianUid');
+  }
+
+  /// 대상자→보호자 대기 초대 생성 (보호자 미가입 시)
+  Future<void> createPendingSubjectInvite({
+    required String guardianPhone,
+    required String subjectUid,
+    required String subjectPhone,
+    String? subjectDisplayName,
+  }) async {
+    final normalized = _toE164Internal(guardianPhone);
+    if (normalized.isEmpty) return;
+    await _firestore.collection(AppConstants.pendingSubjectInvitesCollection).add({
+      'guardianPhone': normalized,
+      'subjectUid': subjectUid,
+      'subjectPhone': subjectPhone,
+      'subjectDisplayName': subjectDisplayName?.trim() ?? '',
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+    debugPrint('GuardianService: 대기 초대 생성 guardianPhone=$normalized subjectUid=$subjectUid');
+  }
+
   /// 전화번호로 사용자 문서 한 건 조회 (보호대상자/보호자 추가 시 공통). 없으면 null.
   Future<DocumentSnapshot?> getUserByPhone(String rawInput) async {
     final q = await _findUserByPhone(rawInput.trim());
@@ -113,9 +167,16 @@ class GuardianService {
     debugPrint('GuardianService: 보호대상자 등록 시도 subjectPhone=$subjectPhone guardianUid=$guardianUid');
     final usersQuery = await _findUserByPhone(subjectPhone.trim());
     if (usersQuery.docs.isEmpty) {
-      throw NoSubjectUserException(
-        '이 전화번호로 가입된 사용자가 없습니다.\n\n'
-        '보호 대상자가 앱을 설치하고, 한 번이라도 로그인해야 등록할 수 있습니다.',
+      // 미가입 시 대기 등록 → 가입 시 자동 연결
+      await _createPendingGuardianInvite(
+        subjectPhone: subjectPhone.trim(),
+        guardianUid: guardianUid,
+        guardianPhone: guardianPhone,
+        guardianDisplayName: guardianDisplayName,
+      );
+      throw PendingInviteCreatedException(
+        '이 분이 아직 앱에 가입하지 않았습니다.\n'
+        '가입하시면 자동으로 연결됩니다.',
       );
     }
     final subjectDoc = usersQuery.docs.first;
@@ -131,7 +192,7 @@ class GuardianService {
         debugPrint('[개발 모드] 본인을 보호대상으로 추가합니다. (프로덕션에서는 차단됨)');
       } else {
         // 프로덕션 모드: 차단
-        throw Exception('본인 전화번호는 추가할 수 없습니다. 보호할 분(대상자)의 전화번호를 입력해 주세요.');
+        throw Exception('본인 핸드폰 번호는 추가할 수 없습니다. 보호할 분(대상자)의 핸드폰 번호를 입력해 주세요.');
       }
     }
 
@@ -144,7 +205,7 @@ class GuardianService {
     } catch (e) {
       debugPrint('GuardianService: subjects 문서 읽기 실패 → $e');
       if (e.toString().contains('permission-denied') || e.toString().contains('PERMISSION_DENIED')) {
-        throw Exception('보호대상자 정보를 읽을 권한이 없습니다. Firebase Console에서 Firestore 규칙을 배포했는지 확인해 주세요. (firebase deploy --only firestore:rules)');
+        throw Exception('접근 권한이 없습니다. 잠시 후 다시 시도해 주세요.');
       }
       rethrow;
     }
@@ -205,7 +266,7 @@ class GuardianService {
     } catch (e) {
       debugPrint('GuardianService: subjects 쓰기 실패 → $e');
       if (e.toString().contains('permission-denied') || e.toString().contains('PERMISSION_DENIED')) {
-        throw Exception('보호대상자로 등록할 권한이 없습니다. Firestore 규칙을 배포해 주세요. (firebase deploy --only firestore:rules)');
+        throw Exception('접근 권한이 없습니다. 잠시 후 다시 시도해 주세요.');
       }
       rethrow;
     }

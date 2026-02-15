@@ -2,6 +2,10 @@ class AppConstants {
   /// 보호대상자 초대 링크 베이스 (딥링크 + 미설치 시 웹에서 Play Store 유도)
   static const String inviteBaseUrl = 'https://howareyou-1c5de.web.app/invite';
 
+  /// 약관/개인정보처리방침 URL (홈페이지)
+  static const String termsUrl = 'https://how-are-you-nu.vercel.app/terms';
+  static const String privacyUrl = 'https://how-are-you-nu.vercel.app/privacy';
+
   // 알림 채널 ID
   static const String dailyMoodCheckChannelId = 'daily_mood_check';
   static const String dailyMoodCheckChannelName = '일일 상태 확인';
@@ -26,4 +30,9 @@ class AppConstants {
   static const String subjectsCollection = 'subjects';
   static const String promptsCollection = 'prompts';
   static const String alertsCollection = 'alerts';
+
+  /// 보호자→대상자 대기 초대 (가입 시 자동 연결)
+  static const String pendingGuardianInvitesCollection = 'pending_guardian_invites';
+  /// 대상자→보호자 대기 초대 (가입 시 자동 연결)
+  static const String pendingSubjectInvitesCollection = 'pending_subject_invites';
 }

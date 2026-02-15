@@ -6,9 +6,16 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'dart:io' show Platform;
 import '../models/user_model.dart';
+import '../utils/constants.dart';
 import 'fcm_service.dart';
 import 'notification_service.dart';
 import '../utils/permission_helper.dart';
+
+/// 최초 가입 시 약관 동의가 필요할 때 던지는 예외
+class NeedAgreementException implements Exception {
+  final User user;
+  NeedAgreementException(this.user);
+}
 
 /// 전화번호 인증 로그인. 한 번 로그인하면 앱을 닫았다 켜도 유지되며, 로그아웃 버튼을 누르기 전까지 유지됨.
 class AuthService extends ChangeNotifier {
@@ -94,35 +101,109 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  Future<String?> verifyOTP(String verificationId, String smsCode) async {
+  /// OTP 인증 성공 후 공통 처리. 신규 사용자(users 문서 없음)는 약관 동의 필요 시 [NeedAgreementException] 던짐.
+  Future<void> _processAfterSignIn(
+    User user, {
+    DateTime? termsAgreedAt,
+    DateTime? privacyAgreedAt,
+  }) async {
+    final userRef = _firestore.collection('users').doc(user.uid);
+    final doc = await userRef.get();
+
+    if (!doc.exists) {
+      if (termsAgreedAt == null || privacyAgreedAt == null) {
+        throw NeedAgreementException(user);
+      }
+    }
+
+    final phoneNumber = user.phoneNumber ?? '';
+    debugPrint('verifyOTP: 사용자 문서 확보 시도');
+    await _ensureUserDocument(
+      user.uid,
+      phoneNumber,
+      termsAgreedAt: termsAgreedAt,
+      privacyAgreedAt: privacyAgreedAt,
+    );
+    debugPrint('verifyOTP: 사용자 문서 확보 완료');
+    await _ensureSubjectDocument(user.uid);
+    debugPrint('verifyOTP: 보호대상자 문서 확보 완료');
+    await _saveLastLoginPhone(phoneNumber);
+    await addAgreedPhone(phoneNumber);
+    FCMService.instance.initialize(user.uid).catchError((e) {
+      debugPrint('FCM 초기화 지연/실패 (무시): $e');
+    });
+    _checkTodayNotificationAfterLogin(user.uid);
+  }
+
+  /// 자동 인증(verificationCompleted) 시 credential로 직접 로그인. 신규 사용자는 [NeedAgreementException] 던짐.
+  Future<String?> verifyWithCredential(
+    PhoneAuthCredential credential, {
+    DateTime? termsAgreedAt,
+    DateTime? privacyAgreedAt,
+  }) async {
+    final userCredential = await _auth.signInWithCredential(credential);
+    final user = userCredential.user;
+    if (user == null) return '인증에 실패했습니다.';
+    try {
+      await _processAfterSignIn(
+        user,
+        termsAgreedAt: termsAgreedAt,
+        privacyAgreedAt: privacyAgreedAt,
+      );
+      return null;
+    } on NeedAgreementException {
+      rethrow;
+    }
+  }
+
+  /// 최초 가입 시 약관 동의 후 호출. users/subjects 문서 생성 후 로그인 완료.
+  Future<String?> completeNewUserSignUp(
+    User user, {
+    required DateTime termsAgreedAt,
+    required DateTime privacyAgreedAt,
+  }) async {
+    try {
+      await _processAfterSignIn(
+        user,
+        termsAgreedAt: termsAgreedAt,
+        privacyAgreedAt: privacyAgreedAt,
+      );
+      await _loadUserData(user.uid);
+      return null;
+    } catch (e) {
+      debugPrint('completeNewUserSignUp 오류: $e');
+      return '처리 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.';
+    }
+  }
+
+  Future<String?> verifyOTP(
+    String verificationId,
+    String smsCode, {
+    DateTime? termsAgreedAt,
+    DateTime? privacyAgreedAt,
+  }) async {
     try {
       debugPrint('verifyOTP: signIn 시도');
       final credential = PhoneAuthProvider.credential(
         verificationId: verificationId,
         smsCode: smsCode,
       );
-      
+
       final userCredential = await _auth.signInWithCredential(credential);
       final user = userCredential.user;
       debugPrint('verifyOTP: signIn 완료 uid=${user?.uid}');
 
       if (user != null) {
-        final phoneNumber = user.phoneNumber ?? '';
-        debugPrint('verifyOTP: 사용자 문서 확보 시도');
-        await _ensureUserDocument(user.uid, phoneNumber);
-        debugPrint('verifyOTP: 사용자 문서 확보 완료');
-        await _ensureSubjectDocument(user.uid);
-        debugPrint('verifyOTP: 보호대상자 문서 확보 완료');
-        await _saveLastLoginPhone(phoneNumber);
-        // FCM은 로그인 완료 후 백그라운드에서 초기화 (에뮬레이터에서 getToken 지연 시 로딩 멈춤 방지)
-        FCMService.instance.initialize(user.uid).catchError((e) {
-          debugPrint('FCM 초기화 지연/실패 (무시): $e');
-        });
-        // 로그인 완료 후 오늘 18:00 이전이고 아직 기록하지 않았다면 즉시 알림 표시
-        _checkTodayNotificationAfterLogin(user.uid);
+        await _processAfterSignIn(
+          user,
+          termsAgreedAt: termsAgreedAt,
+          privacyAgreedAt: privacyAgreedAt,
+        );
       }
       debugPrint('verifyOTP: 완료');
       return null;
+    } on NeedAgreementException {
+      rethrow;
     } on FirebaseAuthException catch (e) {
       debugPrint('verifyOTP: FirebaseAuthException - 코드: ${e.code}, 메시지: ${e.message}');
       // Firebase Auth 에러 코드를 한글 메시지로 변환
@@ -132,10 +213,10 @@ class AuthService extends ChangeNotifier {
           errorMessage = '인증번호가 일치하지 않아요.\n다시 한 번 확인해 주세요.';
           break;
         case 'invalid-verification-id':
-          errorMessage = '인증 세션이 만료되었습니다. 전화번호를 다시 입력해주세요.';
+          errorMessage = '인증 세션이 만료되었습니다. 핸드폰 번호를 다시 입력해주세요.';
           break;
         case 'session-expired':
-          errorMessage = '인증 세션이 만료되었습니다. 전화번호를 다시 입력해주세요.';
+          errorMessage = '인증 세션이 만료되었습니다. 핸드폰 번호를 다시 입력해주세요.';
           break;
         case 'too-many-requests':
           errorMessage = '너무 많은 요청이 발생했습니다. 잠시 후 다시 시도해주세요.';
@@ -174,6 +255,52 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+  static const String _agreedPhonesKey = 'agreed_phones';
+
+  /// 회원 탈퇴 시 해당 전화번호를 약관 동의 목록에서 제거 (재가입 시 약관 다시 동의)
+  Future<void> _removeAgreedPhone(String phoneNumber) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final normalized = _toE164(phoneNumber);
+      if (normalized.isEmpty) return;
+      final list = prefs.getStringList(_agreedPhonesKey) ?? [];
+      if (list.contains(normalized)) {
+        list.remove(normalized);
+        await prefs.setStringList(_agreedPhonesKey, list);
+      }
+    } catch (e) {
+      debugPrint('약관 동의 전화번호 제거 실패: $e');
+    }
+  }
+
+  /// 로그인 성공 시 해당 전화번호를 약관 동의 완료 목록에 추가
+  Future<void> addAgreedPhone(String phoneNumber) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final normalized = _toE164(phoneNumber);
+      if (normalized.isEmpty) return;
+      final list = prefs.getStringList(_agreedPhonesKey) ?? [];
+      if (!list.contains(normalized)) {
+        list.add(normalized);
+        await prefs.setStringList(_agreedPhonesKey, list);
+      }
+    } catch (e) {
+      debugPrint('약관 동의 전화번호 저장 실패: $e');
+    }
+  }
+
+  /// 해당 전화번호가 이전에 약관 동의한 번호인지 확인
+  Future<bool> isPhoneAgreed(String phoneNumber) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final list = prefs.getStringList(_agreedPhonesKey) ?? [];
+      final normalized = _toE164(phoneNumber);
+      return normalized.isNotEmpty && list.contains(normalized);
+    } catch (e) {
+      return false;
+    }
+  }
+
   /// Firestore/지정자 조회와 맞추기 위해 E.164로 통일 (+821012345678)
   static String _toE164(String input) {
     final digits = input.replaceAll(RegExp(r'[^\d]'), '');
@@ -194,23 +321,39 @@ class AuthService extends ChangeNotifier {
   }
 
   /// PRD §9: users 문서 ID = Auth UID. 생성/갱신만 담당.
-  Future<void> _ensureUserDocument(String uid, String phone) async {
+  Future<void> _ensureUserDocument(
+    String uid,
+    String phone, {
+    DateTime? termsAgreedAt,
+    DateTime? privacyAgreedAt,
+  }) async {
     final userRef = _firestore.collection('users').doc(uid);
     final doc = await userRef.get();
     final normalizedPhone = _toE164(phone);
 
     if (!doc.exists) {
-      await userRef.set({
+      final data = <String, dynamic>{
         'phone': normalizedPhone,
         'role': 'subject',
         'fcmTokens': [],
-      });
+      };
+      if (termsAgreedAt != null) {
+        data['termsAgreedAt'] = Timestamp.fromDate(termsAgreedAt);
+      }
+      if (privacyAgreedAt != null) {
+        data['privacyAgreedAt'] = Timestamp.fromDate(privacyAgreedAt);
+      }
+      await userRef.set(data);
     } else {
       // 이미 있는 사용자도 전화번호를 E.164로 갱신 (지정자 조회 일치용)
-      await userRef.set(
-        {'phone': normalizedPhone},
-        SetOptions(merge: true),
-      );
+      final updateData = <String, dynamic>{'phone': normalizedPhone};
+      if (termsAgreedAt != null) {
+        updateData['termsAgreedAt'] = Timestamp.fromDate(termsAgreedAt);
+      }
+      if (privacyAgreedAt != null) {
+        updateData['privacyAgreedAt'] = Timestamp.fromDate(privacyAgreedAt);
+      }
+      await userRef.set(updateData, SetOptions(merge: true));
     }
   }
 
@@ -287,6 +430,134 @@ class AuthService extends ChangeNotifier {
         debugPrint('[AuthService] 로그인 후 오늘 알림 체크 오류: $e');
       }
     });
+  }
+
+  /// 회원 탈퇴 시 재인증용 OTP 전송. [verificationId]를 반환 (실패 시 null)
+  Future<String?> sendReauthOTP() async {
+    final user = _user;
+    if (user == null) return null;
+    final phoneNumber = user.phoneNumber;
+    if (phoneNumber == null || phoneNumber.isEmpty) return null;
+
+    final completer = Completer<String?>();
+    _auth.verifyPhoneNumber(
+      phoneNumber: phoneNumber,
+      verificationCompleted: (_) {
+        // 재인증은 수동 입력 플로우 사용 (자동 인증 시 codeSent 대기)
+      },
+      verificationFailed: (e) {
+        if (!completer.isCompleted) completer.completeError(e);
+      },
+      codeSent: (verificationId, _) {
+        if (!completer.isCompleted) completer.complete(verificationId);
+      },
+      codeAutoRetrievalTimeout: (verificationId) {
+        if (!completer.isCompleted) completer.complete(verificationId);
+      },
+      timeout: const Duration(seconds: 60),
+    );
+    try {
+      return await completer.future.timeout(
+        const Duration(seconds: 65),
+        onTimeout: () => throw TimeoutException('인증번호 전송 시간이 초과되었습니다.'),
+      );
+    } catch (e) {
+      debugPrint('sendReauthOTP 오류: $e');
+      return null;
+    }
+  }
+
+  /// 재인증 후 계정 삭제 (회원 탈퇴)
+  Future<String?> reauthenticateAndDeleteAccount(String verificationId, String smsCode) async {
+    final user = _user;
+    if (user == null) return '로그인이 필요합니다.';
+
+    try {
+      final credential = PhoneAuthProvider.credential(
+        verificationId: verificationId,
+        smsCode: smsCode,
+      );
+      await user.reauthenticateWithCredential(credential);
+      return await _deleteAccountCore();
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'invalid-verification-code') {
+        return '인증번호가 일치하지 않아요. 다시 확인해 주세요.';
+      }
+      if (e.code == 'invalid-verification-id' || e.code == 'session-expired') {
+        return '인증 세션이 만료되었습니다. 다시 시도해 주세요.';
+      }
+      return e.message ?? '회원 탈퇴에 실패했습니다.';
+    } catch (e, stack) {
+      debugPrint('reauthenticateAndDeleteAccount 오류: $e');
+      debugPrint('$stack');
+      return '회원 탈퇴 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.';
+    }
+  }
+
+  /// 삭제 로직 (Firestore + Auth). 재인증 후 호출하거나, requires-recent-login 없이 성공하는 경우 사용
+  Future<String?> _deleteAccountCore() async {
+    final uid = _user?.uid;
+    if (uid == null) return '로그인이 필요합니다.';
+
+    try {
+      // 1. subjects/{uid} (보호대상자 문서) 및 prompts 삭제
+      final subjectRef = _firestore.collection(AppConstants.subjectsCollection).doc(uid);
+      final promptsSnap = await subjectRef.collection(AppConstants.promptsCollection).get();
+      for (final doc in promptsSnap.docs) {
+        await doc.reference.delete();
+      }
+      await subjectRef.delete();
+
+      // 2. 다른 보호대상자 문서에서 본인을 보호자로 제거
+      final subjectsSnap = await _firestore.collection(AppConstants.subjectsCollection).get();
+      for (final doc in subjectsSnap.docs) {
+        if (doc.id == uid) continue;
+        final data = doc.data();
+        final paired = data['pairedGuardianUids'] as List?;
+        final infos = data['guardianInfos'] as Map?;
+        if (paired == null || !paired.contains(uid)) continue;
+        final newPaired = List<String>.from(paired)..remove(uid);
+        final newInfos = Map<String, dynamic>.from(infos ?? {})..remove(uid);
+        await doc.reference.update({
+          'pairedGuardianUids': newPaired,
+          'guardianInfos': newInfos,
+        });
+      }
+
+      // 3. FCM 토큰 제거 (users 문서 삭제 전에 호출 필요)
+      await FCMService.instance.removeToken(uid);
+
+      // 4. users/{uid} 삭제
+      await _firestore.collection(AppConstants.usersCollection).doc(uid).delete();
+
+      // 5. 약관 동의 목록에서 제거 (재가입 시 약관 다시 동의)
+      final phone = _user!.phoneNumber;
+      if (phone != null && phone.isNotEmpty) {
+        await _removeAgreedPhone(phone);
+      }
+
+      // 6. Firebase Auth 계정 삭제 (마지막 - 삭제 후 자동 로그아웃)
+      await _user!.delete();
+
+      _user = null;
+      _userModel = null;
+      notifyListeners();
+      return null;
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'requires-recent-login') {
+        return 'REQUIRES_REAUTH'; // UI에서 재인증 플로우로 전환
+      }
+      return e.message ?? '회원 탈퇴에 실패했습니다.';
+    } catch (e, stack) {
+      debugPrint('계정 삭제 오류: $e');
+      debugPrint('$stack');
+      return '회원 탈퇴 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.';
+    }
+  }
+
+  /// 회원 탈퇴. 성공 시 null. 재인증 필요 시 'REQUIRES_REAUTH' 반환
+  Future<String?> deleteAccount() async {
+    return _deleteAccountCore();
   }
 
   Future<void> signOut() async {

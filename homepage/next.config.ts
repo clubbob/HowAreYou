@@ -2,8 +2,8 @@ import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  // Vercel Output Directory가 build/web으로 고정된 상태라 빌드 출력 위치를 맞춤
-  distDir: 'build/web',
+  // 개발(dev): .next 사용 (EPERM 회피) / 프로덕션 빌드: build/web (Vercel 호환)
+  distDir: process.env.NODE_ENV === 'production' ? 'build/web' : '.next',
 };
 
 export default nextConfig;

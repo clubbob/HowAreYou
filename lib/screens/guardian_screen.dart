@@ -8,6 +8,7 @@ import '../services/guardian_service.dart';
 import '../utils/constants.dart';
 import '../utils/button_styles.dart';
 import '../utils/invite_link_helper.dart';
+import 'subject_settings_screen.dart';
 
 class GuardianScreen extends StatefulWidget {
   const GuardianScreen({super.key});
@@ -232,7 +233,7 @@ class _GuardianScreenState extends State<GuardianScreen> {
                 TextFormField(
                   controller: phoneController,
                   decoration: const InputDecoration(
-                    labelText: '전화번호',
+                    labelText: '핸드폰 번호',
                     hintText: '01012345678',
                     border: OutlineInputBorder(),
                   ),
@@ -251,7 +252,7 @@ class _GuardianScreenState extends State<GuardianScreen> {
                   },
                   validator: (v) {
                     if (v == null || v.trim().isEmpty) {
-                      return '전화번호를 입력하세요.';
+                      return '핸드폰 번호를 입력하세요.';
                     }
                     return null;
                   },
@@ -343,7 +344,7 @@ class _GuardianScreenState extends State<GuardianScreen> {
     }
     if (_phoneController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('전화번호를 입력해주세요.')),
+        const SnackBar(content: Text('핸드폰 번호를 입력해주세요.')),
       );
       return;
     }
@@ -362,7 +363,29 @@ class _GuardianScreenState extends State<GuardianScreen> {
 
       final guardianDoc = await _guardianService.getUserByPhone(_phoneController.text.trim());
       if (guardianDoc == null) {
-        throw Exception('해당 전화번호로 가입된 사용자를 찾을 수 없습니다.');
+        // 미가입 시 대기 등록 → 가입 시 자동 연결
+        final subjectPhone = authService.user?.phoneNumber ?? authService.userModel?.phone ?? '';
+        await _guardianService.createPendingSubjectInvite(
+          guardianPhone: _phoneController.text.trim(),
+          subjectUid: userId,
+          subjectPhone: subjectPhone,
+          subjectDisplayName: authService.userModel?.displayName,
+        );
+        if (mounted) {
+          _nameController.clear();
+          _phoneController.clear();
+          _hasScrolledAfterAdd = false;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text(
+                '이 분이 아직 앱에 가입하지 않았습니다.\n가입하시면 자동으로 연결됩니다.',
+              ),
+              backgroundColor: Colors.green.shade700,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
+        return;
       }
 
       final guardianId = guardianDoc.id;
@@ -379,7 +402,7 @@ class _GuardianScreenState extends State<GuardianScreen> {
           debugPrint('[개발 모드] 본인을 보호자로 추가합니다. (프로덕션에서는 차단됨)');
         } else {
           // 프로덕션 모드: 차단
-          throw Exception('본인 전화번호는 추가할 수 없습니다.');
+          throw Exception('본인 핸드폰 번호는 추가할 수 없습니다.');
         }
       }
 
@@ -437,6 +460,7 @@ class _GuardianScreenState extends State<GuardianScreen> {
       }
 
       if (mounted) {
+        FocusScope.of(context).unfocus(); // 키보드 닫아 상단 보이게
         _nameController.clear();
         _phoneController.clear();
         _hasScrolledAfterAdd = false;
@@ -448,12 +472,12 @@ class _GuardianScreenState extends State<GuardianScreen> {
           ),
         );
         
-        // 리스트 쪽으로 스크롤 이동 (한 번만 실행)
+        // 상단(등록된 보호자 목록)으로 스크롤하여 새로 추가된 보호자 확인 가능하게
         Future.delayed(const Duration(milliseconds: 300), () {
           if (mounted && _scrollController.hasClients && !_hasScrolledAfterAdd) {
             _hasScrolledAfterAdd = true;
             _scrollController.animateTo(
-              400, // 보호자 추가 섹션 높이 정도
+              0,
               duration: const Duration(milliseconds: 300),
               curve: Curves.easeOut,
             );
@@ -462,8 +486,15 @@ class _GuardianScreenState extends State<GuardianScreen> {
       }
     } catch (e) {
       if (mounted) {
+        String message = '등록이 되지 않았어요. 핸드폰 번호를 확인하고 다시 시도해 주세요.';
+        final str = e.toString();
+        if (str.startsWith('Exception: ')) {
+          message = str.substring('Exception: '.length).split('\n').first.trim();
+        } else if (str.contains('permission-denied')) {
+          message = '접근 권한이 없습니다. 잠시 후 다시 시도해 주세요.';
+        }
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('오류가 발생했습니다. 잠시 후 다시 시도해 주세요.')),
+          SnackBar(content: Text(message), backgroundColor: Colors.red.shade700),
         );
       }
     } finally {
@@ -484,7 +515,7 @@ class _GuardianScreenState extends State<GuardianScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('보호자 지정'),
+        title: const Text('보호자 관리'),
         backgroundColor: Colors.white,
         elevation: 0,
         foregroundColor: Colors.black87,
@@ -504,6 +535,17 @@ class _GuardianScreenState extends State<GuardianScreen> {
             ),
           ),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            tooltip: '설정',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const SubjectSettingsScreen()),
+              );
+            },
+          ),
+        ],
       ),
       body: userId == null
           ? const Center(child: Text('로그인이 필요합니다.'))
@@ -600,25 +642,18 @@ class _GuardianScreenState extends State<GuardianScreen> {
                                     ),
                                   ),
                                   IconButton(
-                                    icon: Icon(
-                                      Icons.delete,
-                                      color: guardianUids.length <= 1
-                                          ? Colors.grey.shade400
-                                          : null,
-                                    ),
-                                    tooltip: guardianUids.length <= 1
-                                        ? '최소 1명의 보호자가 필요합니다'
-                                        : '삭제',
-                                    onPressed: guardianUids.length <= 1
-                                        ? null
-                                        : () async {
+                                    icon: const Icon(Icons.delete),
+                                    tooltip: '삭제',
+                                    onPressed: () async {
                                             // 삭제 확인 다이얼로그
                                             final confirm = await showDialog<bool>(
                                               context: context,
                                               builder: (ctx) => AlertDialog(
                                                 title: const Text('보호자 삭제'),
                                                 content: Text(
-                                                  '${hasName ? displayName : phone ?? "이 보호자"}를 삭제하시겠습니까?',
+                                                  guardianUids.length <= 1
+                                                      ? '${hasName ? displayName : phone ?? "이 보호자"}를 삭제하면 안부를 전달할 보호자가 없어집니다. 삭제하시겠습니까?'
+                                                      : '${hasName ? displayName : phone ?? "이 보호자"}를 삭제하시겠습니까?',
                                                 ),
                                                 actions: [
                                                   TextButton(
@@ -635,18 +670,6 @@ class _GuardianScreenState extends State<GuardianScreen> {
                                             );
                                             
                                             if (confirm != true) return;
-                                            
-                                            // 마지막 1명인지 다시 확인
-                                            if (guardianUids.length <= 1) {
-                                              if (mounted) {
-                                                ScaffoldMessenger.of(context).showSnackBar(
-                                                  const SnackBar(
-                                                    content: Text('최소 1명의 보호자가 필요합니다.'),
-                                                  ),
-                                                );
-                                              }
-                                              return;
-                                            }
                                             
                                             try {
                                               await _firestore
@@ -741,7 +764,7 @@ class _GuardianScreenState extends State<GuardianScreen> {
                         child: TextField(
                           controller: _phoneController,
                           decoration: InputDecoration(
-                            labelText: '보호자 전화번호',
+                            labelText: '보호자 핸드폰 번호',
                             hintText: '01012345678 (숫자만)',
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(_inputRadius),

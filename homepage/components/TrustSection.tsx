@@ -7,23 +7,27 @@ export function TrustSection() {
   ];
 
   return (
-    <section className="px-6 py-16 md:py-20">
-      <div className="mx-auto max-w-3xl">
-        <h2 className="mb-10 text-center text-xl font-bold text-gray-900 md:text-2xl">
+    <section className="relative px-6 py-20 md:py-28">
+      <div className="mx-auto max-w-2xl">
+        <h2 className="mb-12 text-center text-2xl font-bold tracking-tight text-primary-900 md:text-3xl">
           우리는 감시 앱이 아닙니다
         </h2>
-        <ul className="space-y-3">
+
+        <ul className="space-y-5">
           {items.map((text, i) => (
-            <li key={i} className="flex items-center gap-3">
-              <svg
-                className="h-5 w-5 shrink-0 text-primary-500"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-              <span className="text-gray-700">{text}</span>
+            <li key={i} className="flex items-center gap-4">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-100">
+                <svg
+                  className="h-5 w-5 text-primary-600"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2.5}
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              </span>
+              <span className="text-base font-medium text-primary-800 md:text-lg">{text}</span>
             </li>
           ))}
         </ul>

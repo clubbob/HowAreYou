@@ -22,8 +22,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko">
-      <body>{children}</body>
+    <html lang="ko" className="scroll-smooth">
+      <body className="min-h-screen bg-cream-50 text-[#1a1a1a]">{children}</body>
     </html>
   );
 }
