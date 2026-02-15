@@ -2,29 +2,48 @@ const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
-// 1. 포트 3000 사용 프로세스 종료 (Windows)
+const rootDir = path.join(__dirname, '..');
+
+// 1. 포트 3000~3005 사용 프로세스 종료 (Next.js가 다른 포트 쓴 경우 대비)
+const ports = [3000, 3001, 3002, 3003, 3004, 3005];
+const pids = new Set();
+
 try {
   const result = execSync('netstat -ano', { encoding: 'utf8' });
-  const pids = new Set();
-  result.split('\n').forEach(line => {
-    const match = line.match(/:3000\s/);
-    if (match) {
-      const parts = line.trim().split(/\s+/);
-      const pid = parts[parts.length - 1];
-      if (pid && pid !== '0') pids.add(pid);
-    }
+  result.split('\n').forEach((line) => {
+    ports.forEach((port) => {
+      const match = line.match(new RegExp(`:${port}\\s`));
+      if (match) {
+        const parts = line.trim().split(/\s+/);
+        const pid = parts[parts.length - 1];
+        if (pid && pid !== '0') pids.add(pid);
+      }
+    });
   });
-  pids.forEach(pid => {
+  pids.forEach((pid) => {
     try {
       execSync(`taskkill /PID ${pid} /F`, { stdio: 'ignore' });
-      console.log(`포트 3000 프로세스 종료 (PID: ${pid})`);
+      console.log(`포트 사용 프로세스 종료 (PID: ${pid})`);
     } catch (e) { /* 이미 종료됨 */ }
   });
-} catch (e) { /* netstat 실패 시 무시 */ }
+  if (pids.size > 0) {
+    execSync('timeout /t 3 /nobreak >nul', { stdio: 'ignore' });
+  }
+} catch (e) { /* 무시 */ }
 
-// 2. build 폴더 삭제
-const buildDir = path.join(__dirname, '..', 'build');
+// 2. build, .next 폴더 삭제
+[path.join(rootDir, 'build'), path.join(rootDir, '.next')].forEach((dir) => {
+  try {
+    fs.rmSync(dir, { recursive: true, force: true });
+    console.log(path.basename(dir) + ' 폴더 삭제 완료');
+  } catch (e) { /* 무시 */ }
+});
+
+// 3. .next 폴더 및 trace 파일 선생성 (Windows EPERM 회피)
+const nextDir = path.join(rootDir, '.next');
+const tracePath = path.join(nextDir, 'trace');
 try {
-  fs.rmSync(buildDir, { recursive: true, force: true });
-  console.log('build 폴더 삭제 완료');
+  fs.mkdirSync(nextDir, { recursive: true });
+  fs.writeFileSync(tracePath, '', 'utf8');
+  console.log('.next/trace 파일 선생성 완료');
 } catch (e) { /* 무시 */ }
