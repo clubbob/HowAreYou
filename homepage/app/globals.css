@@ -5,27 +5,28 @@
 @tailwind utilities;
 
 :root {
-  --primary: #2d7d63;
-  --primary-soft: #f0f7f4;
-  --cream: #faf9f7;
-  --surface: #ffffff;
-  --ink: #1a1a1a;
-  --ink-muted: #5c5c5c;
+  --navy: #1F2A44;
+  --navy-soft: #2D3A5A;
+  --blue: #4A90E2;
+  --blue-soft: #E8F2FC;
+  --bg: #F7F8FA;
+  --ink: #1F2A44;
+  --ink-muted: #5C6B7E;
 }
 
 body {
   @apply antialiased;
   font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
   color: var(--ink);
-  background: var(--cream);
+  background: var(--bg);
+  font-size: 17px;
+  line-height: 1.6;
 }
 
-/* 부드러운 스크롤 */
 html {
   scroll-behavior: smooth;
 }
 
-/* 선택 영역 */
 ::selection {
-  background-color: rgba(45, 125, 99, 0.2);
+  background-color: rgba(74, 144, 226, 0.2);
 }

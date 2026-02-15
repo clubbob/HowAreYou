@@ -1,32 +1,30 @@
 export function ProblemSection() {
   const items = [
-    '혼자 사는 가족과 연락이 며칠 끊긴 경우',
-    '갑작스러운 사고',
-    '평소에는 괜찮지만, 혹시 모를 상황',
+    '혼자 사는 부모님이 걱정될 때',
+    '연락이 뜸한 배우자가 있을 때',
+    '타지에 있는 가족의 안부가 궁금할 때',
   ];
 
   return (
-    <section className="relative px-6 py-20 md:py-28">
-      <div className="mx-auto max-w-2xl">
-        <h2 className="mb-12 text-center text-2xl font-bold tracking-tight text-primary-900 md:text-3xl">
-          이런 상황이 걱정되시나요?
+    <section className="px-6 py-20 md:py-24" style={{ paddingTop: '5rem', paddingBottom: '5rem' }}>
+      <div className="mx-auto max-w-3xl">
+        <h2 className="mb-12 text-center text-[1.75rem] font-bold leading-[1.4] text-navy-900">
+          이런 분들께 필요합니다
         </h2>
 
-        <ul className="space-y-4">
+        <div className="grid gap-5 sm:grid-cols-3">
           {items.map((text, i) => (
-            <li
+            <div
               key={i}
-              className="group flex items-start gap-4 rounded-2xl border border-primary-100/80 bg-white p-5 shadow-soft transition-all duration-200 hover:border-primary-200/60 hover:shadow-card"
+              className="rounded-[1rem] border border-navy-100 bg-white p-6 shadow-[0_2px_12px_rgba(0,0,0,0.04)]"
             >
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-100 text-sm font-bold text-primary-700">
+              <span className="mb-4 flex h-12 w-12 items-center justify-center rounded-[12px] bg-primary-50 text-lg font-bold text-primary-400">
                 {i + 1}
               </span>
-              <span className="pt-1.5 text-base leading-relaxed text-primary-800/90">
-                {text}
-              </span>
-            </li>
+              <p className="text-[17px] leading-[1.6] text-navy-700">{text}</p>
+            </div>
           ))}
-        </ul>
+        </div>
       </div>
     </section>
   );

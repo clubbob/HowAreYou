@@ -8,45 +8,68 @@ export function HeroSection() {
   const [showModal, setShowModal] = useState(false);
 
   return (
-    <section className="relative overflow-hidden bg-gradient-to-b from-primary-50/80 via-cream-50 to-cream-50 px-6 pt-20 pb-28 md:pt-28 md:pb-36">
-      {/* 배경 장식 */}
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-primary-100/40 blur-3xl" />
-        <div className="absolute -bottom-32 -left-32 h-96 w-96 rounded-full bg-primary-50/60 blur-3xl" />
-      </div>
-
-      <div className="relative mx-auto max-w-2xl text-center">
-        <div className="mb-10 flex justify-center">
-          <div className="relative">
+    <section className="relative overflow-hidden bg-[#F7F8FA] px-6 pt-20 pb-24 md:pt-28 md:pb-32">
+      <div className="mx-auto grid max-w-5xl items-center gap-12 md:grid-cols-2 md:gap-16">
+        {/* 좌측: 텍스트 */}
+        <div>
+          <div className="mb-6">
             <Image
               src="/logo.png"
               alt="지금 어때"
-              width={96}
-              height={96}
+              width={72}
+              height={72}
               priority
               unoptimized
-              className="h-20 w-20 md:h-24 md:w-24"
+              className="h-[4.5rem] w-[4.5rem]"
             />
-            <div className="absolute -inset-2 -z-10 rounded-full bg-primary-100/30 blur-xl" />
+          </div>
+          <h1 className="mb-4 text-[2rem] font-bold leading-[1.3] tracking-tight text-navy-900 md:text-[2.625rem]">
+            하루 한 번, 안부를 확인합니다.
+          </h1>
+          <p className="mb-3 text-lg font-medium text-primary-400 md:text-xl">
+            기록은 간단하게.
+            <br />
+            걱정은 줄어들게.
+          </p>
+          <p className="mb-10 text-[17px] leading-[1.6] text-navy-600">
+            혼자 있는 가족의 하루를
+            <br />
+            가볍게 확인할 수 있는 안부 서비스입니다.
+          </p>
+          <div>
+            <button
+              onClick={() => setShowModal(true)}
+              className="flex h-[52px] items-center justify-center rounded-[14px] bg-primary-400 px-8 text-[17px] font-semibold text-white transition-colors hover:bg-primary-500"
+            >
+              베타 참여하기
+            </button>
+            <p className="mt-3 text-sm leading-relaxed text-navy-500">
+              베타 신청은 1분 내 완료됩니다.
+              <br />
+              신청 시 이메일만 수집됩니다.
+            </p>
           </div>
         </div>
 
-        <h1 className="mb-5 text-3xl font-bold leading-tight tracking-tight text-primary-900 md:text-4xl lg:text-5xl">
-          하루 한 번, 안부를 남기세요.
-        </h1>
-
-        <p className="mb-12 max-w-lg mx-auto text-base leading-relaxed text-primary-800/80 md:text-lg">
-          갑작스러운 사고나 무응답 상황을 대비하는
-          <br className="hidden sm:block" />
-          가장 간단한 일상 기록 앱
-        </p>
-
-        <button
-          onClick={() => setShowModal(true)}
-          className="inline-flex h-14 items-center justify-center rounded-2xl bg-primary-600 px-10 text-base font-semibold text-white shadow-card transition-all duration-200 hover:bg-primary-700 hover:shadow-elevated hover:-translate-y-0.5 active:scale-[0.98] md:h-16 md:px-12 md:text-lg"
-        >
-          베타 테스트 참여하기
-        </button>
+        {/* 우측: 앱 목업 플레이스홀더 */}
+        <div className="flex justify-center gap-4">
+          {[1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className="flex h-[340px] w-[120px] flex-col overflow-hidden rounded-[2rem] border border-navy-200/60 bg-white shadow-[0_4px_20px_rgba(31,42,68,0.08)] md:w-[140px]"
+              style={{ boxShadow: '0 4px 24px rgba(31,42,68,0.06)' }}
+            >
+              <div className="flex h-8 items-center justify-center border-b border-navy-100 bg-navy-50">
+                <div className="h-2 w-2 rounded-full bg-navy-300" />
+              </div>
+              <div className="flex flex-1 flex-col items-center justify-center gap-3 p-4 text-center">
+                <div className="h-12 w-12 rounded-xl bg-primary-100" />
+                <div className="h-3 w-20 rounded bg-navy-200" />
+                <div className="h-3 w-16 rounded bg-navy-100" />
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       <BetaModal open={showModal} onClose={() => setShowModal(false)} />
