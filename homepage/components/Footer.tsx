@@ -11,7 +11,7 @@ const FOOTER_INFO = {
 
 export function Footer() {
   return (
-    <footer className="border-t border-primary-100 bg-cream-100/80 px-6 py-14">
+    <footer className="border-t border-primary-100 bg-cream-100/80 px-6 py-7">
       <div className="mx-auto max-w-3xl space-y-5 text-center">
         {/* 이용약관 · 개인정보처리방침 */}
         <nav className="flex flex-wrap items-center justify-center gap-4">
