@@ -15,9 +15,7 @@ export default function HomePage() {
       <FadeInSection>
         <ProblemSection />
       </FadeInSection>
-      <FadeInSection>
-        <ServiceSection />
-      </FadeInSection>
+      <ServiceSection />
       <FadeInSection>
         <TrustSection />
       </FadeInSection>

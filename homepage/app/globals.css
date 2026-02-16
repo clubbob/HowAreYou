@@ -42,4 +42,14 @@ html {
   [data-mobile-hover-card] [data-mobile-hover-blur] {
     opacity: 0.8 !important;
   }
+  /* ServiceSection 카드 - 모바일에서 시각적 강조 */
+  [data-mobile-service-card] {
+    border-color: rgb(163 203 243 / 0.8) !important;
+    box-shadow: 0 4px 20px rgba(74, 144, 226, 0.1) !important;
+  }
+  /* FaqSection 카드 - 모바일에서 시각적 강조 */
+  [data-mobile-faq-card] {
+    border-color: rgb(163 203 243 / 0.5) !important;
+    box-shadow: 0 4px 20px rgba(31, 42, 68, 0.08) !important;
+  }
 }

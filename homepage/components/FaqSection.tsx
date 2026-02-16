@@ -35,15 +35,18 @@ export function FaqSection() {
           {FAQ_ITEMS.map((item, i) => (
             <div
               key={i}
-              className="overflow-hidden rounded-[1rem] border border-navy-100 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.04)]"
+              data-mobile-faq-card
+              className="group overflow-hidden rounded-[1rem] border border-navy-100 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.04)] transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-primary-200/60 hover:shadow-[0_6px_24px_rgba(31,42,68,0.1)]"
             >
               <button
                 onClick={() => setOpenIndex(openIndex === i ? null : i)}
-                className="flex w-full items-center justify-between px-6 py-5 text-left transition-colors hover:bg-navy-50/50 active:bg-navy-100/60"
+                className="flex w-full cursor-pointer items-center justify-between px-6 py-5 text-left transition-colors hover:bg-navy-50/50 active:bg-navy-100/60"
               >
-                <span className="text-[17px] font-semibold text-navy-900">Q. {item.q}</span>
+                <span className="text-[17px] font-semibold text-navy-900 transition-colors duration-300 group-hover:text-primary-600">
+                  Q. {item.q}
+                </span>
                 <span
-                  className={`ml-4 shrink-0 text-2xl font-light text-navy-500 transition-transform duration-200 ${
+                  className={`ml-4 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-2xl font-light text-navy-500 transition-all duration-300 group-hover:scale-110 group-hover:bg-primary-50 group-hover:text-primary-500 ${
                     openIndex === i ? 'rotate-45' : ''
                   }`}
                 >

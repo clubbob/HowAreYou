@@ -21,30 +21,54 @@ export function FadeInSection({
   const [reduceMotion, setReduceMotion] = useState(false);
 
   useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
     const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)');
     setReduceMotion(prefersReduced.matches);
+
+    const show = () => setVisible(true);
 
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            setVisible(true);
-          }
+          if (entry.isIntersecting) show();
         });
       },
       {
         root: null,
-        rootMargin,
-        threshold,
+        rootMargin: '0px 0px -30px 0px',
+        threshold: 0,
       }
     );
 
-    const el = ref.current;
-    if (el) observer.observe(el);
-    return () => {
-      if (el) observer.unobserve(el);
+    observer.observe(el);
+
+    const checkViewport = () => {
+      const rect = el.getBoundingClientRect();
+      const vh = typeof window !== 'undefined' ? window.innerHeight : 0;
+      if (rect.top < vh && rect.bottom > 0) show();
     };
-  }, [rootMargin, threshold]);
+
+    checkViewport();
+    const t1 = setTimeout(checkViewport, 300);
+    const t2 = setTimeout(checkViewport, 800);
+
+    let scrollTimeout: ReturnType<typeof setTimeout>;
+    const onScroll = () => {
+      clearTimeout(scrollTimeout);
+      scrollTimeout = setTimeout(checkViewport, 50);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+
+    return () => {
+      observer.unobserve(el);
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(scrollTimeout);
+      window.removeEventListener('scroll', onScroll);
+    };
+  }, []);
 
   const shouldAnimate = visible || reduceMotion;
   const opacity = reduceMotion ? 1 : shouldAnimate ? 1 : 0;
