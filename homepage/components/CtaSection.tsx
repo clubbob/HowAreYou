@@ -13,6 +13,7 @@ export function CtaSection() {
           지금 어때 시작하기
         </h2>
         <button
+          type="button"
           onClick={() => setShowModal(true)}
           className="flex h-[52px] items-center justify-center rounded-[14px] bg-primary-400 px-10 text-[17px] font-semibold text-white transition-colors hover:bg-primary-500 active:bg-primary-600"
         >

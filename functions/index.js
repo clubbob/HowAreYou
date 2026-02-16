@@ -530,3 +530,43 @@ exports.migrateReminderFields = functions.https.onRequest(async (req, res) => {
     });
   }
 });
+
+/**
+ * 베타 대기목록 등록 (Callable)
+ * - 트랜잭션으로 동시 요청 시에도 중복 등록 방지
+ * - 이미 등록된 이메일이면 { status: 'already_registered' } 반환
+ * - 신규 등록이면 { status: 'success' } 반환
+ */
+exports.addToWaitlist = functions.https.onCall(async (data) => {
+  const email = data?.email;
+  if (!email || typeof email !== 'string') {
+    throw new functions.https.HttpsError('invalid-argument', '이메일을 입력해 주세요.');
+  }
+
+  const normalized = email.trim().toLowerCase();
+  if (!normalized) {
+    throw new functions.https.HttpsError('invalid-argument', '이메일을 입력해 주세요.');
+  }
+
+  try {
+    const status = await db.runTransaction(async (transaction) => {
+      const snapshot = await transaction.get(
+        db.collection('waitlist').where('email', '==', normalized).limit(1)
+      );
+      if (!snapshot.empty) {
+        return 'already_registered';
+      }
+      const ref = db.collection('waitlist').doc();
+      transaction.set(ref, {
+        email: normalized,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      return 'success';
+    });
+
+    return { status };
+  } catch (error) {
+    console.error('[addToWaitlist] 오류:', error);
+    throw new functions.https.HttpsError('internal', '등록에 실패했습니다. 다시 시도해 주세요.');
+  }
+});

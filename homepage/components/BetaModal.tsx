@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { addToWaitlist } from '@/lib/waitlist';
 
 type Props = {
@@ -10,21 +10,35 @@ type Props = {
 
 export function BetaModal({ open, onClose }: Props) {
   const [email, setEmail] = useState('');
-  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'already_registered' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
+  const closeBtnRef = useRef<HTMLButtonElement>(null);
+  const submittingRef = useRef(false);
+
+  useEffect(() => {
+    if (!open) {
+      setStatus('idle');
+      setErrorMsg('');
+    } else {
+      closeBtnRef.current?.focus();
+    }
+  }, [open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim()) return;
+    if (!email.trim() || submittingRef.current) return;
+    submittingRef.current = true;
     setStatus('loading');
     setErrorMsg('');
     try {
-      await addToWaitlist(email.trim());
-      setStatus('success');
+      const result = await addToWaitlist(email.trim());
       setEmail('');
+      setStatus(result.status === 'already_registered' ? 'already_registered' : 'success');
     } catch (err) {
       setStatus('error');
       setErrorMsg(err instanceof Error ? err.message : '등록에 실패했습니다. 다시 시도해 주세요.');
+    } finally {
+      submittingRef.current = false;
     }
   };
 
@@ -42,6 +56,8 @@ export function BetaModal({ open, onClose }: Props) {
         <div className="mb-5 flex items-center justify-between">
           <h2 className="text-xl font-bold text-navy-900">베타 참여하기</h2>
           <button
+            ref={closeBtnRef}
+            type="button"
             onClick={onClose}
             className="rounded-xl p-2 text-navy-600 transition-colors hover:bg-navy-50 active:bg-navy-100"
             aria-label="닫기"
@@ -68,6 +84,22 @@ export function BetaModal({ open, onClose }: Props) {
               확인
             </button>
           </div>
+        ) : status === 'already_registered' ? (
+          <div className="py-8 text-center">
+            <div className="mb-5 inline-flex h-16 w-16 items-center justify-center rounded-[1rem] bg-navy-100">
+              <svg className="h-8 w-8 text-navy-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <p className="text-lg font-semibold text-navy-900">이미 신청하셨습니다.</p>
+            <p className="mt-1 text-[17px] text-navy-600">등록된 이메일로 출시 시 안내드리겠습니다.</p>
+            <button
+              onClick={onClose}
+              className="mx-auto mt-6 flex h-[52px] items-center justify-center rounded-[14px] bg-navy-200 px-8 text-[17px] font-medium text-navy-800 transition-colors hover:bg-navy-300 active:bg-navy-400"
+            >
+              확인
+            </button>
+          </div>
         ) : (
           <form onSubmit={handleSubmit}>
             <p className="mb-4 text-[17px] leading-[1.6] text-navy-700">
@@ -75,6 +107,8 @@ export function BetaModal({ open, onClose }: Props) {
             </p>
             <input
               type="email"
+              inputMode="email"
+              autoComplete="off"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="example@email.com"
