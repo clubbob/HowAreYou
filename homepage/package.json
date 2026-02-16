@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "node scripts/prepare-dev.js && next dev",
     "dev:clean": "node scripts/prepare-dev.js && next dev",
-    "build": "next build",
+    "build": "node ../scripts/sync-legal.js && next build",
+    "sync-legal": "node ../scripts/sync-legal.js",
     "start": "next start",
     "lint": "next lint"
   },

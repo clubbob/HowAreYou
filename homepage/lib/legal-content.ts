@@ -1,4 +1,5 @@
-// 이용약관 및 개인정보처리방침 - assets/와 동기화 유지
+// 이용약관 및 개인정보처리방침 - legal/ 폴더에서 자동 생성 (npm run sync-legal)
+// 이 파일을 직접 수정하지 마세요. legal/terms.txt, legal/privacy.txt를 수정한 뒤 sync-legal을 실행하세요.
 
 export const TERMS_CONTENT = `제1조 (목적)
 본 약관은 새봄인터내셔널 (이하 "회사")이 제공하는 모바일 애플리케이션 "지금 어때?"의 이용과 관련하여 회사와 이용자 간의 권리·의무 및 책임사항을 규정함을 목적으로 합니다.
