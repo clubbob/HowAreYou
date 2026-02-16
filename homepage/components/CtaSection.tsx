@@ -7,14 +7,14 @@ export function CtaSection() {
   const [showModal, setShowModal] = useState(false);
 
   return (
-    <section className="px-6 py-20 md:py-24" style={{ paddingTop: '5rem', paddingBottom: '5rem' }}>
-      <div className="mx-auto max-w-3xl text-center">
-        <h2 className="mb-10 text-[1.75rem] font-bold leading-[1.4] text-navy-900">
+    <section className="bg-primary-50 px-6 py-20 md:py-24" style={{ paddingTop: '5rem', paddingBottom: '5rem' }}>
+      <div className="mx-auto flex max-w-3xl flex-col items-center">
+        <h2 className="mb-10 text-center text-[1.75rem] font-bold leading-[1.4] text-navy-900">
           지금 어때 시작하기
         </h2>
         <button
           onClick={() => setShowModal(true)}
-          className="flex h-[52px] items-center justify-center rounded-[14px] bg-primary-400 px-10 text-[17px] font-semibold text-white transition-colors hover:bg-primary-500"
+          className="flex h-[52px] items-center justify-center rounded-[14px] bg-primary-400 px-10 text-[17px] font-semibold text-white transition-colors hover:bg-primary-500 active:bg-primary-600"
         >
           베타 참여하기
         </button>

@@ -30,7 +30,7 @@ export function AnnouncementsSection() {
   };
 
   return (
-    <section className="bg-navy-50/30 px-6 py-20 md:py-24" style={{ paddingTop: '5rem', paddingBottom: '5rem' }}>
+    <section className="bg-white px-6 py-20 md:py-24" style={{ paddingTop: '5rem', paddingBottom: '5rem' }}>
       <div className="mx-auto max-w-3xl">
         <h2 className="mb-12 text-center text-[1.75rem] font-bold leading-[1.4] text-navy-900">
           공지사항

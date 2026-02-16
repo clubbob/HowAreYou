@@ -30,3 +30,16 @@ html {
 ::selection {
   background-color: rgba(74, 144, 226, 0.2);
 }
+
+/* 모바일(터치)에서 hover 효과 대체: 터치 디바이스는 기본 스타일을 강화 */
+@media (hover: none) and (pointer: coarse) {
+  /* ProblemSection 카드 - hover 스타일을 기본 적용 */
+  [data-mobile-hover-card] {
+    border-color: rgb(163 203 243 / 0.6) !important;
+    border-left-color: rgb(46 123 214) !important;
+    box-shadow: 0 8px 32px rgba(74, 144, 226, 0.12) !important;
+  }
+  [data-mobile-hover-card] [data-mobile-hover-blur] {
+    opacity: 0.8 !important;
+  }
+}

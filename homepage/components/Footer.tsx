@@ -11,18 +11,18 @@ const FOOTER_INFO = {
 
 export function Footer() {
   return (
-    <footer className="border-t border-navy-100 bg-white px-6 py-10">
+    <footer className="border-t border-navy-200 bg-navy-100 px-6 py-10">
       <div className="mx-auto max-w-3xl space-y-5 text-center">
         <nav className="flex flex-wrap items-center justify-center gap-4">
           <Link
             href="/terms"
-            className="text-[17px] font-medium text-primary-400 transition-colors hover:text-primary-500 hover:underline"
+            className="text-[17px] font-medium text-primary-400 transition-colors hover:text-primary-500 hover:underline active:text-primary-600"
           >
             이용약관
           </Link>
           <Link
             href="/privacy"
-            className="text-[17px] font-medium text-primary-400 transition-colors hover:text-primary-500 hover:underline"
+            className="text-[17px] font-medium text-primary-400 transition-colors hover:text-primary-500 hover:underline active:text-primary-600"
           >
             개인정보처리방침
           </Link>

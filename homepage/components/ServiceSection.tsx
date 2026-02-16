@@ -1,15 +1,15 @@
 export function ServiceSection() {
   const steps = [
-    { num: 1, title: '하루 한 번 간단히 기록' },
-    { num: 2, title: '보호자에게 알림 전달' },
-    { num: 3, title: '3일 무응답 시 1회 추가 알림' },
+    { num: 1, title: '하루 한 번, 가볍게 안부를 남깁니다' },
+    { num: 2, title: '기록은 보호자에게 조용히 전달됩니다' },
+    { num: 3, title: '3일 동안 기록이 없으면 한 번 더 확인합니다' },
   ];
 
   return (
-    <section className="bg-primary-50/50 px-6 py-20 md:py-24" style={{ paddingTop: '5rem', paddingBottom: '5rem' }}>
+    <section className="bg-primary-50 px-6 py-20 md:py-24" style={{ paddingTop: '5rem', paddingBottom: '5rem' }}>
       <div className="mx-auto max-w-3xl">
         <h2 className="mb-12 text-center text-[1.75rem] font-bold leading-[1.4] text-navy-900">
-          어떻게 작동하나요?
+          안부는 이렇게 전해집니다
         </h2>
 
         <div className="space-y-5">
@@ -29,7 +29,7 @@ export function ServiceSection() {
         <p className="mt-10 text-center text-sm leading-relaxed text-navy-600">
           ※ 본 서비스는 의료·응급 구조 서비스가 아닙니다.
           <br />
-          통신 환경 및 기기 설정에 따라 알림이 지연되거나 수신되지 않을 수 있습니다.
+          네트워크 및 기기 설정에 따라 알림이 지연되거나 수신되지 않을 수 있습니다.
         </p>
       </div>
     </section>

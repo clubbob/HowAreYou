@@ -43,7 +43,7 @@ export function BetaModal({ open, onClose }: Props) {
           <h2 className="text-xl font-bold text-navy-900">베타 참여하기</h2>
           <button
             onClick={onClose}
-            className="rounded-xl p-2 text-navy-600 transition-colors hover:bg-navy-50"
+            className="rounded-xl p-2 text-navy-600 transition-colors hover:bg-navy-50 active:bg-navy-100"
             aria-label="닫기"
           >
             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -63,7 +63,7 @@ export function BetaModal({ open, onClose }: Props) {
             <p className="mt-1 text-[17px] text-navy-600">빠른 시일 내에 연락드리겠습니다.</p>
             <button
               onClick={onClose}
-              className="mt-6 flex h-[52px] items-center justify-center rounded-[14px] bg-primary-400 px-8 text-[17px] font-medium text-white transition-colors hover:bg-primary-500"
+              className="mx-auto mt-6 flex h-[52px] items-center justify-center rounded-[14px] bg-primary-400 px-8 text-[17px] font-medium text-white transition-colors hover:bg-primary-500 active:bg-primary-600"
             >
               확인
             </button>
@@ -87,14 +87,14 @@ export function BetaModal({ open, onClose }: Props) {
               <button
                 type="button"
                 onClick={onClose}
-                className="flex flex-1 items-center justify-center rounded-[14px] border border-navy-200 py-4 text-[17px] font-medium text-navy-700 transition-colors hover:bg-navy-50"
+                className="flex flex-1 items-center justify-center rounded-[14px] border border-navy-200 py-4 text-[17px] font-medium text-navy-700 transition-colors hover:bg-navy-50 active:bg-navy-100"
               >
                 취소
               </button>
               <button
                 type="submit"
                 disabled={status === 'loading'}
-                className="flex flex-1 items-center justify-center rounded-[14px] bg-primary-400 py-4 text-[17px] font-medium text-white transition-colors hover:bg-primary-500 disabled:opacity-60"
+                className="flex flex-1 items-center justify-center rounded-[14px] bg-primary-400 py-4 text-[17px] font-medium text-white transition-colors hover:bg-primary-500 active:bg-primary-600 disabled:opacity-60"
               >
                 {status === 'loading' ? '등록 중...' : '참여 신청'}
               </button>

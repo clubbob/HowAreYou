@@ -12,7 +12,7 @@ export function HeroSection() {
       <div className="mx-auto grid max-w-5xl items-center gap-12 md:grid-cols-2 md:gap-16">
         {/* 좌측: 텍스트 */}
         <div>
-          <div className="mb-6">
+          <div className="mb-6 flex items-center gap-4">
             <Image
               src="/logo.png"
               alt="지금 어때"
@@ -20,10 +20,11 @@ export function HeroSection() {
               height={72}
               priority
               unoptimized
-              className="h-[4.5rem] w-[4.5rem]"
+              className="h-[4.5rem] w-[4.5rem] shrink-0"
             />
+            <span className="text-2xl font-bold text-navy-900 md:text-3xl">여기 어때?</span>
           </div>
-          <h1 className="mb-4 text-[2rem] font-bold leading-[1.3] tracking-tight text-navy-900 md:text-[2.625rem]">
+          <h1 className="mb-4 whitespace-nowrap text-[1.125rem] font-bold leading-[1.3] tracking-tight text-navy-900 sm:text-[1.5rem] md:text-[2rem] lg:text-[2.25rem]">
             하루 한 번, 안부를 확인합니다.
           </h1>
           <p className="mb-3 text-lg font-medium text-primary-400 md:text-xl">
@@ -39,7 +40,7 @@ export function HeroSection() {
           <div>
             <button
               onClick={() => setShowModal(true)}
-              className="flex h-[52px] items-center justify-center rounded-[14px] bg-primary-400 px-8 text-[17px] font-semibold text-white transition-colors hover:bg-primary-500"
+              className="flex h-[52px] items-center justify-center rounded-[14px] bg-primary-400 px-8 text-[17px] font-semibold text-white transition-colors hover:bg-primary-500 active:bg-primary-600"
             >
               베타 참여하기
             </button>

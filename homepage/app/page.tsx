@@ -6,17 +6,30 @@ import { FaqSection } from '@/components/FaqSection';
 import { AnnouncementsSection } from '@/components/AnnouncementsSection';
 import { CtaSection } from '@/components/CtaSection';
 import { Footer } from '@/components/Footer';
+import { FadeInSection } from '@/components/FadeInSection';
 
 export default function HomePage() {
   return (
     <main className="min-h-screen bg-[#F7F8FA]">
       <HeroSection />
-      <ProblemSection />
-      <ServiceSection />
-      <TrustSection />
-      <FaqSection />
-      <AnnouncementsSection />
-      <CtaSection />
+      <FadeInSection>
+        <ProblemSection />
+      </FadeInSection>
+      <FadeInSection>
+        <ServiceSection />
+      </FadeInSection>
+      <FadeInSection>
+        <TrustSection />
+      </FadeInSection>
+      <FadeInSection>
+        <FaqSection />
+      </FadeInSection>
+      <FadeInSection>
+        <AnnouncementsSection />
+      </FadeInSection>
+      <FadeInSection>
+        <CtaSection />
+      </FadeInSection>
       <Footer />
     </main>
   );
