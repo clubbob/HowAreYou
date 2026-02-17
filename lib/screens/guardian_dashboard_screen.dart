@@ -103,6 +103,41 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
     });
   }
 
+  /// 안부 확인 탭: 상태 로드 후 미기록/오래된 순 정렬
+  Future<List<_SubjectCheckStatus>> _loadAndSortCheckSubjects(List<String> subjectIds) async {
+    if (subjectIds.isEmpty) return [];
+    final statuses = await Future.wait(subjectIds.map((id) async {
+      final today = await _moodService.getTodayResponses(id, excludeNote: true);
+      final last7 = await _moodService.getLast7DaysResponses(id, excludeNote: true);
+      final streak = await _moodService.getStreak(id);
+      DateTime? latest;
+      for (final dayMap in last7.values) {
+        for (final r in dayMap.values) {
+          if (r != null && (latest == null || r.answeredAt.isAfter(latest))) {
+            latest = r.answeredAt;
+          }
+        }
+      }
+      final hasToday = today.values.any((r) => r != null);
+      return _SubjectCheckStatus(id, hasToday, latest, streak?.currentStreak ?? 0);
+    }));
+    // 정렬: 미기록 먼저 → 기록 없음(최상단) → 오래된 순
+    statuses.sort((a, b) {
+      final aHas = a.hasRespondedToday ?? false;
+      final bHas = b.hasRespondedToday ?? false;
+      if (aHas != bHas) {
+        return aHas ? 1 : -1; // 미기록 먼저
+      }
+      final aAt = a.latestAnsweredAt;
+      final bAt = b.latestAnsweredAt;
+      if (aAt == null && bAt == null) return 0;
+      if (aAt == null) return -1; // 기록 없음 → 최상단
+      if (bAt == null) return 1;
+      return aAt.compareTo(bAt); // 오래된 순 (주의 대상 우선)
+    });
+    return statuses;
+  }
+
   Future<void> _addSubject(BuildContext context, String userId) async {
     if (_nameController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -509,7 +544,17 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
             }
             final subjectIds = snapshot.data!;
             return widget.initialTabIndex == 0
-                ? _buildCheckTab(context, subjectIds, userId!)
+                ? FutureBuilder<List<_SubjectCheckStatus>>(
+                    future: _loadAndSortCheckSubjects(subjectIds),
+                    builder: (context, statusSnapshot) {
+                      if (statusSnapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+                      final sorted = statusSnapshot.data ??
+                          subjectIds.map((id) => _SubjectCheckStatus(id, null, null, 0)).toList();
+                      return _buildCheckTab(context, sorted, userId!);
+                    },
+                  )
                 : _buildManageTab(context, subjectIds, userId!);
           },
         ),
@@ -517,8 +562,28 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
     );
   }
 
-  Widget _buildCheckTab(BuildContext context, List<String> subjectIds, String userId) {
-    if (subjectIds.isEmpty) {
+  /// 이번 달 전체 기록률 (보호 대상별 평균). 0~100.
+  Future<double> _loadMonthRecordRate(List<_SubjectCheckStatus> statuses) async {
+    if (statuses.isEmpty) return 0;
+    final now = DateTime.now();
+    final rates = await Future.wait(
+      statuses.map((s) => _moodService.getMonthRecordRate(s.subjectId, now.year, now.month)),
+    );
+    return rates.reduce((a, b) => a + b) / rates.length;
+  }
+
+  /// 오늘 확인 완료 시 감성 강화 문구 (압박 없이 안심 유도)
+  static String _getEmotionalFeedbackPhrase() {
+    const phrases = [
+      '오늘도 가족이 연결되어 있습니다.',
+      '걱정하지 않으셔도 됩니다.',
+      '잘 지내고 계시네요.',
+    ];
+    return phrases[DateTime.now().day % phrases.length];
+  }
+
+  Widget _buildCheckTab(BuildContext context, List<_SubjectCheckStatus> statuses, String userId) {
+    if (statuses.isEmpty) {
       return SingleChildScrollView(
         padding: EdgeInsets.fromLTRB(
           24,
@@ -568,6 +633,9 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
         ),
       );
     }
+    final allRecorded = statuses.isNotEmpty && statuses.every((s) => s.hasRespondedToday == true);
+    final noneRecorded = statuses.every((s) => s.hasRespondedToday != true);
+
     return ListView(
       padding: EdgeInsets.fromLTRB(
         24,
@@ -576,25 +644,146 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
         24 + MediaQuery.of(context).padding.bottom + 24,
       ),
       children: [
+        // 월간 요약 카드 (이번 달 기록률)
+        FutureBuilder<double>(
+          future: _loadMonthRecordRate(statuses),
+          builder: (context, rateSnapshot) {
+            final rate = rateSnapshot.data ?? 0;
+            if (rateSnapshot.connectionState == ConnectionState.waiting && rate == 0) {
+              return const SizedBox.shrink();
+            }
+            final rateInt = rate.round();
+            final message = rateInt >= 80
+                ? '가족이 잘 연결되어 있습니다.'
+                : rateInt >= 50
+                    ? '꾸준히 기록하고 계세요.'
+                    : rateInt > 0
+                        ? '이번 달은 조금 여유로우셨나 봐요.'
+                        : null;
+            if (message == null) return const SizedBox.shrink();
+            return Container(
+              padding: const EdgeInsets.all(16),
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.blue.shade200),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.calendar_month, color: Colors.blue.shade700, size: 28),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '이번 달 기록률 ${rateInt}%',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue.shade900,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          message,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.blue.shade800,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+        // 오늘 확인 완료 배지 + 심리적 안도감 메시지
+        Container(
+          padding: const EdgeInsets.all(20),
+          margin: const EdgeInsets.only(bottom: 20),
+          decoration: BoxDecoration(
+            color: allRecorded ? Colors.green.shade50 : Colors.grey.shade50,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: allRecorded ? Colors.green.shade200 : Colors.grey.shade200,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (allRecorded) ...[
+                Row(
+                  children: [
+                    Icon(Icons.check_circle, color: Colors.green.shade700, size: 24),
+                    const SizedBox(width: 8),
+                    Text(
+                      '오늘 확인 완료',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green.shade800,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '오늘 부모님은 괜찮다고 남기셨습니다.\n이제 마음 놓으셔도 됩니다.',
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: Colors.green.shade900,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _getEmotionalFeedbackPhrase(),
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.green.shade700,
+                    fontStyle: FontStyle.italic,
+                    height: 1.4,
+                  ),
+                ),
+              ] else ...[
+                Text(
+                  noneRecorded
+                      ? '오늘 아직 안부가 없습니다.\n간단히 확인해보세요.'
+                      : '오늘 일부 확인되었습니다.\n남은 분도 확인해보세요.',
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: Colors.grey.shade800,
+                    height: 1.5,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
         Text(
-          '보호 대상 (${subjectIds.length}명)',
+          '보호 대상 (${statuses.length}명)',
           style: const TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
           ),
         ),
         const SizedBox(height: 16),
-        ...subjectIds.map((subjectId) {
+        ...statuses.map((s) {
           return _SubjectListItem(
-            subjectId: subjectId,
+            subjectId: s.subjectId,
             guardianUid: userId,
             guardianService: _guardianService,
             moodService: _moodService,
+            initialStatus: s,
             onTap: () {
               Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (_) => SubjectDetailScreen(
-                    subjectId: subjectId,
+                    subjectId: s.subjectId,
                     guardianUid: userId,
                     guardianService: _guardianService,
                     moodService: _moodService,
@@ -1048,6 +1237,16 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
   }
 }
 
+/// 안부 확인 탭 정렬용: subjectId + 오늘 기록 여부 + 마지막 기록 시각 + 스트릭
+class _SubjectCheckStatus {
+  final String subjectId;
+  final bool? hasRespondedToday;
+  final DateTime? latestAnsweredAt;
+  final int currentStreak;
+
+  _SubjectCheckStatus(this.subjectId, this.hasRespondedToday, this.latestAnsweredAt, [this.currentStreak = 0]);
+}
+
 /// 보호 대상 관리 탭용 아이템 - 이름 + 수정 + 삭제만 (기록 미표시)
 class _SubjectManagementItem extends StatefulWidget {
   final String subjectId;
@@ -1276,6 +1475,7 @@ class _SubjectListItem extends StatefulWidget {
   final String guardianUid;
   final GuardianService guardianService;
   final MoodService moodService;
+  final _SubjectCheckStatus? initialStatus;
   final VoidCallback onTap;
   final Future<void> Function(String subjectId)? onRemove;
 
@@ -1284,6 +1484,7 @@ class _SubjectListItem extends StatefulWidget {
     required this.guardianUid,
     required this.guardianService,
     required this.moodService,
+    this.initialStatus,
     required this.onTap,
     this.onRemove,
   });
@@ -1298,6 +1499,7 @@ class _SubjectListItemState extends State<_SubjectListItem> {
   String _subjectPhone = '';
   Map<TimeSlot, MoodResponseModel?>? _todayResponses;
   DateTime? _latestAnsweredAt;
+  int _currentStreak = 0;
   String _fallbackName = '이름 없음';
   late final Stream<String> _nameStream;
 
@@ -1401,9 +1603,32 @@ class _SubjectListItemState extends State<_SubjectListItem> {
   }
 
   Future<void> _loadResponses() async {
+    if (widget.initialStatus != null) {
+      final s = widget.initialStatus!;
+      if (mounted) {
+        setState(() {
+          _todayResponses = s.hasRespondedToday == true
+              ? {
+                  TimeSlot.daily: MoodResponseModel(
+                    subjectId: widget.subjectId,
+                    dateSlot: DateFormat('yyyy-MM-dd').format(DateTime.now()),
+                    slot: TimeSlot.daily,
+                    answeredAt: s.latestAnsweredAt ?? DateTime.now(),
+                    mood: Mood.normal,
+                    note: null,
+                  ),
+                }
+              : {TimeSlot.daily: null};
+          _latestAnsweredAt = s.latestAnsweredAt;
+          _currentStreak = s.currentStreak;
+        });
+      }
+      return;
+    }
     // 보호자용: note 필드 제외
     final today = await widget.moodService.getTodayResponses(widget.subjectId, excludeNote: true);
     final last7 = await widget.moodService.getLast7DaysResponses(widget.subjectId, excludeNote: true);
+    final streak = await widget.moodService.getStreak(widget.subjectId);
     DateTime? latest;
     for (final dayMap in last7.values) {
       for (final r in dayMap.values) {
@@ -1416,6 +1641,7 @@ class _SubjectListItemState extends State<_SubjectListItem> {
       setState(() {
         _todayResponses = today;
         _latestAnsweredAt = latest;
+        _currentStreak = streak?.currentStreak ?? 0;
       });
     }
   }
@@ -1429,31 +1655,40 @@ class _SubjectListItemState extends State<_SubjectListItem> {
         final subjectName = nameSnapshot.data ?? _fallbackName;
         final hasRespondedToday =
             _todayResponses?.values.any((r) => r != null) ?? false;
-        final hasAnyRecordLast7 = _latestAnsweredAt != null;
 
-        // 상태 요약 문구 (기록 여부만 표현)
+        // 오늘 기록 ✅ / 오늘은 아직 기록이 없습니다 (공포 유도 금지)
         final String statusText;
         if (_todayResponses == null) {
           statusText = '기록 정보를 불러오는 중입니다.';
         } else if (hasRespondedToday) {
-          statusText = '오늘 기록이 전달되었습니다.';
-        } else if (hasAnyRecordLast7) {
-          statusText = '최근 7일 내에 기록이 있었습니다.';
+          statusText = '오늘 확인 완료 ✅';
         } else {
-          statusText = '최근 7일 내 기록이 없습니다.';
+          statusText = '오늘은 아직 기록이 없습니다.';
         }
 
-        final statusColor =
-            hasAnyRecordLast7 ? Colors.green.shade700 : Colors.grey.shade700;
+        final statusColor = hasRespondedToday
+            ? Colors.green.shade700
+            : Colors.grey.shade700;
 
-        // 최근 기록 날짜 (시간은 공유하지 않음)
+        // 마지막 기록: n일 전 / 오늘 / 없음
         final String dateText;
         if (_latestAnsweredAt == null) {
-          dateText = '최근 전달: 없음';
+          dateText = '마지막 기록: 없음';
         } else {
-          final dateStr =
-              DateFormat('yyyy년 M월 d일', 'ko_KR').format(_latestAnsweredAt!);
-          dateText = '최근 전달: $dateStr';
+          final now = DateTime.now();
+          final last = _latestAnsweredAt!;
+          final lastDate = DateTime(last.year, last.month, last.day);
+          final today = DateTime(now.year, now.month, now.day);
+          final diff = today.difference(lastDate).inDays;
+          if (diff == 0) {
+            dateText = '마지막 기록: 오늘';
+          } else if (diff == 1) {
+            dateText = '마지막 기록: 1일 전';
+          } else if (diff < 7) {
+            dateText = '마지막 기록: ${diff}일 전';
+          } else {
+            dateText = '마지막 기록: ${DateFormat('M/d', 'ko_KR').format(last)}';
+          }
         }
 
         return Card(
@@ -1480,6 +1715,17 @@ class _SubjectListItemState extends State<_SubjectListItem> {
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if (_currentStreak >= 1) ...[
+                  Text(
+                    '$_currentStreak일 연속 기록 중',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.orange.shade700,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                ],
                 Text(
                   statusText,
                   style: TextStyle(

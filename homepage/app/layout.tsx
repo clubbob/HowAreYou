@@ -4,13 +4,13 @@ import './globals.css';
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://howareyou.kr';
 
 export const metadata: Metadata = {
-  title: '지금 어때 - 하루 한 번, 안부를 확인합니다',
+  title: '지금 어때 - 매일 전화 대신 3초로 확인',
   description:
-    '혼자 있는 가족의 하루를 가볍게 확인할 수 있는 안부 서비스. 기록은 간단하게, 걱정은 줄어들게.',
+    '매일 전화하지 않아도 됩니다. 하루 3초 기록으로 충분해요. 부모님도 부담 없이 사용할 수 있는 마음을 편하게 해주는 관계 습관 앱.',
   openGraph: {
-    title: '지금 어때 - 하루 한 번, 안부를 확인합니다',
+    title: '지금 어때 - 매일 전화 대신 3초로 확인',
     description:
-      '혼자 있는 가족의 하루를 가볍게 확인할 수 있는 안부 서비스.',
+      '매일 전화하지 않아도 됩니다. 하루 3초 기록으로 충분해요. 부모님도 부담 없이 사용할 수 있어요.',
     url: siteUrl,
     siteName: '지금 어때',
     images: [{ url: `${siteUrl}/logo.png`, width: 512, height: 512, alt: '지금 어때 로고' }],
@@ -19,8 +19,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: '지금 어때 - 하루 한 번, 안부를 확인합니다',
-    description: '혼자 있는 가족의 하루를 가볍게 확인할 수 있는 안부 서비스.',
+    title: '지금 어때 - 매일 전화 대신 3초로 확인',
+    description: '매일 전화하지 않아도 됩니다. 하루 3초 기록으로 충분해요. 부모님도 부담 없이 사용할 수 있어요.',
   },
   robots: {
     index: true,

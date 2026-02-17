@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 const STEPS = [
   { num: 1, title: '하루 한 번, 가볍게 안부를 남깁니다' },
   { num: 2, title: '기록은 보호자에게 조용히 전달됩니다' },
-  { num: 3, title: '3일 동안 기록이 없으면 한 번 더 확인합니다' },
+  { num: 3, title: '매일 전화 대신 3초로 확인합니다' },
 ];
 
 export function ServiceSection() {

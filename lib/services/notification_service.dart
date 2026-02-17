@@ -3,17 +3,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz;
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:intl/intl.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../main.dart';
 import '../screens/question_screen.dart';
 import '../screens/guardian_dashboard_screen.dart';
 import '../screens/subject_detail_screen.dart';
 import '../models/mood_response_model.dart';
-import '../services/mood_service.dart';
 import '../services/guardian_service.dart';
 import '../services/mode_service.dart';
+import '../services/mood_service.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -82,81 +80,15 @@ class NotificationService {
     }
   }
 
-  /// 일일 알림 스케줄링 (매일 저녁 7시)
-  Future<void> scheduleDailyNotifications(String userId) async {
-    try {
-      // 기존 알림 모두 취소
-      await _notifications.cancelAll();
+  /// 보호대상자 리마인드 알림 ID
+  static const int subjectReminderNotificationId = 1;
+  /// 보호자 리마인드 알림 ID
+  static const int guardianReminderNotificationId = 2;
 
-      // 매일 저녁 7시 알림 스케줄링
-      await _scheduleNotification(
-        id: 1,
-        title: '',
-        body: '오늘 안부 남겨볼까요?',
-        hour: 19,
-        minute: 0,
-      );
-      
-      debugPrint('[알림] 일일 알림 스케줄링 완료 (매일 19:00)');
-    } catch (e) {
-      debugPrint('[알림] 일일 알림 스케줄링 오류: $e');
-    }
-  }
-
-  /// 알림 스케줄링 (내부 메서드)
-  Future<void> _scheduleNotification({
-    required int id,
-    required String title,
-    required String body,
-    required int hour,
-    required int minute,
-  }) async {
-    await _notifications.zonedSchedule(
-      id,
-      title,
-      body,
-      _nextInstanceOfTime(hour, minute),
-      NotificationDetails(
-        android: AndroidNotificationDetails(
-          'daily_mood_check',
-          '일일 컨디션 확인',
-          channelDescription: '하루 한 번 컨디션을 기록하도록 알림',
-          importance: Importance.max,
-          priority: Priority.max,
-          playSound: true,
-          enableVibration: true,
-          vibrationPattern: Int64List.fromList([0, 500, 200, 500]),
-          category: AndroidNotificationCategory.alarm,
-          styleInformation: const BigTextStyleInformation(''),
-          autoCancel: true, // 자동으로 사라짐
-          ongoing: false,
-          showWhen: true,
-          enableLights: true,
-          color: const Color(0xFF4285F4),
-          visibility: NotificationVisibility.public,
-        ),
-        iOS: const DarwinNotificationDetails(
-          presentAlert: true,
-          presentBadge: true,
-          presentSound: true,
-        ),
-      ),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-      matchDateTimeComponents: DateTimeComponents.time,
-    );
-    
-    // 10초 후 알림 자동 취소
-    Future.delayed(const Duration(seconds: 10), () {
-      _notifications.cancel(id);
-    });
-  }
-
-  /// 다음 알림 시간 계산
-  tz.TZDateTime _nextInstanceOfTime(int hour, int minute) {
+  /// 다음 실행 시각 계산 (KST, 과거면 내일)
+  tz.TZDateTime _nextTimeInKST(int hour, int minute) {
     final now = tz.TZDateTime.now(tz.local);
-    var scheduledDate = tz.TZDateTime(
+    var scheduled = tz.TZDateTime(
       tz.local,
       now.year,
       now.month,
@@ -164,13 +96,111 @@ class NotificationService {
       hour,
       minute,
     );
-
-    // 오늘 시간이 지났으면 내일로 설정
-    if (scheduledDate.isBefore(now)) {
-      scheduledDate = scheduledDate.add(const Duration(days: 1));
+    if (scheduled.isBefore(now)) {
+      scheduled = scheduled.add(const Duration(days: 1));
     }
+    return scheduled;
+  }
 
-    return scheduledDate;
+  /// 공통 알림 상세 (내부)
+  NotificationDetails _dailyReminderDetails({Color color = const Color(0xFF4285F4)}) {
+    return NotificationDetails(
+      android: AndroidNotificationDetails(
+        'daily_mood_check',
+        '일일 컨디션 확인',
+        channelDescription: '하루 한 번 컨디션을 기록하도록 알림',
+        importance: Importance.max,
+        priority: Priority.max,
+        playSound: true,
+        enableVibration: true,
+        vibrationPattern: Int64List.fromList([0, 500, 200, 500]),
+        category: AndroidNotificationCategory.alarm,
+        styleInformation: const BigTextStyleInformation(''),
+        autoCancel: true,
+        ongoing: false,
+        showWhen: true,
+        enableLights: true,
+        color: color,
+        visibility: NotificationVisibility.public,
+      ),
+      iOS: const DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      ),
+    );
+  }
+
+  // ─── 매일 반복 로컬 알림 (보호대상자 19:00, 보호자 20:00) ─────────────────────────
+
+  /// 보호대상자 리마인드 취소
+  Future<void> cancelSubjectReminder() async {
+    await _notifications.cancel(subjectReminderNotificationId);
+    debugPrint('[알림] 보호대상자 리마인드 취소');
+  }
+
+  /// 보호자 리마인드 취소
+  Future<void> cancelGuardianReminder() async {
+    await _notifications.cancel(guardianReminderNotificationId);
+    debugPrint('[알림] 보호자 리마인드 취소');
+  }
+
+  /// 보호대상자 매일 19:00 반복 (id=1). subjectEnabled 시 등록.
+  Future<void> scheduleSubjectDailyReminder() async {
+    try {
+      await _notifications.cancel(subjectReminderNotificationId);
+      await _notifications.zonedSchedule(
+        subjectReminderNotificationId,
+        '',
+        '오늘도 잘 지내고 계신가요?',
+        _nextTimeInKST(19, 0),
+        _dailyReminderDetails(),
+        payload: 'SUBJECT_REMINDER',
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        matchDateTimeComponents: DateTimeComponents.time,
+      );
+      debugPrint('[알림] 보호대상자 19시 리마인드 예약 완료 (매일 반복)');
+    } catch (e) {
+      debugPrint('[알림] 보호대상자 리마인드 예약 오류: $e');
+    }
+  }
+
+  /// 보호자 매일 20:00 반복 (id=2). guardianEnabled 시 등록.
+  Future<void> scheduleGuardianDailyReminder() async {
+    try {
+      await _notifications.cancel(guardianReminderNotificationId);
+      await _notifications.zonedSchedule(
+        guardianReminderNotificationId,
+        '',
+        '오늘 안부 확인하기',
+        _nextTimeInKST(20, 0),
+        _dailyReminderDetails(color: const Color(0xFF5C6BC0)),
+        payload: 'GUARDIAN_REMINDER',
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        matchDateTimeComponents: DateTimeComponents.time,
+      );
+      debugPrint('[알림] 보호자 20시 리마인드 예약 완료 (매일 반복)');
+    } catch (e) {
+      debugPrint('[알림] 보호자 리마인드 예약 오류: $e');
+    }
+  }
+
+  /// 역할별 스케줄: subjectEnabled/guardianEnabled 기준 (둘 다 true면 둘 다 등록)
+  /// lastSelectedMode는 사용하지 않음 (라우팅 전용)
+  /// 둘 다 false면 아무 것도 하지 않음 (취소도 안 함, 역할 확정 전)
+  Future<void> scheduleDailyRemindersByRole() async {
+    final subjectEnabled = await ModeService.isSubjectEnabled();
+    final guardianEnabled = await ModeService.isGuardianEnabled();
+    if (subjectEnabled) {
+      await scheduleSubjectDailyReminder();
+    }
+    if (guardianEnabled) {
+      await scheduleGuardianDailyReminder();
+    }
   }
 
   /// 모든 알림 취소 (로그아웃 시 호출)
@@ -195,13 +225,6 @@ class NotificationService {
         await _notifications.cancel(response.id!);
       }
       
-      // 보호대상자 알림인 경우 오늘 알림 무시 상태 저장
-      final payload = response.payload;
-      if (payload != 'RESPONSE_RECEIVED' && payload != 'UNREACHABLE' && payload != 'ESCALATION_3DAYS') {
-        final prefs = await SharedPreferences.getInstance();
-        final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
-        await prefs.setString('notification_dismissed_date', today);
-      }
       return;
     }
 
@@ -228,18 +251,29 @@ class NotificationService {
     // 알림 탭 (actionId가 null인 경우) - payload로 구분
     if (response.actionId == null) {
       final payload = response.payload;
+      // 보호대상자 19시 리마인드
+      if (payload == 'SUBJECT_REMINDER' || response.id == subjectReminderNotificationId) {
+        debugPrint('[알림] ✅ 보호대상자 리마인드 알림 탭 - 질문 화면으로 이동');
+        if (response.id != null) await _notifications.cancel(response.id!);
+        _navigateToQuestionScreen();
+        return;
+      }
+      // 보호자 20시 리마인드
+      if (payload == 'GUARDIAN_REMINDER' || response.id == guardianReminderNotificationId) {
+        debugPrint('[알림] ✅ 보호자 리마인드 알림 탭 - 대시보드로 이동');
+        if (response.id != null) await _notifications.cancel(response.id!);
+        _navigateToGuardianDashboard(null);
+        return;
+      }
+      // FCM 보호자 알림 (RESPONSE_RECEIVED 등)
       if (payload == 'RESPONSE_RECEIVED' || payload == 'UNREACHABLE' || payload == 'ESCALATION_3DAYS' ||
           (payload != null && (payload.startsWith('RESPONSE_RECEIVED') || payload.startsWith('UNREACHABLE') || payload.startsWith('ESCALATION_3DAYS')))) {
-        debugPrint('[알림] ✅ 보호자 알림 탭 - 상세 화면으로 이동');
-        if (response.id != null) {
-          await _notifications.cancel(response.id!);
-        }
+        debugPrint('[알림] ✅ 보호자 FCM 알림 탭 - 상세 화면으로 이동');
+        if (response.id != null) await _notifications.cancel(response.id!);
         _navigateToGuardianDashboard(payload);
       } else {
         debugPrint('[알림] ✅ 보호대상자 알림 탭 - 질문 화면으로 이동');
-        if (response.id != null) {
-          await _notifications.cancel(response.id!);
-        }
+        if (response.id != null) await _notifications.cancel(response.id!);
         _navigateToQuestionScreen();
       }
       return;
@@ -342,45 +376,15 @@ class NotificationService {
     });
   }
 
-  /// 매일 알림 스케줄링 전에 오늘 기록 여부 확인
-  /// 이미 기록했다면 알림을 보내지 않음
-  Future<void> checkAndScheduleIfNeeded(String userId) async {
+  /// 테스트용: 보호대상자 19시 리마인드 즉시 발송 (로컬 알림)
+  Future<void> sendTestSubjectNotification() async {
     try {
-      final moodService = MoodService();
-      final hasResponded = await moodService.hasRespondedToday(subjectId: userId);
-      
-      if (hasResponded) {
-        debugPrint('[알림] 오늘 이미 기록했으므로 알림 스케줄링 생략');
-        return;
-      }
-
-      // 오늘 알림을 무시했는지 확인
-      final prefs = await SharedPreferences.getInstance();
-      final dismissedDate = prefs.getString('notification_dismissed_date');
-      final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
-      
-      if (dismissedDate == today) {
-        debugPrint('[알림] 오늘 알림을 무시했으므로 스케줄링 생략');
-        return;
-      }
-
-      // 알림 스케줄링
-      await scheduleDailyNotifications(userId);
-    } catch (e) {
-      debugPrint('[알림] 알림 체크 및 스케줄링 오류: $e');
-    }
-  }
-
-  /// 테스트용: 보호대상자 알림 즉시 발송
-  Future<void> sendTestNotification() async {
-    try {
-      debugPrint('[테스트 알림] 보호대상자 알림 발송 시작');
-      
+      debugPrint('[테스트 알림] 보호대상자 리마인드 발송 시작');
       const notificationId = 9999;
       await _notifications.show(
         notificationId,
         '',
-        '오늘 안부 남겨볼까요?',
+        '오늘도 잘 지내고 계신가요?',
         NotificationDetails(
           android: AndroidNotificationDetails(
             'daily_mood_check',
@@ -406,15 +410,60 @@ class NotificationService {
             presentSound: true,
           ),
         ),
+        payload: 'SUBJECT_REMINDER',
       );
-      
-      // 10초 후 알림 자동 취소
       Future.delayed(const Duration(seconds: 10), () {
         _notifications.cancel(notificationId);
-        debugPrint('[테스트 알림] 보호대상자 알림 자동 취소 (10초 후)');
+        debugPrint('[테스트 알림] 보호대상자 리마인드 자동 취소 (10초 후)');
       });
-      
-      debugPrint('[테스트 알림] 보호대상자 알림 발송 완료 (ID: $notificationId)');
+      debugPrint('[테스트 알림] 보호대상자 리마인드 발송 완료 (ID: $notificationId)');
+    } catch (e) {
+      debugPrint('[테스트 알림] 오류: $e');
+      rethrow;
+    }
+  }
+
+  /// 테스트용: 보호자 20시 리마인드 즉시 발송 (로컬 알림)
+  Future<void> sendTestGuardianNotification() async {
+    try {
+      debugPrint('[테스트 알림] 보호자 리마인드 발송 시작');
+      const notificationId = 9998;
+      await _notifications.show(
+        notificationId,
+        '',
+        '오늘 안부 확인하기',
+        NotificationDetails(
+          android: AndroidNotificationDetails(
+            'daily_mood_check',
+            '일일 컨디션 확인',
+            channelDescription: '하루 한 번 컨디션을 기록하도록 알림',
+            importance: Importance.max,
+            priority: Priority.max,
+            playSound: true,
+            enableVibration: true,
+            vibrationPattern: Int64List.fromList([0, 500, 200, 500]),
+            category: AndroidNotificationCategory.alarm,
+            styleInformation: const BigTextStyleInformation(''),
+            autoCancel: true,
+            ongoing: false,
+            showWhen: true,
+            enableLights: true,
+            color: const Color(0xFF5C6BC0),
+            visibility: NotificationVisibility.public,
+          ),
+          iOS: const DarwinNotificationDetails(
+            presentAlert: true,
+            presentBadge: true,
+            presentSound: true,
+          ),
+        ),
+        payload: 'GUARDIAN_REMINDER',
+      );
+      Future.delayed(const Duration(seconds: 10), () {
+        _notifications.cancel(notificationId);
+        debugPrint('[테스트 알림] 보호자 리마인드 자동 취소 (10초 후)');
+      });
+      debugPrint('[테스트 알림] 보호자 리마인드 발송 완료 (ID: $notificationId)');
     } catch (e) {
       debugPrint('[테스트 알림] 오류: $e');
       rethrow;

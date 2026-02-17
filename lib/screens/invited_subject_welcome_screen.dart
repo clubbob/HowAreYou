@@ -46,6 +46,16 @@ class _InvitedSubjectWelcomeScreenState extends State<InvitedSubjectWelcomeScree
                   height: 1.5,
                 ),
               ),
+              const SizedBox(height: 12),
+              Text(
+                '매일 전화 대신, 버튼 하나만 누르면 됩니다.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 15,
+                  color: Colors.grey.shade600,
+                  height: 1.4,
+                ),
+              ),
               const SizedBox(height: 48),
               SizedBox(
                 width: double.infinity,

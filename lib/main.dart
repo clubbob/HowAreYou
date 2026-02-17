@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show MethodChannel;
@@ -179,7 +180,8 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthService()),
       ],
-      child: MaterialApp(
+      child: _AppLifecycleHandler(
+        child: MaterialApp(
         navigatorKey: navigatorKey,
         title: '지금 어때?',
         locale: const Locale('ko', 'KR'),
@@ -281,6 +283,56 @@ class MyApp extends StatelessWidget {
           '/question': (context) => const QuestionScreen(timeSlot: TimeSlot.daily),
         },
       ),
+      ),
     );
   }
+}
+
+/// 앱 포그라운드 복귀 시 역할별 알림 스케줄 재확인
+class _AppLifecycleHandler extends StatefulWidget {
+  final Widget child;
+
+  const _AppLifecycleHandler({required this.child});
+
+  @override
+  State<_AppLifecycleHandler> createState() => _AppLifecycleHandlerState();
+}
+
+class _AppLifecycleHandlerState extends State<_AppLifecycleHandler>
+    with WidgetsBindingObserver {
+  /// 포그라운드 복귀 시 연속 이벤트 디바운스 (2초)
+  Timer? _resumeDebounceTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    _resumeDebounceTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _resumeDebounceTimer?.cancel();
+      _resumeDebounceTimer = Timer(const Duration(seconds: 2), () {
+        _resumeDebounceTimer = null;
+        if (!mounted) return;
+        final auth = context.read<AuthService>();
+        if (auth.isAuthenticated) {
+          NotificationService.instance.scheduleDailyRemindersByRole().catchError((e) {
+            debugPrint('알림 스케줄링 오류 (무시): $e');
+          });
+        }
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }

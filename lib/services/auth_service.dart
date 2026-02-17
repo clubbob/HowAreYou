@@ -8,6 +8,7 @@ import 'dart:io' show Platform;
 import '../models/user_model.dart';
 import '../utils/constants.dart';
 import 'fcm_service.dart';
+import 'mode_service.dart';
 import 'notification_service.dart';
 import '../utils/permission_helper.dart';
 
@@ -41,18 +42,19 @@ class AuthService extends ChangeNotifier {
       _user = user;
       if (user != null) {
         _loadUserData(user.uid);
-        // 로그인 시 일일 알림 스케줄링
-        NotificationService.instance.checkAndScheduleIfNeeded(user.uid).catchError((e) {
+        // 역할별 매일 반복 알림 등록 (로그인/앱 시작 1회)
+        NotificationService.instance.scheduleDailyRemindersByRole().catchError((e) {
           debugPrint('알림 스케줄링 오류 (무시): $e');
         });
       } else {
         _userModel = null;
         notifyListeners();
-        // 로그아웃 시 알림 취소
+        // 로그아웃 시 알림 취소 + 역할 플래그 초기화
         if (wasAuthenticated) {
           NotificationService.instance.cancelAllNotifications().catchError((e) {
             debugPrint('알림 취소 오류 (무시): $e');
           });
+          ModeService.clearRoleFlags().catchError((e) {});
         }
       }
     });
@@ -132,7 +134,6 @@ class AuthService extends ChangeNotifier {
     FCMService.instance.initialize(user.uid).catchError((e) {
       debugPrint('FCM 초기화 지연/실패 (무시): $e');
     });
-    _checkTodayNotificationAfterLogin(user.uid);
   }
 
   /// 자동 인증(verificationCompleted) 시 credential로 직접 로그인. 신규 사용자는 [NeedAgreementException] 던짐.
@@ -411,25 +412,6 @@ class AuthService extends ChangeNotifier {
       debugPrint('_ensureSubjectDocument 오류: $e');
       // 오류가 발생해도 로그인 플로우는 계속 진행
     }
-  }
-
-  /// 로그인 완료 후 오늘 알림 체크 (백그라운드)
-  void _checkTodayNotificationAfterLogin(String userId) {
-    // 비동기로 실행하여 로그인 플로우를 방해하지 않음
-    Future.delayed(const Duration(milliseconds: 500), () async {
-      try {
-        // 알림 권한이 허용되어 있는지 확인
-        if (Platform.isAndroid) {
-          final isGranted = await PermissionHelper.isNotificationPermissionGranted();
-          if (!isGranted) return; // 권한이 없으면 알림 표시하지 않음
-        }
-        
-        // 오늘 알림 체크 및 스케줄링
-        await NotificationService.instance.checkAndScheduleIfNeeded(userId);
-      } catch (e) {
-        debugPrint('[AuthService] 로그인 후 오늘 알림 체크 오류: $e');
-      }
-    });
   }
 
   /// 회원 탈퇴 시 재인증용 OTP 전송. [verificationId]를 반환 (실패 시 null)

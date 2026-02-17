@@ -36,17 +36,17 @@ export function HeroSection() {
             <span className="text-2xl font-bold text-navy-900 md:text-3xl">여기 어때?</span>
           </div>
           <h1 className="mb-4 whitespace-nowrap text-[1.125rem] font-bold leading-[1.3] tracking-tight text-navy-900 sm:text-[1.5rem] md:text-[2rem] lg:text-[2.25rem]">
-            하루 한 번, 안부를 확인합니다.
+            매일 전화하지 않아도 됩니다.
           </h1>
           <p className="mb-3 text-lg font-medium text-primary-400 md:text-xl">
-            기록은 간단하게.
+            하루 3초 기록으로 충분합니다.
             <br />
-            걱정은 줄어들게.
+            부모님도 부담 없이 사용할 수 있습니다.
           </p>
           <p className="mb-10 text-[17px] leading-[1.6] text-navy-600">
-            혼자 있는 가족의 하루를
+            하루 한 번, 가볍게 안부를 확인하는
             <br />
-            가볍게 확인할 수 있는 안부 서비스입니다.
+            마음을 편하게 해주는 관계 습관 앱입니다.
           </p>
           <div>
             <button

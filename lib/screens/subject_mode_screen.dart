@@ -6,7 +6,7 @@ import 'dart:io' show Platform;
 import '../services/auth_service.dart';
 import '../services/mood_service.dart';
 import '../services/guardian_service.dart';
-import '../services/notification_service.dart';
+import '../services/mode_service.dart';
 import '../models/mood_response_model.dart';
 import '../utils/button_styles.dart';
 import '../utils/permission_helper.dart';
@@ -30,6 +30,7 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> {
   final MoodService _moodService = MoodService();
   final GuardianService _guardianService = GuardianService();
   bool _hasShownWelcomeDialog = false;
+  bool? _notificationPermissionGranted;
 
   @override
   void initState() {
@@ -46,32 +47,10 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> {
       }
       if (mounted) {
         await _requestNotificationPermission();
-        // 오늘 18:00 이전이고 아직 기록하지 않았다면 즉시 알림 표시
-        await _checkTodayNotification();
+        // 보호대상자 역할 활성 플래그 설정 (스케줄은 Splash/포그라운드 복귀에서만)
+        await ModeService.setSubjectEnabled(true);
       }
     });
-  }
-
-  /// 오늘 18:00 이전이고 아직 기록하지 않았다면 즉시 알림 표시
-  Future<void> _checkTodayNotification() async {
-    try {
-      final authService = Provider.of<AuthService>(context, listen: false);
-      if (!authService.isAuthenticated) return;
-      
-      final user = authService.user;
-      if (user == null) return;
-      
-      // 알림 권한이 허용되어 있는지 확인
-      if (Platform.isAndroid) {
-        final isGranted = await PermissionHelper.isNotificationPermissionGranted();
-        if (!isGranted) return; // 권한이 없으면 알림 표시하지 않음
-      }
-      
-      // 오늘 알림 체크 및 스케줄링
-      await NotificationService.instance.checkAndScheduleIfNeeded(user.uid);
-    } catch (e) {
-      debugPrint('[보호대상자] 오늘 알림 체크 오류: $e');
-    }
   }
 
   Future<void> _requestNotificationPermission() async {
@@ -82,16 +61,21 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> {
       try {
         final isGranted = await PermissionHelper.isNotificationPermissionGranted();
         debugPrint('[보호대상자] 알림 권한 상태: $isGranted');
+        if (mounted) setState(() => _notificationPermissionGranted = isGranted);
         if (!isGranted && mounted) {
           debugPrint('[보호대상자] 알림 권한 요청 시작');
           final granted = await PermissionHelper.requestNotificationPermission(context, isForSubject: true);
           debugPrint('[보호대상자] 알림 권한 요청 결과: $granted');
+          if (mounted) setState(() => _notificationPermissionGranted = granted);
         } else {
           debugPrint('[보호대상자] 알림 권한이 이미 허용되어 있음');
         }
       } catch (e) {
         debugPrint('[보호대상자] 알림 권한 요청 오류: $e');
+        if (mounted) setState(() => _notificationPermissionGranted = false);
       }
+    } else {
+      if (mounted) setState(() => _notificationPermissionGranted = true);
     }
   }
 
@@ -243,9 +227,69 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              // 알림 권한 거부 시 배너 (비용 0원 보완)
+              if (_notificationPermissionGranted == false) ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.orange.shade200),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.notifications_off_outlined, color: Colors.orange.shade700, size: 22),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          '알림을 켜야 컨디션 기록 알림을 받을 수 있습니다.',
+                          style: TextStyle(fontSize: 14, color: Colors.orange.shade900),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: 24),
+              FutureBuilder<({int currentStreak, int longestStreak})?>(
+                future: authService.user?.uid != null
+                    ? _moodService.getStreak(authService.user!.uid)
+                    : Future.value(null),
+                builder: (context, snapshot) {
+                  final streak = snapshot.data?.currentStreak ?? 0;
+                  if (streak < 1) return const SizedBox.shrink();
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.shade50,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.orange.shade200),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text('🔥', style: const TextStyle(fontSize: 18)),
+                          const SizedBox(width: 6),
+                          Text(
+                            '$streak일 연속 기록 중',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.orange.shade800,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
               Text(
-                '지금 어때?',
+                '오늘도 잘 지내고 계신가요?',
                 style: theme.textTheme.headlineLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                   fontSize: 36,
@@ -254,7 +298,16 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> {
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 12),
+              Text(
+                '하루 한 번이면 충분합니다.',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey.shade600,
+                  height: 1.4,
+                ),
+                textAlign: TextAlign.center,
+              ),
               const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,

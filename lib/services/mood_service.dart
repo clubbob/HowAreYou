@@ -20,7 +20,7 @@ class MoodService {
   }
 
   /// 응답 저장. 24시 기준 하루 1회 → 문서 id = yyyy-MM-dd, slot = daily.
-  /// 저장 성공 시 subjects 문서의 리마인드 필드도 업데이트함.
+  /// 저장 성공 시 subjects 문서의 리마인드 필드·스트릭도 업데이트함.
   Future<void> saveMoodResponse({
     required String subjectId,
     required TimeSlot slot,
@@ -29,6 +29,8 @@ class MoodService {
   }) async {
     final now = _nowKorea();
     final dateStr = DateFormat('yyyy-MM-dd').format(now);
+    final yesterday = now.subtract(const Duration(days: 1));
+    final yesterdayStr = DateFormat('yyyy-MM-dd').format(yesterday);
     final docId = dateStr;
     final response = MoodResponseModel(
       subjectId: subjectId,
@@ -39,15 +41,9 @@ class MoodService {
       note: note,
     );
 
-    // 응답 저장
-    await _firestore
-        .collection('subjects')
-        .doc(subjectId)
-        .collection('prompts')
-        .doc(docId)
-        .set(response.toMap());
+    final subjectRef = _firestore.collection('subjects').doc(subjectId);
+    final promptRef = subjectRef.collection('prompts').doc(docId);
 
-    // 리마인드 필드 업데이트: 기록하면 오늘 리마인드 대상에서 즉시 제외
     final nowKorea = tz.TZDateTime.now(tz.getLocation('Asia/Seoul'));
     final tomorrow = tz.TZDateTime(
       tz.getLocation('Asia/Seoul'),
@@ -57,13 +53,54 @@ class MoodService {
       19,
       0,
     );
-    
-    await _firestore.collection('subjects').doc(subjectId).update({
-      'lastResponseAt': Timestamp.fromDate(now),
-      'lastResponseDate': dateStr,
-      'reminderSentForDate': dateStr, // 오늘 발송 완료로 표시
-      'nextReminderAt': Timestamp.fromDate(tomorrow.toUtc()), // 내일 19:00으로 설정 (UTC 변환)
+
+    await _firestore.runTransaction((transaction) async {
+      transaction.set(promptRef, response.toMap());
+
+      // 어제 기록 여부는 prompts 존재로 확인 (deleteTodayResponse 후에도 정확함)
+      final yesterdayPromptRef = subjectRef.collection('prompts').doc(yesterdayStr);
+      final yesterdayDoc = await transaction.get(yesterdayPromptRef);
+      final yesterdayRecorded = yesterdayDoc.exists;
+
+      final subjectDoc = await transaction.get(subjectRef);
+      final data = subjectDoc.data();
+      final currentStreak = (data?['currentStreak'] as int?) ?? 0;
+      final longestStreak = (data?['longestStreak'] as int?) ?? 0;
+
+      int newStreak = 1;
+      if (yesterdayRecorded) {
+        newStreak = currentStreak + 1;
+      }
+      final newLongest = newStreak > longestStreak ? newStreak : longestStreak;
+
+      transaction.set(subjectRef, {
+        'lastResponseAt': Timestamp.fromDate(now),
+        'lastResponseDate': dateStr,
+        'reminderSentForDate': dateStr,
+        'nextReminderAt': Timestamp.fromDate(tomorrow.toUtc()),
+        'currentStreak': newStreak,
+        'longestStreak': newLongest,
+        'lastRecordedDate': dateStr,
+      }, SetOptions(merge: true));
     });
+  }
+
+  /// 연속 기록(스트릭) 조회. subjects 문서의 currentStreak, longestStreak 반환.
+  Future<({int currentStreak, int longestStreak})?> getStreak(String subjectId) async {
+    try {
+      final doc = await _firestore.collection('subjects').doc(subjectId).get();
+      if (!doc.exists || doc.data() == null) return null;
+      final d = doc.data()!;
+      final current = d['currentStreak'];
+      final longest = d['longestStreak'];
+      if (current == null && longest == null) return null;
+      return (
+        currentStreak: (current is int ? current : 0),
+        longestStreak: (longest is int ? longest : 0),
+      );
+    } catch (_) {
+      return null;
+    }
   }
 
   /// 오늘 이미 응답했는지 (24시 기준 하루 1회)
@@ -186,6 +223,25 @@ class MoodService {
     String subjectId,
   ) async {
     return _getLastNDaysResponses(subjectId, 30);
+  }
+
+  /// 특정 월 기록률 계산. (기록한 일수 / 해당 월 총 일수) * 100.
+  /// [year], [month]: 1-based. 반환값 0~100.
+  Future<double> getMonthRecordRate(String subjectId, int year, int month) async {
+    final daysInMonth = DateTime(year, month + 1, 0).day;
+    var recordedDays = 0;
+    for (var d = 1; d <= daysInMonth; d++) {
+      final date = DateTime(year, month, d);
+      final dateStr = DateFormat('yyyy-MM-dd').format(date);
+      final doc = await _firestore
+          .collection('subjects')
+          .doc(subjectId)
+          .collection('prompts')
+          .doc(dateStr)
+          .get();
+      if (doc.exists) recordedDays++;
+    }
+    return daysInMonth > 0 ? (recordedDays / daysInMonth) * 100 : 0;
   }
 
   /// 최근 N일 이력 조회 (내부 헬퍼 메서드)

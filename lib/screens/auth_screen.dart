@@ -787,7 +787,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
               Text(
                 _codeSent 
                     ? '문자로 받은 6자리 인증번호를 입력해 주세요.' 
-                    : '하루 한 번이면 충분해요.\n본인 핸드폰 번호로 바로 이용 가능해요.',
+                    : '매일 전화 대신 3초 확인.\n하루 한 번이면 충분해요.',
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w400,

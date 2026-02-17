@@ -33,6 +33,16 @@ class InvitedGuardianWelcomeScreen extends StatelessWidget {
                   height: 1.5,
                 ),
               ),
+              const SizedBox(height: 12),
+              Text(
+                '매일 전화 대신, 안부가 잘 전달됐는지\n3초로 확인할 수 있어요.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 15,
+                  color: Colors.grey.shade600,
+                  height: 1.4,
+                ),
+              ),
               const SizedBox(height: 48),
               SizedBox(
                 width: double.infinity,

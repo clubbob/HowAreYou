@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'dart:io' show Platform;
 import '../services/auth_service.dart';
 import '../services/fcm_service.dart';
+import '../services/mode_service.dart';
 import '../utils/permission_helper.dart';
 import '../utils/button_styles.dart';
 import '../main.dart';
@@ -20,9 +21,13 @@ class GuardianModeScreen extends StatefulWidget {
 }
 
 class _GuardianModeScreenState extends State<GuardianModeScreen> {
+  bool? _notificationPermissionGranted;
+
   @override
   void initState() {
     super.initState();
+    // 보호자 역할 활성 플래그 설정 (스케줄은 Splash/포그라운드 복귀에서만)
+    ModeService.setGuardianEnabled(true);
     // 보호자 모드 진입 시 FCM 초기화 (알림 수신을 위해)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeFCM();
@@ -45,16 +50,21 @@ class _GuardianModeScreenState extends State<GuardianModeScreen> {
       try {
         final isGranted = await PermissionHelper.isNotificationPermissionGranted();
         debugPrint('[보호자 모드] 알림 권한 상태: $isGranted');
+        if (mounted) setState(() => _notificationPermissionGranted = isGranted);
         if (!isGranted && mounted) {
           debugPrint('[보호자 모드] 알림 권한 요청 시작');
           final granted = await PermissionHelper.requestNotificationPermission(context, isForSubject: false);
           debugPrint('[보호자 모드] 알림 권한 요청 결과: $granted');
+          if (mounted) setState(() => _notificationPermissionGranted = granted);
         } else {
           debugPrint('[보호자 모드] 알림 권한이 이미 허용되어 있음');
         }
       } catch (e) {
         debugPrint('[보호자 모드] 알림 권한 요청 오류: $e');
+        if (mounted) setState(() => _notificationPermissionGranted = false);
       }
+    } else {
+      if (mounted) setState(() => _notificationPermissionGranted = true);
     }
 
     // FCM 초기화 (토큰 저장) - 강제로 다시 초기화하여 토큰이 확실히 저장되도록 함
@@ -171,6 +181,31 @@ class _GuardianModeScreenState extends State<GuardianModeScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              // 알림 권한 거부 시 배너 (비용 0원 보완)
+              if (_notificationPermissionGranted == false) ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.orange.shade200),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.notifications_off_outlined, color: Colors.orange.shade700, size: 22),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          '알림을 켜야 안부 확인 알림을 받을 수 있습니다.',
+                          style: TextStyle(fontSize: 14, color: Colors.orange.shade900),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const Text(
                 '보호자 모드',
                 style: TextStyle(
