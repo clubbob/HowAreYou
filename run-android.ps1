@@ -46,6 +46,9 @@ function Filter-EGLLogs {
     }
 }
 
+# legal/ → assets/ 동기화 (약관·개인정보처리방침)
+try { node scripts/sync-legal.js 2>$null } catch { }
+
 Write-Host "`n앱 실행 중 (EGL 로그 필터링)...`n" -ForegroundColor Cyan
 
 flutter run @args 2>&1 | Filter-EGLLogs

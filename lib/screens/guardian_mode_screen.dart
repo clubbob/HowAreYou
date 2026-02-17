@@ -172,7 +172,7 @@ class _GuardianModeScreenState extends State<GuardianModeScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const Text(
-                '안부 확인',
+                '보호자 모드',
                 style: TextStyle(
                   fontSize: 36,
                   fontWeight: FontWeight.bold,
@@ -183,14 +183,14 @@ class _GuardianModeScreenState extends State<GuardianModeScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                '안부가 전달되었는지 확인하세요',
+                '안부 확인과 보호 대상을 관리하세요',
                 style: TextStyle(
                   fontSize: 16,
                   color: Colors.grey[600],
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 48),
+              const SizedBox(height: 40),
               SizedBox(
                 width: double.infinity,
                 height: 88,
@@ -198,7 +198,7 @@ class _GuardianModeScreenState extends State<GuardianModeScreen> {
                   onPressed: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (_) => const GuardianDashboardScreen(),
+                        builder: (_) => const GuardianDashboardScreen(initialTabIndex: 0),
                       ),
                     );
                   },
@@ -210,6 +210,35 @@ class _GuardianModeScreenState extends State<GuardianModeScreen> {
                     padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 32),
                     elevation: 6,
                     shadowColor: primaryColor.withOpacity(0.5),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    textStyle: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                height: 88,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const GuardianDashboardScreen(initialTabIndex: 1),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.people_outline, size: 40),
+                  label: const Text('보호 대상 관리'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: primaryColor,
+                    side: BorderSide(color: primaryColor, width: 2),
+                    padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 32),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
                     ),

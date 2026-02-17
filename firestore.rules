@@ -115,10 +115,16 @@ service cloud.firestore {
       allow read, update, delete: if false;
     }
 
-    // 홈페이지 공지사항 - 누구나 읽기 가능
+    // 홈페이지 공지사항 - 누구나 읽기 가능 (관리자 쓰기는 API/Admin SDK 사용)
     match /announcements/{docId} {
       allow read: if true;
       allow write: if false;
+    }
+
+    // 1:1 문의 - 사용자 본인만 생성·읽기 가능 (관리자 답변은 API/Admin SDK 사용)
+    match /inquiries/{inquiryId} {
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow read, update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
     }
 
     // 알림 요청 컬렉션 (Cloud Functions 전용, 앱에서만 생성)

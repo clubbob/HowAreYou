@@ -6,21 +6,24 @@
       "request": "launch",
       "type": "dart",
       "program": "lib/main.dart",
-      "console": "debugConsole"
+      "console": "debugConsole",
+      "preLaunchTask": "sync-legal"
     },
     {
       "name": "Flutter (Profile)",
       "request": "launch",
       "type": "dart",
       "flutterMode": "profile",
-      "program": "lib/main.dart"
+      "program": "lib/main.dart",
+      "preLaunchTask": "sync-legal"
     },
     {
       "name": "Flutter (Release)",
       "request": "launch",
       "type": "dart",
       "flutterMode": "release",
-      "program": "lib/main.dart"
+      "program": "lib/main.dart",
+      "preLaunchTask": "sync-legal"
     }
   ]
 }

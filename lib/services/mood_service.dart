@@ -131,6 +131,56 @@ class MoodService {
     return _getLastNDaysResponses(subjectId, 7, excludeNote: excludeNote);
   }
 
+  /// [fromDateStr] 이후 ~ 오늘까지 이력 (최대 7일). 보호자 연결일 이후만 표시할 때 사용.
+  /// [fromDateStr] = yyyy-MM-dd. null이면 getLast7DaysResponses와 동일.
+  Future<Map<String, Map<TimeSlot, MoodResponseModel?>>> getResponsesFromDate(
+    String subjectId, {
+    String? fromDateStr,
+    int maxDays = 7,
+    bool excludeNote = false,
+  }) async {
+    if (fromDateStr == null || fromDateStr.isEmpty) {
+      return _getLastNDaysResponses(subjectId, maxDays, excludeNote: excludeNote);
+    }
+    final now = _nowKorea();
+    DateTime fromDate;
+    try {
+      fromDate = DateFormat('yyyy-MM-dd').parse(fromDateStr);
+    } catch (_) {
+      return _getLastNDaysResponses(subjectId, maxDays, excludeNote: excludeNote);
+    }
+    final result = <String, Map<TimeSlot, MoodResponseModel?>>{};
+    var current = DateTime(now.year, now.month, now.day);
+    final from = DateTime(fromDate.year, fromDate.month, fromDate.day);
+    var count = 0;
+    while (current.isAfter(from) || current.isAtSameMomentAs(from)) {
+      if (count >= maxDays) break;
+      final dateStr = DateFormat('yyyy-MM-dd').format(current);
+      final dayResponses = <TimeSlot, MoodResponseModel?>{};
+      final doc = await _firestore
+          .collection('subjects')
+          .doc(subjectId)
+          .collection('prompts')
+          .doc(dateStr)
+          .get();
+
+      if (doc.exists && doc.data() != null) {
+        dayResponses[TimeSlot.daily] = MoodResponseModel.fromMap(
+          doc.data() as Map<String, dynamic>,
+          dateStr,
+          subjectUid: subjectId,
+          excludeNote: excludeNote,
+        );
+      } else {
+        dayResponses[TimeSlot.daily] = null;
+      }
+      result[dateStr] = dayResponses;
+      count++;
+      current = current.subtract(const Duration(days: 1));
+    }
+    return result;
+  }
+
   /// 최근 30일 이력. 날짜별로 1건씩, 키는 TimeSlot.daily.
   Future<Map<String, Map<TimeSlot, MoodResponseModel?>>> getLast30DaysResponses(
     String subjectId,

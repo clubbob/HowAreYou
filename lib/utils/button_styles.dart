@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 class AppButtonStyles {
   AppButtonStyles._();
 
-  static const double primaryRadius = 12;
+  static const double primaryRadius = 24;
   static const double primaryMinHeight = 56;
   static const EdgeInsets primaryPadding =
       EdgeInsets.symmetric(horizontal: 16, vertical: 16);

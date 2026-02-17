@@ -1,9 +1,15 @@
-const functions = require('firebase-functions');
+const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
 
 admin.initializeApp();
 
 const db = admin.firestore();
+
+/** 한국 시간(KST) 기준 오늘 날짜 yyyy-MM-dd (pairedAt 등 앱과 일치) */
+function todayKoreaStr() {
+  const koreaOffset = 9 * 60 * 60 * 1000;
+  return new Date(Date.now() + koreaOffset).toISOString().slice(0, 10);
+}
 
 /** 전화번호 E.164 정규화 (매칭용) */
 function normalizePhone(phone) {
@@ -50,9 +56,11 @@ exports.processPendingInvitesOnSignup = functions.auth.user().onCreate(async (us
         const infos = { ...(existing.guardianInfos || {}) };
         if (paired.includes(guardianUid)) continue;
         paired.push(guardianUid);
+        const pairedAt = todayKoreaStr();
         infos[guardianUid] = {
           phone: data.guardianPhone || '',
           displayName: data.guardianDisplayName || '',
+          pairedAt,
         };
         await subjectRef.set({ pairedGuardianUids: paired, guardianInfos: infos }, { merge: true });
         console.log('[대기초대] 보호자 연결 완료 subject=', uid, 'guardian=', guardianUid);
@@ -84,7 +92,8 @@ exports.processPendingInvitesOnSignup = functions.auth.user().onCreate(async (us
         const infos = { ...(existing.guardianInfos || {}) };
         if (paired.includes(uid)) continue;
         paired.push(uid);
-        infos[uid] = { phone: guardianPhone, displayName: guardianDisplayName };
+        const pairedAt = todayKoreaStr();
+        infos[uid] = { phone: guardianPhone, displayName: guardianDisplayName, pairedAt };
         await subjectRef.set({ pairedGuardianUids: paired, guardianInfos: infos }, { merge: true });
         console.log('[대기초대] 보호대상자 연결 완료 subject=', subjectUid, 'guardian=', uid);
       } catch (e) {
@@ -96,6 +105,47 @@ exports.processPendingInvitesOnSignup = functions.auth.user().onCreate(async (us
     console.error('[대기초대] 오류:', error);
   }
   return null;
+});
+
+/**
+ * 보호자가 보호대상자 목록에서 자신을 제거 (permission-denied 우회용 Cloud Function)
+ * - 호출자(request.auth.uid)가 subjectId 문서의 pairedGuardianUids에 있을 때만 허용
+ */
+exports.removeGuardianFromSubject = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', '로그인이 필요합니다.');
+  }
+  const guardianUid = context.auth.uid;
+  const subjectId = data?.subjectId;
+  if (!subjectId || typeof subjectId !== 'string') {
+    throw new functions.https.HttpsError('invalid-argument', 'subjectId가 필요합니다.');
+  }
+  if (guardianUid === subjectId) {
+    return { success: true }; // 본인 문서는 무시
+  }
+
+  const subjectRef = db.collection('subjects').doc(subjectId);
+  const subjectSnap = await subjectRef.get();
+  if (!subjectSnap.exists) {
+    return { success: true }; // 이미 없으면 성공으로 처리
+  }
+
+  const existing = subjectSnap.data() || {};
+  const paired = [...(existing.pairedGuardianUids || [])];
+  if (!paired.includes(guardianUid)) {
+    return { success: true }; // 이미 제거됨
+  }
+
+  const infos = { ...(existing.guardianInfos || {}) };
+  delete infos[guardianUid];
+  const newPaired = paired.filter((uid) => uid !== guardianUid);
+
+  await subjectRef.update({
+    pairedGuardianUids: newPaired,
+    guardianInfos: infos,
+  });
+  console.log('[removeGuardianFromSubject] 완료 subject=', subjectId, 'guardian=', guardianUid);
+  return { success: true };
 });
 
 /**

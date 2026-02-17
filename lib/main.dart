@@ -224,6 +224,12 @@ class MyApp extends StatelessWidget {
               fontWeight: FontWeight.w400,
             ),
           ),
+          iconButtonTheme: IconButtonThemeData(
+            style: IconButton.styleFrom(
+              shape: const CircleBorder(),
+              visualDensity: VisualDensity.comfortable,
+            ),
+          ),
           elevatedButtonTheme: ElevatedButtonThemeData(
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF4285F4),
@@ -233,12 +239,26 @@ class MyApp extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
               minimumSize: const Size(double.infinity, 56),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(28), // Pixel 6 style rounded corners
+                borderRadius: BorderRadius.circular(28),
               ),
               textStyle: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
                 letterSpacing: 0.5,
+              ),
+            ),
+          ),
+          filledButtonTheme: FilledButtonThemeData(
+            style: FilledButton.styleFrom(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
+            ),
+          ),
+          outlinedButtonTheme: OutlinedButtonThemeData(
+            style: OutlinedButton.styleFrom(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
               ),
             ),
           ),

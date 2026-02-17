@@ -99,6 +99,10 @@ $selectedDeviceId = $deviceMap[[int]$selection]
 $selectedDevice = $emulators | Where-Object { $_.id -eq $selectedDeviceId }
 
 Write-Host "`n선택한 기기: $($selectedDevice.name) ($selectedDeviceId)" -ForegroundColor Green
+
+# legal/ → assets/ 동기화 (약관·개인정보처리방침)
+try { node scripts/sync-legal.js 2>$null } catch { }
+
 Write-Host "앱 실행 중...`n" -ForegroundColor Cyan
 
 # Flutter 앱 실행 (EGL 로그 필터링)

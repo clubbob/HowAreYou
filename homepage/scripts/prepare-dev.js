@@ -8,6 +8,12 @@ const projectRoot = path.join(rootDir, '..');
 // 0. 이용약관·개인정보처리방침 동기화 (legal/ → assets/, legal-content.ts)
 try {
   execSync('node scripts/sync-legal.js', { cwd: projectRoot, stdio: 'pipe' });
+  // legal/ 감시 (저장 시 자동 동기화) - 백그라운드 실행
+  require('child_process').spawn('node', ['scripts/watch-legal.js'], {
+    cwd: projectRoot,
+    stdio: 'ignore',
+    detached: true,
+  }).unref();
 } catch (e) { /* legal 폴더 없으면 무시 */ }
 
 // 1. 포트 3000~3005 사용 프로세스 종료 (Next.js가 다른 포트 쓴 경우 대비)

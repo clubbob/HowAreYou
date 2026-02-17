@@ -2,6 +2,19 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "sync-legal",
+      "type": "shell",
+      "command": "node scripts/sync-legal.js",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "none",
+      "presentation": {
+        "reveal": "silent",
+        "echo": false
+      }
+    },
+    {
       "label": "Flutter Run (EGL 로그 제외)",
       "type": "shell",
       "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"${workspaceFolder}\\run-android.ps1\"",

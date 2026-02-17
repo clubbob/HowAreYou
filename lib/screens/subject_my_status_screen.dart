@@ -304,7 +304,6 @@ class _SubjectMyStatusScreenState extends State<SubjectMyStatusScreen> {
                               style: TextStyle(
                                 fontSize: 11,
                                 color: Colors.grey.shade600,
-                                fontStyle: FontStyle.italic,
                               ),
                               textAlign: TextAlign.center,
                             ),

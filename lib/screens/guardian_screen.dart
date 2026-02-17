@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -187,7 +188,7 @@ class _GuardianScreenState extends State<GuardianScreen> {
     return phone;
   }
 
-  /// 기존 보호자 정보 수정 (이름, 전화번호)
+  /// 기존 보호자 정보 수정 (이름/별칭만 변경, 보호자 화면과 동일 UI)
   Future<void> _showSetNameDialog(
     BuildContext context,
     String userId,
@@ -201,94 +202,60 @@ class _GuardianScreenState extends State<GuardianScreen> {
     final initialName = infoMap['displayName'] is String
         ? (infoMap['displayName'] as String).trim()
         : '';
-    final initialPhone = infoMap['phone'] is String
-        ? _formatPhoneDisplay(infoMap['phone'] as String)
+    final existingPhone = infoMap['phone'] is String
+        ? (infoMap['phone'] as String)
         : '';
     
     final nameController = TextEditingController(text: initialName);
-    final phoneController = TextEditingController(text: initialPhone);
-    final formKey = GlobalKey<FormState>();
     
-    final result = await showDialog<Map<String, String>?>(
+    final result = await showDialog<String?>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('보호자 정보 수정'),
-        content: Form(
-          key: formKey,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(
-                    labelText: '이름(별칭)',
-                    hintText: '예: 와이프, 엄마',
-                    border: OutlineInputBorder(),
-                  ),
-                  autofocus: true,
-                  textCapitalization: TextCapitalization.words,
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: phoneController,
-                  decoration: const InputDecoration(
-                    labelText: '핸드폰 번호',
-                    hintText: '01012345678',
-                    border: OutlineInputBorder(),
-                  ),
-                  keyboardType: TextInputType.phone,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  enabled: true,
-                  canRequestFocus: true,
-                  onTap: () {
-                    // 탭하면 전체 선택
-                    if (phoneController.text.isNotEmpty) {
-                      phoneController.selection = TextSelection(
-                        baseOffset: 0,
-                        extentOffset: phoneController.text.length,
-                      );
-                    }
-                  },
-                  validator: (v) {
-                    if (v == null || v.trim().isEmpty) {
-                      return '핸드폰 번호를 입력하세요.';
-                    }
-                    return null;
-                  },
-                ),
-              ],
-            ),
+        title: const Text('이름(별칭) 수정'),
+        content: TextField(
+          controller: nameController,
+          decoration: const InputDecoration(
+            hintText: '예: 엄마, 아빠',
+            border: OutlineInputBorder(),
           ),
+          autofocus: true,
+          textCapitalization: TextCapitalization.words,
+          onSubmitted: (v) => Navigator.pop(ctx, v.trim().isEmpty ? null : v.trim()),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('취소'),
-          ),
-          FilledButton(
-            onPressed: () {
-              if (!formKey.currentState!.validate()) return;
-              final n = nameController.text.trim();
-              final p = phoneController.text.trim();
-              Navigator.pop(ctx, {
-                'name': n,
-                'phone': p,
-              });
-            },
-            style: AppButtonStyles.primaryFilled,
-            child: const Text('저장'),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.grey.shade300,
+                    foregroundColor: Colors.grey.shade800,
+                  ),
+                  child: const Text('취소'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () {
+                    final n = nameController.text.trim();
+                    Navigator.pop(ctx, n.isEmpty ? null : n);
+                  },
+                  style: AppButtonStyles.primaryElevated,
+                  child: const Text('저장'),
+                ),
+              ),
+            ],
           ),
         ],
       ),
     );
     
-    // 다이얼로그가 완전히 닫힌 후 처리
-    await Future.delayed(const Duration(milliseconds: 100));
-    if (!mounted) return;
-    
-    nameController.dispose();
-    phoneController.dispose();
+    // 다이얼로그가 완전히 닫힌 후 controller dispose (애니메이션 완료 대기)
+    Future.delayed(const Duration(milliseconds: 400), () {
+      nameController.dispose();
+    });
     
     if (result == null) return;
     
@@ -306,12 +273,16 @@ class _GuardianScreenState extends State<GuardianScreen> {
                   )))
           : <String, dynamic>{};
       
-      // 전화번호를 E.164 형식으로 변환
-      final normalizedPhone = GuardianService.toE164(result['phone']!);
+      // 이름만 변경, 전화번호는 기존 값 유지
+      final currentInfo = existingInfos[guardianUid];
+      final currentInfoMap = currentInfo is Map
+          ? Map<String, dynamic>.from(currentInfo as Map)
+          : <String, dynamic>{};
       
       existingInfos[guardianUid] = {
-        'displayName': result['name'] ?? '',
-        'phone': normalizedPhone,
+        'displayName': result,
+        'phone': currentInfoMap['phone'] ?? existingPhone,
+        if (currentInfoMap['pairedAt'] != null) 'pairedAt': currentInfoMap['pairedAt'],
       };
       
       await docRef.set({
@@ -439,6 +410,7 @@ class _GuardianScreenState extends State<GuardianScreen> {
       existingInfos[guardianId] = {
         'phone': guardianPhone,
         'displayName': guardianDisplayName, // 항상 문자열로 저장 (빈 문자열 가능)
+        'pairedAt': DateFormat('yyyy-MM-dd').format(DateTime.now()),
       };
       
       // pairedGuardianUids에 새 보호자 추가 (중복 확인 완료했으므로 바로 추가)
@@ -577,18 +549,24 @@ class _GuardianScreenState extends State<GuardianScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // 1. 등록된 보호자 목록
-                      const Text(
-                        '등록된 보호자',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
+                      // 1. 보호자 목록 (보호 대상 관리 화면과 동일 형태)
+                      if (guardianUids.isEmpty) ...[
+                        Icon(Icons.people_outline, size: 64, color: Colors.grey[400]),
+                        const SizedBox(height: 16),
+                        Text(
+                          '등록된 보호자가 없습니다.',
+                          style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                          textAlign: TextAlign.center,
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                      if (guardianUids.isEmpty)
-                        const Text('등록된 보호자가 없습니다.')
-                      else
+                      ] else ...[
+                        Text(
+                          '보호자 (${guardianUids.length}명)',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
                         ...guardianUids.map((uid) {
                           final info = guardianInfos[uid];
                           final infoMap = info is Map
@@ -607,33 +585,44 @@ class _GuardianScreenState extends State<GuardianScreen> {
                           final hasName = displayName != null &&
                               displayName.isNotEmpty;
                           final hasPhone = phone != null && phone.isNotEmpty;
-                          String title = hasName
+                          String displayText = hasName
                               ? displayName!
                               : (hasPhone
                                   ? phone!
-                                  : '이름 없음 (연필 아이콘으로 입력)');
-                          // UID가 노출되지 않도록 방어 (이전 데이터/구버전 대응)
-                          if (title == uid) {
-                            title = '이름 없음 (연필 아이콘으로 입력)';
+                                  : '이름 없음');
+                          if (displayText == uid) {
+                            displayText = '이름 없음';
                           }
-                          final subtitle = hasPhone && hasName
-                              ? phone
-                              : (hasPhone && !hasName ? null : '연필 아이콘 탭 → 이름 입력');
                           return Card(
+                            margin: const EdgeInsets.only(bottom: 12),
                             child: ListTile(
-                              title: Text(title),
-                              subtitle: subtitle != null
-                                  ? Text(subtitle,
+                              title: Row(
+                                children: [
+                                  Text(
+                                    displayText,
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  if (hasName && hasPhone) ...[
+                                    const SizedBox(width: 12),
+                                    Text(
+                                      phone!,
                                       style: TextStyle(
-                                          fontSize: 12,
-                                          color: Colors.grey[600]))
-                                  : null,
+                                        fontSize: 14,
+                                        color: Colors.grey.shade600,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
                               trailing: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   IconButton(
-                                    icon: const Icon(Icons.edit),
-                                    tooltip: '정보 수정',
+                                    icon: Icon(Icons.edit_outlined, size: 22, color: Colors.grey[600]),
+                                    tooltip: '이름 수정',
                                     onPressed: () => _showSetNameDialog(
                                       context,
                                       userId!,
@@ -642,7 +631,7 @@ class _GuardianScreenState extends State<GuardianScreen> {
                                     ),
                                   ),
                                   IconButton(
-                                    icon: const Icon(Icons.delete),
+                                    icon: Icon(Icons.delete_outline, size: 22, color: Colors.grey[600]),
                                     tooltip: '삭제',
                                     onPressed: () async {
                                             // 삭제 확인 다이얼로그
@@ -652,18 +641,31 @@ class _GuardianScreenState extends State<GuardianScreen> {
                                                 title: const Text('보호자 삭제'),
                                                 content: Text(
                                                   guardianUids.length <= 1
-                                                      ? '${hasName ? displayName : phone ?? "이 보호자"}를 삭제하면 안부를 전달할 보호자가 없어집니다. 삭제하시겠습니까?'
-                                                      : '${hasName ? displayName : phone ?? "이 보호자"}를 삭제하시겠습니까?',
+                                                      ? '$displayText를 삭제하면 안부를 전달할 보호자가 없어집니다. 삭제하시겠습니까?'
+                                                      : '$displayText를 삭제하시겠습니까?',
                                                 ),
                                                 actions: [
-                                                  TextButton(
-                                                    onPressed: () => Navigator.pop(ctx, false),
-                                                    child: const Text('취소'),
-                                                  ),
-                                                  FilledButton(
-                                                    onPressed: () => Navigator.pop(ctx, true),
-                                                    style: AppButtonStyles.primaryFilled,
-                                                    child: const Text('삭제'),
+                                                  Row(
+                                                    children: [
+                                                      Expanded(
+                                                        child: ElevatedButton(
+                                                          onPressed: () => Navigator.pop(ctx, false),
+                                                          style: ElevatedButton.styleFrom(
+                                                            backgroundColor: Colors.grey.shade300,
+                                                            foregroundColor: Colors.grey.shade800,
+                                                          ),
+                                                          child: const Text('취소'),
+                                                        ),
+                                                      ),
+                                                      const SizedBox(width: 8),
+                                                      Expanded(
+                                                        child: ElevatedButton(
+                                                          onPressed: () => Navigator.pop(ctx, true),
+                                                          style: AppButtonStyles.primaryElevated,
+                                                          child: const Text('삭제'),
+                                                        ),
+                                                      ),
+                                                    ],
                                                   ),
                                                 ],
                                               ),
@@ -705,8 +707,9 @@ class _GuardianScreenState extends State<GuardianScreen> {
                             ),
                           );
                         }),
-                      // 2. 보호자 추가 버튼
-                      const SizedBox(height: 32),
+                      ],
+                      // 2. 보호자 추가 (보호 대상 관리 화면과 동일 형태)
+                      SizedBox(height: guardianUids.isEmpty ? 32 : 28),
                       const Text(
                         '보호자 추가',
                         style: TextStyle(
@@ -836,7 +839,7 @@ class _GuardianScreenState extends State<GuardianScreen> {
                       ),
                       const SizedBox(height: 12),
                       SizedBox(
-                        height: _inputMinHeight,
+                        height: 56,
                         child: OutlinedButton.icon(
                           onPressed: () {
                             if (userId != null) {

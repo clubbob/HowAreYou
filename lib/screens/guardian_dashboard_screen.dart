@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart' show FirebaseException;
 import 'package:intl/intl.dart';
@@ -15,13 +16,17 @@ import '../models/mood_response_model.dart';
 import '../utils/button_styles.dart';
 import '../utils/constants.dart';
 import '../utils/invite_link_helper.dart';
+import '../utils/legal_dialog.dart';
 import '../main.dart';
 import 'subject_detail_screen.dart';
 import 'auth_screen.dart';
 import 'guardian_mode_screen.dart';
+import 'inquiry_screen.dart';
 
 class GuardianDashboardScreen extends StatefulWidget {
-  const GuardianDashboardScreen({super.key});
+  const GuardianDashboardScreen({super.key, this.initialTabIndex = 0});
+
+  final int initialTabIndex;
 
   @override
   State<GuardianDashboardScreen> createState() =>
@@ -384,7 +389,7 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('보호 대상 관리'),
+        title: Text(widget.initialTabIndex == 0 ? '안부 확인' : '보호 대상 관리'),
         backgroundColor: Colors.white,
         elevation: 0,
         foregroundColor: Colors.black87,
@@ -487,28 +492,126 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
         ],
       ),
       body: SafeArea(
+        child: FutureBuilder<List<String>>(
+          future: _subjectIdsFuture,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (snapshot.hasError || !snapshot.hasData) {
+              return Center(
+                child: Text(
+                  snapshot.hasError
+                      ? '오류: ${snapshot.error}'
+                      : '보호 대상 목록을 불러올 수 없습니다.',
+                ),
+              );
+            }
+            final subjectIds = snapshot.data!;
+            return widget.initialTabIndex == 0
+                ? _buildCheckTab(context, subjectIds, userId!)
+                : _buildManageTab(context, subjectIds, userId!);
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCheckTab(BuildContext context, List<String> subjectIds, String userId) {
+    if (subjectIds.isEmpty) {
+      return SingleChildScrollView(
+        padding: EdgeInsets.fromLTRB(
+          24,
+          24,
+          24,
+          24 + MediaQuery.of(context).padding.bottom + 24,
+        ),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // 보호 대상 목록
-            Expanded(
-              child: FutureBuilder<List<String>>(
-              future: _subjectIdsFuture,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (snapshot.hasError || !snapshot.hasData) {
-                  return Center(
-                    child: Text(
-                      snapshot.hasError
-                          ? '오류: ${snapshot.error}'
-                          : '보호 대상 목록을 불러올 수 없습니다.',
+            Icon(Icons.visibility_outlined, size: 64, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text(
+              '등록된 보호 대상이 없습니다.',
+              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '보호 대상을 추가한 뒤 안부를 확인할 수 있습니다.',
+              style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              height: 56,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(
+                      builder: (_) => const GuardianDashboardScreen(initialTabIndex: 1),
                     ),
                   );
-                }
-                final subjectIds = snapshot.data!;
-                if (subjectIds.isEmpty) {
-                  return SingleChildScrollView(
+                },
+                icon: const Icon(Icons.people_outline, size: 22),
+                label: const Text('보호 대상 추가하러 가기'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF5C6BC0),
+                  side: const BorderSide(color: Color(0xFF5C6BC0), width: 1.5),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    return ListView(
+      padding: EdgeInsets.fromLTRB(
+        24,
+        24,
+        24,
+        24 + MediaQuery.of(context).padding.bottom + 24,
+      ),
+      children: [
+        Text(
+          '보호 대상 (${subjectIds.length}명)',
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 16),
+        ...subjectIds.map((subjectId) {
+          return _SubjectListItem(
+            subjectId: subjectId,
+            guardianUid: userId,
+            guardianService: _guardianService,
+            moodService: _moodService,
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => SubjectDetailScreen(
+                    subjectId: subjectId,
+                    guardianUid: userId,
+                    guardianService: _guardianService,
+                    moodService: _moodService,
+                  ),
+                ),
+              );
+            },
+            // 안부 확인 탭에서는 삭제 버튼 숨김 (실수 방지)
+          );
+        }),
+      ],
+    );
+  }
+
+  Widget _buildManageTab(BuildContext context, List<String> subjectIds, String userId) {
+    if (subjectIds.isEmpty) {
+      return SingleChildScrollView(
                     padding: EdgeInsets.fromLTRB(
                       24,
                       24,
@@ -717,11 +820,11 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
                         ),
                       ],
                     ),
-                  );
-                }
+      );
+    }
 
-                // 보호 대상이 1명 이상이면 목록 표시 (선택 시 상세 화면으로 이동)
-                return ListView(
+    // 보호 대상이 1명 이상이면 목록 + 추가 폼 + 초대
+    return ListView(
                   padding: EdgeInsets.fromLTRB(
                     24,
                     24,
@@ -742,23 +845,11 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
                         ),
                         const SizedBox(height: 16),
                         ...subjectIds.map((subjectId) {
-                          return _SubjectListItem(
+                          return _SubjectManagementItem(
                             subjectId: subjectId,
                             guardianUid: userId,
                             guardianService: _guardianService,
-                            moodService: _moodService,
-                            onTap: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => SubjectDetailScreen(
-                                    subjectId: subjectId,
-                                    guardianUid: userId,
-                                    guardianService: _guardianService,
-                                    moodService: _moodService,
-                                  ),
-                                ),
-                              );
-                            },
+                            onUpdated: () async => _refreshList(userId),
                           );
                         }),
                       ],
@@ -953,13 +1044,228 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
                       ),
                     ),
                   ],
-                );
-              },
-            ),
+    );
+  }
+}
+
+/// 보호 대상 관리 탭용 아이템 - 이름 + 수정 + 삭제만 (기록 미표시)
+class _SubjectManagementItem extends StatefulWidget {
+  final String subjectId;
+  final String guardianUid;
+  final GuardianService guardianService;
+  final Future<void> Function() onUpdated;
+
+  const _SubjectManagementItem({
+    required this.subjectId,
+    required this.guardianUid,
+    required this.guardianService,
+    required this.onUpdated,
+  });
+
+  @override
+  State<_SubjectManagementItem> createState() => _SubjectManagementItemState();
+}
+
+class _SubjectManagementItemState extends State<_SubjectManagementItem> {
+  String _displayName = '…';
+  String _subjectPhone = '';
+  late final Stream<String> _nameStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadName();
+    _loadPhone();
+    _nameStream = FirebaseFirestore.instance
+        .collection(AppConstants.usersCollection)
+        .doc(widget.guardianUid)
+        .snapshots()
+        .map((doc) {
+      if (!doc.exists) return '이름 없음';
+      final labels = doc.data()?['subjectLabels'];
+      if (labels is Map) {
+        final v = labels[widget.subjectId];
+        if (v is String && v.trim().isNotEmpty) return v.trim();
+      }
+      return '이름 없음';
+    });
+  }
+
+  Future<void> _loadName() async {
+    final name = await widget.guardianService.getSubjectDisplayNameForGuardian(
+      widget.subjectId,
+      widget.guardianUid,
+    );
+    if (mounted) setState(() => _displayName = name);
+  }
+
+  Future<void> _loadPhone() async {
+    final phone = await widget.guardianService.getSubjectPhone(widget.subjectId);
+    if (mounted) setState(() => _subjectPhone = phone);
+  }
+
+  Future<void> _showEditDialog(BuildContext context) async {
+    final controller = TextEditingController(text: _displayName);
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('이름(별칭) 수정'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            hintText: '예: 엄마, 아빠',
+            border: OutlineInputBorder(),
+          ),
+          autofocus: true,
+          onSubmitted: (v) => Navigator.pop(ctx, v.trim()),
+        ),
+        actions: [
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.grey.shade300,
+                    foregroundColor: Colors.grey.shade800,
+                  ),
+                  child: const Text('취소'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+                  style: AppButtonStyles.primaryElevated,
+                  child: const Text('저장'),
+                ),
+              ),
+            ],
           ),
         ],
-        ),
       ),
+    );
+    if (result == null || result.isEmpty || !context.mounted) return;
+    try {
+      await widget.guardianService.setSubjectDisplayNameByGuardian(
+        guardianUid: widget.guardianUid,
+        subjectId: widget.subjectId,
+        displayName: result,
+      );
+      await widget.onUpdated();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('이름이 수정되었습니다.')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('수정에 실패했습니다: ${e.toString().split('\n').first}')),
+        );
+      }
+    }
+  }
+
+  Future<void> _showRemoveDialog(BuildContext context, String subjectName) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('보호 대상 삭제'),
+        content: Text(
+          '"$subjectName"을(를) 보호 대상 목록에서 삭제하시겠습니까?\n\n'
+          '삭제해도 보호대상자 앱에는 영향이 없습니다.',
+        ),
+        actions: [
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.grey.shade300,
+                    foregroundColor: Colors.grey.shade800,
+                  ),
+                  child: const Text('취소'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  style: AppButtonStyles.primaryElevated,
+                  child: const Text('삭제'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    try {
+      await widget.guardianService.removeSubjectFromGuardian(
+        guardianUid: widget.guardianUid,
+        subjectId: widget.subjectId,
+      );
+      await widget.onUpdated();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('보호 대상이 삭제되었습니다.')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('삭제에 실패했습니다: ${e.toString().split('\n').first}')),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<String>(
+      stream: _nameStream,
+      initialData: _displayName,
+      builder: (context, snapshot) {
+        final name = snapshot.data ?? _displayName;
+        return Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          child: ListTile(
+            title: Row(
+              children: [
+                Text(
+                  name,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                ),
+                if (_subjectPhone.isNotEmpty) ...[
+                  const SizedBox(width: 12),
+                  Text(
+                    _subjectPhone,
+                    style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+                  ),
+                ],
+              ],
+            ),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: Icon(Icons.edit_outlined, size: 22, color: Colors.grey[600]),
+                  tooltip: '이름 수정',
+                  onPressed: () => _showEditDialog(context),
+                ),
+                IconButton(
+                  icon: Icon(Icons.delete_outline, size: 22, color: Colors.grey[600]),
+                  tooltip: '삭제',
+                  onPressed: () => _showRemoveDialog(context, name),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -971,6 +1277,7 @@ class _SubjectListItem extends StatefulWidget {
   final GuardianService guardianService;
   final MoodService moodService;
   final VoidCallback onTap;
+  final Future<void> Function(String subjectId)? onRemove;
 
   const _SubjectListItem({
     required this.subjectId,
@@ -978,6 +1285,7 @@ class _SubjectListItem extends StatefulWidget {
     required this.guardianService,
     required this.moodService,
     required this.onTap,
+    this.onRemove,
   });
 
   @override
@@ -987,6 +1295,7 @@ class _SubjectListItem extends StatefulWidget {
 class _SubjectListItemState extends State<_SubjectListItem> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   String _subjectName = '…';
+  String _subjectPhone = '';
   Map<TimeSlot, MoodResponseModel?>? _todayResponses;
   DateTime? _latestAnsweredAt;
   String _fallbackName = '이름 없음';
@@ -996,6 +1305,7 @@ class _SubjectListItemState extends State<_SubjectListItem> {
   void initState() {
     super.initState();
     _loadName();
+    _loadPhone();
     _loadResponses();
     _nameStream = _firestore
         .collection(AppConstants.usersCollection)
@@ -1023,6 +1333,70 @@ class _SubjectListItemState extends State<_SubjectListItem> {
       setState(() {
         _fallbackName = name;
       });
+    }
+  }
+
+  Future<void> _loadPhone() async {
+    final phone = await widget.guardianService.getSubjectPhone(widget.subjectId);
+    if (mounted) setState(() => _subjectPhone = phone);
+  }
+
+  Future<void> _showRemoveDialog(BuildContext context, String subjectName) async {
+    if (widget.onRemove == null) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('보호 대상 삭제'),
+        content: Text(
+          '"$subjectName"을(를) 보호 대상 목록에서 삭제하시겠습니까?\n\n'
+          '삭제해도 보호대상자 앱에는 영향이 없습니다.',
+        ),
+        actions: [
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.grey.shade300,
+                    foregroundColor: Colors.grey.shade800,
+                  ),
+                  child: const Text('취소'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  style: AppButtonStyles.primaryElevated,
+                  child: const Text('삭제'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    try {
+      await widget.guardianService.removeSubjectFromGuardian(
+        guardianUid: widget.guardianUid,
+        subjectId: widget.subjectId,
+      );
+      await widget.onRemove!(widget.subjectId);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('보호 대상이 삭제되었습니다.')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('삭제에 실패했습니다: ${e.toString().split('\n').first}'),
+          ),
+        );
+      }
     }
   }
 
@@ -1085,12 +1459,23 @@ class _SubjectListItemState extends State<_SubjectListItem> {
         return Card(
           margin: const EdgeInsets.only(bottom: 12),
           child: ListTile(
-            title: Text(
-              subjectName,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-              ),
+            title: Row(
+              children: [
+                Text(
+                  subjectName,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                if (_subjectPhone.isNotEmpty) ...[
+                  const SizedBox(width: 12),
+                  Text(
+                    _subjectPhone,
+                    style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+                  ),
+                ],
+              ],
             ),
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1113,7 +1498,18 @@ class _SubjectListItemState extends State<_SubjectListItem> {
                 ),
               ],
             ),
-            trailing: const Icon(Icons.chevron_right, size: 32),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (widget.onRemove != null)
+                  IconButton(
+                    icon: Icon(Icons.delete_outline, size: 22, color: Colors.grey[600]),
+                    tooltip: '보호 대상 삭제',
+                    onPressed: () => _showRemoveDialog(context, subjectName),
+                  ),
+                const Icon(Icons.chevron_right, size: 32),
+              ],
+            ),
             onTap: widget.onTap,
           ),
         );
@@ -1328,6 +1724,8 @@ class _GuardianSettingsScreenState extends State<GuardianSettingsScreen> {
           : ListView(
               padding: const EdgeInsets.all(16),
               children: [
+                // [ 알림 설정 ]
+                _buildSettingsSectionHeader('알림 설정'),
                 Card(
                   child: ListTile(
                     leading: const Icon(Icons.notifications_active),
@@ -1339,7 +1737,45 @@ class _GuardianSettingsScreenState extends State<GuardianSettingsScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 24),
+                // [ 고객지원 ]
+                _buildSettingsSectionHeader('고객지원'),
+                Card(
+                  child: Column(
+                    children: [
+                      ListTile(
+                        leading: const Icon(Icons.contact_support_outlined),
+                        title: const Text('1:1 문의'),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () {
+                          final uid = Provider.of<AuthService>(context, listen: false).user?.uid;
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => InquiryScreen(userId: uid),
+                            ),
+                          );
+                        },
+                      ),
+                      const Divider(height: 1),
+                      ListTile(
+                        leading: const Icon(Icons.description_outlined),
+                        title: const Text('이용약관'),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => LegalDialog.showTerms(context),
+                      ),
+                      const Divider(height: 1),
+                      ListTile(
+                        leading: const Icon(Icons.privacy_tip_outlined),
+                        title: const Text('개인정보처리방침'),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => LegalDialog.showPrivacy(context),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                // [ 계정 관리 ]
+                _buildSettingsSectionHeader('계정 관리'),
                 Card(
                   child: ListTile(
                     leading: Icon(Icons.delete_forever, color: Colors.red.shade700),
@@ -1351,6 +1787,7 @@ class _GuardianSettingsScreenState extends State<GuardianSettingsScreen> {
                       ),
                     ),
                     subtitle: const Text('계정 및 모든 데이터가 영구적으로 삭제됩니다'),
+                    trailing: const Icon(Icons.chevron_right),
                     onTap: () => _showDeleteAccountDialog(context),
                   ),
                 ),
@@ -1358,4 +1795,32 @@ class _GuardianSettingsScreenState extends State<GuardianSettingsScreen> {
             ),
     );
   }
+
+  Widget _buildSettingsSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, bottom: 8),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.bold,
+          color: Colors.grey.shade700,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _launchSettingsUrl(String url) async {
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('링크를 열 수 없습니다.')),
+        );
+      }
+    }
+  }
+
 }

@@ -5,6 +5,8 @@ class AppConstants {
   /// 약관/개인정보처리방침 URL (홈페이지)
   static const String termsUrl = 'https://how-are-you-nu.vercel.app/terms';
   static const String privacyUrl = 'https://how-are-you-nu.vercel.app/privacy';
+  /// 1:1 문의 (홈페이지 또는 문의 페이지)
+  static const String inquiryUrl = 'https://how-are-you-nu.vercel.app';
 
   // 알림 채널 ID
   static const String dailyMoodCheckChannelId = 'daily_mood_check';
@@ -35,4 +37,7 @@ class AppConstants {
   static const String pendingGuardianInvitesCollection = 'pending_guardian_invites';
   /// 대상자→보호자 대기 초대 (가입 시 자동 연결)
   static const String pendingSubjectInvitesCollection = 'pending_subject_invites';
+
+  /// 1:1 문의 컬렉션
+  static const String inquiriesCollection = 'inquiries';
 }

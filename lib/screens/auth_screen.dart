@@ -8,9 +8,28 @@ import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../services/guardian_service.dart';
 import '../services/invite_pending_service.dart';
+import '../utils/legal_dialog.dart';
 import 'home_screen.dart';
 import 'subject_mode_screen.dart';
 import 'guardian_mode_screen.dart';
+
+/// 커서가 맨 앞일 때 숫자 입력 시 기존 번호를 지우고 새로 입력
+class _ReplaceWhenTypingAtStartFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    if (oldValue.text.isEmpty) return newValue;
+    if (newValue.text.length != oldValue.text.length + 1) return newValue;
+    if (newValue.text.substring(1) != oldValue.text) return newValue;
+    if (!RegExp(r'^[0-9]').hasMatch(newValue.text)) return newValue;
+    return TextEditingValue(
+      text: newValue.text[0],
+      selection: TextSelection.collapsed(offset: 1),
+    );
+  }
+}
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({
@@ -27,10 +46,8 @@ class AuthScreen extends StatefulWidget {
 }
 
 class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateMixin {
-  static const _termsAssetPath = 'assets/terms_content.txt';
-  static const _privacyAssetPath = 'assets/privacy_content.txt';
-
   final _phoneController = TextEditingController();
+  final _phoneFocusNode = FocusNode();
   final _codeController = TextEditingController();
   final _codeFocusNode = FocusNode();
   String? _verificationId;
@@ -58,6 +75,24 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
     });
     _phoneController.addListener(_onPhoneChanged);
     _phoneController.addListener(_checkAgreedPhone);
+    _phoneFocusNode.addListener(() {
+      if (_phoneFocusNode.hasFocus) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && _phoneFocusNode.hasFocus) {
+            _phoneController.selection = TextSelection.collapsed(offset: 0);
+          }
+        });
+      }
+    });
+    _codeFocusNode.addListener(() {
+      if (_codeFocusNode.hasFocus) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && _codeFocusNode.hasFocus) {
+            _codeController.selection = TextSelection.collapsed(offset: 0);
+          }
+        });
+      }
+    });
     // 이전 로그인 전화번호로 미리 채우기
     WidgetsBinding.instance.addPostFrameCallback((_) => _prefillLastPhone());
     // 6자리 입력 시 자동 인증 시도
@@ -92,8 +127,12 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
     final agreed = await authService.isPhoneAgreed(phone);
     if (mounted) setState(() {
       _showTermsCheckboxes = !agreed; // 일반 재로그인: 체크박스 숨김 / 최초·탈퇴 후 재가입: 체크박스 표시
-      _agreedToTerms = agreed;
-      _agreedToPrivacy = agreed;
+      if (agreed) {
+        _agreedToTerms = true;
+        _agreedToPrivacy = true;
+      }
+      // agreed가 false(신규)일 때는 기존 _agreedToTerms/_agreedToPrivacy를 유지
+      // (사용자가 이미 체크한 경우 전화번호 입력 시 덮어쓰지 않음)
     });
   }
 
@@ -104,6 +143,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
     final formatted = _formatPhoneNumber(last);
     if (_phoneController.text != formatted) {
       _phoneController.text = formatted;
+      _phoneController.selection = TextSelection.collapsed(offset: 0);
     }
     _checkAgreedPhone();
   }
@@ -112,6 +152,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
   void dispose() {
     _phoneController.removeListener(_onPhoneChanged);
     _phoneController.removeListener(_checkAgreedPhone);
+    _phoneFocusNode.dispose();
     _phoneController.dispose();
     _codeController.dispose();
     _codeFocusNode.dispose();
@@ -123,90 +164,6 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
     if (mounted && _shakeController != null && !_shakeController!.isAnimating) {
       _shakeController!.forward(from: 0.0);
     }
-  }
-
-  Future<void> _showTermsPopup() async {
-    String content;
-    try {
-      content = await rootBundle.loadString(_termsAssetPath);
-    } catch (_) {
-      content = '이용약관 내용을 불러올 수 없습니다.';
-    }
-    if (!mounted) return;
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => PopScope(
-        canPop: false,
-        child: AlertDialog(
-        title: const Text('이용약관'),
-        content: SingleChildScrollView(
-          child: SizedBox(
-            width: double.maxFinite,
-            child: Text(
-              content,
-              style: TextStyle(fontSize: 14, height: 1.5, color: Colors.grey.shade800),
-            ),
-          ),
-        ),
-        actions: [
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              child: const Text('확인'),
-            ),
-          ),
-        ],
-      ),
-    ),
-    );
-  }
-
-  Future<void> _showPrivacyPopup() async {
-    String content;
-    try {
-      content = await rootBundle.loadString(_privacyAssetPath);
-    } catch (_) {
-      content = '개인정보처리방침 내용을 불러올 수 없습니다.';
-    }
-    if (!mounted) return;
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => PopScope(
-        canPop: false,
-        child: AlertDialog(
-        title: const Text('개인정보처리방침'),
-        content: SingleChildScrollView(
-          child: SizedBox(
-            width: double.maxFinite,
-            child: Text(
-              content,
-              style: TextStyle(fontSize: 14, height: 1.5, color: Colors.grey.shade800),
-            ),
-          ),
-        ),
-        actions: [
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              child: const Text('확인'),
-            ),
-          ),
-        ],
-      ),
-    ),
-    );
   }
 
   /// 최초 가입 시 약관 동의 다이얼로그 표시 후 회원가입 완료
@@ -251,7 +208,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                                 const Text('이용약관에 동의합니다. ', style: TextStyle(fontSize: 14)),
                                 TextButton(
                                   style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
-                                  onPressed: _showTermsPopup,
+                                  onPressed: () => LegalDialog.showTerms(context),
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
@@ -273,7 +230,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                                 const Text('개인정보처리방침에 동의합니다. ', style: TextStyle(fontSize: 14)),
                                 TextButton(
                                   style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
-                                  onPressed: _showPrivacyPopup,
+                                  onPressed: () => LegalDialog.showPrivacy(context),
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
@@ -602,7 +559,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
             // 에러 코드에 따른 구체적인 메시지
             switch (e.code) {
               case 'invalid-phone-number':
-                errorMessage = '핸드폰 번호 형식이 올바르지 않습니다.\n\n입력한 번호: ${_phoneController.text}\n변환된 번호: $phoneNumber\n\nFirebase Console에 테스트 번호가 등록되어 있는지 확인해주세요.\n\n테스트 번호:\n- +821011112222 (인증 코드: 111111)\n- +821033334444 (인증 코드: 333333)';
+                errorMessage = '핸드폰 번호 형식이 올바르지 않습니다.\n\n입력한 번호: ${_phoneController.text}\n변환된 번호: $phoneNumber\n\nFirebase Console에 테스트 번호가 등록되어 있는지 확인해주세요.\n\n테스트 번호:\n- +821011112222 (111111)\n- +821033334444 (333333)\n- +821055556666 (555555)\n- +821077778888 (777777)';
                 break;
               case 'missing-phone-number':
                 errorMessage = '핸드폰 번호를 입력해주세요.';
@@ -614,7 +571,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                 errorMessage = '너무 많은 요청이 발생했습니다. 5-10분 후 다시 시도해주세요.';
                 break;
               default:
-                errorMessage = '인증 실패: ${e.message ?? e.code}\n\n핸드폰 번호: $phoneNumber\n\nFirebase Console에서 테스트 번호가 등록되어 있는지 확인해주세요.\n\n테스트 번호:\n- +821011112222 (인증 코드: 111111)\n- +821033334444 (인증 코드: 333333)';
+                errorMessage = '인증 실패: ${e.message ?? e.code}\n\n핸드폰 번호: $phoneNumber\n\nFirebase Console에서 테스트 번호가 등록되어 있는지 확인해주세요.\n\n테스트 번호:\n- +821011112222 (111111)\n- +821033334444 (333333)\n- +821055556666 (555555)\n- +821077778888 (777777)';
             }
             
             ScaffoldMessenger.of(context).showSnackBar(
@@ -846,6 +803,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                   children: [
                     TextField(
                       controller: _phoneController,
+                      focusNode: _phoneFocusNode,
                       decoration: InputDecoration(
                         labelText: '핸드폰 번호',
                         hintText: '01012345678',
@@ -854,12 +812,17 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                         ),
                         filled: true,
                         fillColor: Colors.grey.shade50,
+                        contentPadding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
                       ),
                       keyboardType: TextInputType.phone,
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      inputFormatters: [
+                        _ReplaceWhenTypingAtStartFormatter(),
+                        FilteringTextInputFormatter.digitsOnly,
+                      ],
                       style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w400,
+                        fontSize: 28,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 4,
                         color: Color(0xFF202124),
                       ),
                     ),
@@ -895,7 +858,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                                   minimumSize: Size.zero,
                                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                 ),
-                                onPressed: _showTermsPopup,
+                                onPressed: () => LegalDialog.showTerms(context),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
@@ -921,7 +884,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                                   minimumSize: Size.zero,
                                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                 ),
-                                onPressed: _showPrivacyPopup,
+                                onPressed: () => LegalDialog.showPrivacy(context),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
@@ -957,15 +920,17 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                         )
                       : const Text('인증번호 받기'),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  '휴대폰 번호 인증 시 계정이 생성됩니다.',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade600,
+                if (_showTermsCheckboxes) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    '휴대폰 번호 인증 시 계정이 생성됩니다.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey.shade600,
+                    ),
+                    textAlign: TextAlign.center,
                   ),
-                  textAlign: TextAlign.center,
-                ),
+                ],
               ] else ...[
                 _shakeController != null
                     ? AnimatedBuilder(
@@ -985,7 +950,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                           controller: _codeController,
                           focusNode: _codeFocusNode,
                           decoration: InputDecoration(
-                            hintText: '000000',
+                            hintText: '',
                             counterText: '',
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -1009,7 +974,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                         controller: _codeController,
                         focusNode: _codeFocusNode,
                         decoration: InputDecoration(
-                          hintText: '000000',
+                          hintText: '',
                           counterText: '',
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -1046,7 +1011,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                       textAlign: TextAlign.center,
                     ),
                   ),
-                ] else ...[
+                ] else if (_showTermsCheckboxes) ...[
                   const SizedBox(height: 8),
                   Text(
                     '인증번호는 안전하게 처리됩니다.',
@@ -1077,15 +1042,17 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                         )
                       : const Text('인증하기'),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  '휴대폰 번호 인증 시 계정이 생성됩니다.',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade600,
+                if (_showTermsCheckboxes) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    '휴대폰 번호 인증 시 계정이 생성됩니다.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey.shade600,
+                    ),
+                    textAlign: TextAlign.center,
                   ),
-                  textAlign: TextAlign.center,
-                ),
+                ],
                 const SizedBox(height: 12),
                 Column(
                   children: [

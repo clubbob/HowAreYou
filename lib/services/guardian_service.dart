@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
+import 'package:intl/intl.dart';
 import '../utils/constants.dart';
 
 /// 보호 대상자 전화번호로 사용자를 찾지 못했을 때 (앱 미설치·미로그인)
@@ -30,6 +32,26 @@ class PendingInviteCreatedException implements Exception {
 /// PRD §9: subjects/{subjectUid} 문서 ID = 보호대상자 Firebase Auth UID (users/{uid}와 동일).
 class GuardianService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  /// 보호자가 보호대상자와 연결된 날짜 (yyyy-MM-dd). 없으면 null (기존 데이터 호환).
+  Future<String?> getGuardianPairedAt(String subjectId, String guardianUid) async {
+    try {
+      final doc = await _firestore
+          .collection(AppConstants.subjectsCollection)
+          .doc(subjectId)
+          .get();
+      if (!doc.exists) return null;
+      final infos = doc.data()?['guardianInfos'];
+      if (infos is! Map) return null;
+      final info = infos[guardianUid];
+      if (info is! Map) return null;
+      final pairedAt = info['pairedAt'];
+      return pairedAt is String ? pairedAt : null;
+    } catch (e) {
+      debugPrint('getGuardianPairedAt 오류: $e');
+      return null;
+    }
+  }
 
   /// 보호 대상자에게 보호자가 지정되어 있는지 확인.
   /// [subjectId] = 보호대상자 Auth UID (subjects 문서 ID와 동일).
@@ -225,6 +247,7 @@ class GuardianService {
     existingInfos[guardianUid] = {
       'phone': guardianPhone,
       'displayName': guardianDisplayName?.trim() ?? '',
+      'pairedAt': DateFormat('yyyy-MM-dd').format(DateTime.now()),
     };
 
     // pairedGuardianUids에 보호자 UID 추가 (명시적으로 배열 구성)
@@ -297,6 +320,7 @@ class GuardianService {
     existingInfos[guardianUid] = {
       'phone': guardianPhone,
       'displayName': guardianDisplayName?.trim() ?? '',
+      'pairedAt': DateFormat('yyyy-MM-dd').format(DateTime.now()),
     };
     paired.add(guardianUid);
     if (docSnap.exists) {
@@ -358,6 +382,28 @@ class GuardianService {
     }
   }
 
+  /// 보호자가 보호 대상을 목록에서 제거 (Cloud Function 호출 - Firestore permission-denied 우회)
+  Future<void> removeSubjectFromGuardian({
+    required String guardianUid,
+    required String subjectId,
+  }) async {
+    if (guardianUid == subjectId) return;
+    try {
+      final callable = FirebaseFunctions.instance.httpsCallable('removeGuardianFromSubject');
+      await callable.call({'subjectId': subjectId});
+      debugPrint('GuardianService: 보호 대상 제거 완료 subjectId=$subjectId guardianUid=$guardianUid');
+    } on FirebaseFunctionsException catch (e) {
+      debugPrint('GuardianService: 보호 대상 제거 실패 $e');
+      final msg = switch (e.code) {
+        'unauthenticated' => '로그인이 필요합니다.',
+        'invalid-argument' => e.message ?? '잘못된 요청입니다.',
+        'permission-denied' => '권한이 없습니다.',
+        _ => e.message ?? '삭제에 실패했습니다. 잠시 후 다시 시도해 주세요.',
+      };
+      throw Exception(msg);
+    }
+  }
+
   /// 이 보호자 UID가 등록된 대상자(subject) ID 목록
   Future<List<String>> getSubjectIdsForGuardian(String guardianUid) async {
     final snapshot = await _firestore
@@ -378,6 +424,34 @@ class GuardianService {
       }
     } catch (_) {}
     return '보호자';
+  }
+
+  /// 대상자 전화번호 (users 문서 phone, 없으면 빈 문자열)
+  Future<String> getSubjectPhone(String subjectId) async {
+    try {
+      final doc = await _firestore
+          .collection(AppConstants.usersCollection)
+          .doc(subjectId)
+          .get();
+      if (doc.exists) {
+        final phone = doc.data()?['phone'];
+        if (phone is String && phone.trim().isNotEmpty) {
+          return _formatPhoneForDisplay(phone);
+        }
+      }
+    } catch (_) {}
+    return '';
+  }
+
+  static String _formatPhoneForDisplay(String phone) {
+    final digits = phone.replaceAll(RegExp(r'[^\d]'), '');
+    if (digits.length >= 10) {
+      final d = digits.startsWith('82') ? digits.substring(2) : digits;
+      if (d.length >= 10 && d.startsWith('10')) {
+        return '010-${d.substring(2, 6)}-${d.substring(6)}';
+      }
+    }
+    return phone;
   }
 
   /// 대상자 표시 이름 (users 문서 displayName, 없으면 '이름 없음')

@@ -1,0 +1,13 @@
+{
+  "name": "howareyou",
+  "private": true,
+  "scripts": {
+    "sync-legal": "node scripts/sync-legal.js",
+    "sync-legal:from-assets": "node scripts/sync-legal.js from-assets",
+    "sync-legal:from-web": "node scripts/sync-legal.js from-web",
+    "watch-legal": "node scripts/watch-legal.js",
+    "flutter-dev": "node scripts/flutter-dev.js",
+    "flutter-run": "node scripts/flutter-run.js",
+    "flutter-build": "node scripts/flutter-build.js"
+  }
+}

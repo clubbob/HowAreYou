@@ -4,7 +4,6 @@ import 'package:intl/intl.dart';
 import '../services/guardian_service.dart';
 import '../services/mood_service.dart';
 import '../models/mood_response_model.dart';
-import '../utils/button_styles.dart';
 import '../utils/constants.dart';
 import '../widgets/status_display_widgets.dart';
 import 'no_response_screen.dart';
@@ -33,14 +32,15 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
   Map<TimeSlot, MoodResponseModel?>? _responses;
   Map<String, Map<TimeSlot, MoodResponseModel?>>? _historyResponses;
   String _fallbackName = '이름 없음';
+  String? _guardianPairedAt; // 보호자 연결일 (yyyy-MM-dd), null이면 전체 표시(기존 호환)
   late final Stream<String> _nameStream;
 
   @override
   void initState() {
     super.initState();
     _loadResponses();
-    _loadHistory();
     _loadFallbackName();
+    _loadGuardianPairedAtAndHistory();
     _nameStream = _firestore
         .collection(AppConstants.usersCollection)
         .doc(widget.guardianUid)
@@ -72,12 +72,21 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
     }
   }
 
-  Future<void> _loadHistory() async {
-    // 보호자는 항상 최근 7일 기록 여부만 확인 (note 필드 제외)
-    final history =
-        await widget.moodService.getLast7DaysResponses(widget.subjectId, excludeNote: true);
+  Future<void> _loadGuardianPairedAtAndHistory() async {
+    final pairedAt = await widget.guardianService.getGuardianPairedAt(
+      widget.subjectId,
+      widget.guardianUid,
+    );
+    // 연결일(pairedAt) 이후만 조회 → 연결 전 날짜에 "기록 없음"이 보이는 오해 방지
+    final history = await widget.moodService.getResponsesFromDate(
+      widget.subjectId,
+      fromDateStr: pairedAt,
+      maxDays: 7,
+      excludeNote: true,
+    );
     if (mounted) {
       setState(() {
+        _guardianPairedAt = pairedAt;
         _historyResponses = history;
       });
     }
@@ -89,140 +98,6 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
       setState(() {
         _fallbackName = name;
       });
-    }
-  }
-
-  Future<void> _showSetNameDialog(BuildContext context) async {
-    final currentName = await widget.guardianService.getSubjectDisplayNameForGuardian(
-      widget.subjectId,
-      widget.guardianUid,
-    );
-    final initialText = currentName == '이름 없음' ? '' : currentName;
-    final controller = TextEditingController(text: initialText);
-    final focusNode = FocusNode();
-    
-    final newName = await showDialog<String>(
-      context: context,
-      builder: (ctx) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          focusNode.requestFocus();
-        });
-        
-        return StatefulBuilder(
-          builder: (ctx, setState) {
-            return AlertDialog(
-              title: const Text('보호 대상 이름'),
-              content: SizedBox(
-                width: 320,
-                child: TextField(
-                  controller: controller,
-                  focusNode: focusNode,
-                  decoration: const InputDecoration(
-                    labelText: '이름(별칭)',
-                    hintText: '예: 엄마, 아빠',
-                    border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 14,
-                    ),
-                  ),
-                  autofocus: true,
-                  enabled: true,
-                  readOnly: false,
-                  textCapitalization: TextCapitalization.words,
-                  keyboardType: TextInputType.name,
-                  textInputAction: TextInputAction.done,
-                  onChanged: (_) {
-                    setState(() {});
-                  },
-                  onSubmitted: (v) {
-                    final n = v.trim();
-                    Navigator.pop(ctx, n.isEmpty ? null : n);
-                  },
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  child: const Text('취소'),
-                ),
-                FilledButton(
-                  onPressed: () {
-                    final n = controller.text.trim();
-                    Navigator.pop(ctx, n.isEmpty ? null : n);
-                  },
-                  style: AppButtonStyles.primaryFilled,
-                  child: const Text('저장'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-    
-    focusNode.dispose();
-    
-    await Future.delayed(const Duration(milliseconds: 100));
-    controller.dispose();
-    
-    if (!mounted) return;
-    
-    if (newName != null && newName.isNotEmpty) {
-      try {
-        await widget.guardianService.setSubjectDisplayNameByGuardian(
-          guardianUid: widget.guardianUid,
-          subjectId: widget.subjectId,
-          displayName: newName,
-        );
-        
-        if (!mounted) return;
-        
-        Future.microtask(() {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('이름이 저장되었습니다.')),
-            );
-          }
-        });
-      } catch (e) {
-        if (!mounted) return;
-        Future.microtask(() {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('저장에 실패했습니다. 잠시 후 다시 시도해 주세요.')),
-            );
-          }
-        });
-      }
-    } else if (newName != null && newName.isEmpty) {
-      try {
-        await _firestore
-            .collection(AppConstants.usersCollection)
-            .doc(widget.guardianUid)
-            .update({
-          'subjectLabels.${widget.subjectId}': FieldValue.delete(),
-        });
-        
-        if (!mounted) return;
-        
-        Future.microtask(() {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('이름이 삭제되었습니다.')),
-            );
-          }
-        });
-      } catch (e) {
-        if (!mounted) return;
-        Future.microtask(() {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('삭제에 실패했습니다. 잠시 후 다시 시도해 주세요.')),
-            );
-          }
-        });
-      }
     }
   }
 
@@ -306,28 +181,12 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // 대상 이름
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        subjectName,
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.edit_outlined, size: 22),
-                      onPressed: () => _showSetNameDialog(context),
-                      tooltip: '이름 설정',
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(
-                        minWidth: 40,
-                        minHeight: 40,
-                      ),
-                    ),
-                  ],
+                Text(
+                  subjectName,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 24),
                 // 오늘 기록 상태 (최상단 강조 영역)
