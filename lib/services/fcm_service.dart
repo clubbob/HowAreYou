@@ -8,6 +8,8 @@ import '../main.dart';
 import '../utils/permission_helper.dart';
 import '../screens/guardian_dashboard_screen.dart';
 import '../screens/subject_detail_screen.dart';
+import '../screens/question_screen.dart';
+import '../models/mood_response_model.dart';
 import 'notification_service.dart';
 import 'guardian_service.dart';
 import 'mood_service.dart';
@@ -199,14 +201,21 @@ class FCMService {
         subjectDisplayName = data['subjectDisplayName'] ?? '보호 대상';
       }
       
-      // 알림 제목과 본문 수정 (제목 없이)
-      final title = '';
-      final body = '$subjectDisplayName님이 오늘 안부를 남겼어요.';
+      // 알림 제목/본문: 서버에서 온 값 사용. RESPONSE_RECEIVED만 커스텀
+      final title = notification.title ?? '';
+      final body = type == 'RESPONSE_RECEIVED'
+          ? '$subjectDisplayName님이 오늘 안부를 남겼어요.'
+          : (notification.body ?? '');
+      
+      // DAILY_REMINDER(보호대상자) vs 보호자 알림 채널 구분
+      final isSubjectReminder = type == 'DAILY_REMINDER';
+      final channelId = isSubjectReminder ? 'daily_mood_check' : 'guardian_notifications';
+      final channelName = isSubjectReminder ? '일일 컨디션 확인' : '보호자 알림';
       
       final androidDetails = AndroidNotificationDetails(
-        'guardian_notifications',
-        '보호자 알림',
-        channelDescription: '보호 대상의 상태 확인 및 미회신 알림',
+        channelId,
+        channelName,
+        channelDescription: isSubjectReminder ? '하루 한 번 컨디션을 기록하도록 알림' : '보호 대상의 상태 확인 및 미회신 알림',
         importance: Importance.max,
         priority: Priority.max,
         playSound: shouldPlaySound,
@@ -296,7 +305,26 @@ class FCMService {
     final navigator = MyApp.navigatorKey.currentState;
     if (navigator == null) return;
 
-    if (type == 'RESPONSE_RECEIVED' || type == 'UNREACHABLE') {
+    if (type == 'DAILY_REMINDER') {
+      navigator.pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (_) => const QuestionScreen(
+            timeSlot: TimeSlot.daily,
+            alreadyResponded: false,
+          ),
+        ),
+        (route) => false,
+      );
+      return;
+    }
+    if (type == 'GUARDIAN_REMINDER') {
+      navigator.pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const GuardianDashboardScreen(initialTabIndex: 0)),
+        (route) => false,
+      );
+      return;
+    }
+    if (type == 'RESPONSE_RECEIVED' || type == 'UNREACHABLE' || type == 'ESCALATION_3DAYS') {
       // subjectId가 있고 현재 사용자가 보호자인 경우 상세 화면으로 이동
       if (subjectId != null && subjectId.toString().isNotEmpty) {
         final user = FirebaseAuth.instance.currentUser;
@@ -345,7 +373,15 @@ class FCMService {
         (route) => false,
       );
     } else if (type == 'REMIND_RESPONSE') {
-      navigator.pushNamed('/question');
+      navigator.pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (_) => const QuestionScreen(
+            timeSlot: TimeSlot.daily,
+            alreadyResponded: false,
+          ),
+        ),
+        (route) => false,
+      );
     }
   }
 

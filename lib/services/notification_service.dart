@@ -189,18 +189,10 @@ class NotificationService {
     }
   }
 
-  /// 역할별 스케줄: subjectEnabled/guardianEnabled 기준 (둘 다 true면 둘 다 등록)
-  /// lastSelectedMode는 사용하지 않음 (라우팅 전용)
-  /// 둘 다 false면 아무 것도 하지 않음 (취소도 안 함, 역할 확정 전)
+  /// OS Push(FCM)로 전환됨. 로컬 19/20시 스케줄 비활성화.
+  /// Cloud Scheduler가 매일 19:00/20:00/20:05에 FCM 발송.
   Future<void> scheduleDailyRemindersByRole() async {
-    final subjectEnabled = await ModeService.isSubjectEnabled();
-    final guardianEnabled = await ModeService.isGuardianEnabled();
-    if (subjectEnabled) {
-      await scheduleSubjectDailyReminder();
-    }
-    if (guardianEnabled) {
-      await scheduleGuardianDailyReminder();
-    }
+    // no-op: FCM 기반 푸시로 대체됨
   }
 
   /// 모든 알림 취소 (로그아웃 시 호출)
@@ -251,14 +243,14 @@ class NotificationService {
     // 알림 탭 (actionId가 null인 경우) - payload로 구분
     if (response.actionId == null) {
       final payload = response.payload;
-      // 보호대상자 19시 리마인드
-      if (payload == 'SUBJECT_REMINDER' || response.id == subjectReminderNotificationId) {
+      // 보호대상자 19시 리마인드 (로컬 SUBJECT_REMINDER / FCM DAILY_REMINDER)
+      if (payload == 'SUBJECT_REMINDER' || payload == 'DAILY_REMINDER' || response.id == subjectReminderNotificationId) {
         debugPrint('[알림] ✅ 보호대상자 리마인드 알림 탭 - 질문 화면으로 이동');
         if (response.id != null) await _notifications.cancel(response.id!);
         _navigateToQuestionScreen();
         return;
       }
-      // 보호자 20시 리마인드
+      // 보호자 20시 리마인드 (로컬 / FCM GUARDIAN_REMINDER)
       if (payload == 'GUARDIAN_REMINDER' || response.id == guardianReminderNotificationId) {
         debugPrint('[알림] ✅ 보호자 리마인드 알림 탭 - 대시보드로 이동');
         if (response.id != null) await _notifications.cancel(response.id!);

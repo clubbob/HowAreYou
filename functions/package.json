@@ -5,7 +5,7 @@
     "serve": "firebase emulators:start --only functions",
     "shell": "firebase functions:shell",
     "start": "npm run shell",
-    "deploy": "cross-env FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only functions",
+    "deploy": "cross-env FUNCTIONS_DISCOVERY_TIMEOUT=120000 firebase deploy --only functions",
     "logs": "firebase functions:log"
   },
   "engines": {

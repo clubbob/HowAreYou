@@ -12,6 +12,10 @@ import 'invited_guardian_welcome_screen.dart';
 import 'subject_mode_screen.dart';
 import 'guardian_mode_screen.dart';
 import 'guardian_dashboard_screen.dart';
+import 'question_screen.dart';
+import 'subject_detail_screen.dart';
+import '../models/mood_response_model.dart';
+import '../services/mood_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -54,13 +58,63 @@ class _SplashScreenState extends State<SplashScreen> {
       final pendingInviterId = await InvitePendingService.getPendingInviterId();
       final pendingSubjectId = await InvitePendingService.getPendingSubjectId();
       if (!mounted) return;
-      if (type == 'RESPONSE_RECEIVED' || type == 'UNREACHABLE') {
-        // 앱 시작 시 알림이 있으면 바로 보호 대상 관리 화면으로 이동
+      if (type == 'DAILY_REMINDER') {
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const GuardianDashboardScreen()),
+          MaterialPageRoute(
+            builder: (_) => const QuestionScreen(
+              timeSlot: TimeSlot.daily,
+              alreadyResponded: false,
+            ),
+          ),
         );
+      } else if (type == 'GUARDIAN_REMINDER') {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const GuardianDashboardScreen(initialTabIndex: 0)),
+        );
+      } else if (type == 'RESPONSE_RECEIVED' || type == 'UNREACHABLE' || type == 'ESCALATION_3DAYS') {
+        // 알림으로 앱 시작 시 보호자 대시보드 또는 상세 화면으로
+        final subjectId = data?['subjectId']?.toString();
+        final user = authService.user;
+        if (subjectId != null && subjectId.isNotEmpty && user != null) {
+          try {
+            final subjectIds = await GuardianService().getSubjectIdsForGuardian(user.uid);
+            if (!mounted) return;
+            if (subjectIds.contains(subjectId)) {
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(
+                  builder: (_) => SubjectDetailScreen(
+                    subjectId: subjectId,
+                    guardianUid: user.uid,
+                    guardianService: GuardianService(),
+                    moodService: MoodService(),
+                  ),
+                ),
+              );
+            } else {
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (_) => const GuardianDashboardScreen()),
+              );
+            }
+          } catch (_) {
+            if (!mounted) return;
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (_) => const GuardianDashboardScreen()),
+            );
+          }
+        } else {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const GuardianDashboardScreen()),
+          );
+        }
       } else if (type == 'REMIND_RESPONSE') {
-        Navigator.of(context).pushReplacementNamed('/question');
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => const QuestionScreen(
+              timeSlot: TimeSlot.daily,
+              alreadyResponded: false,
+            ),
+          ),
+        );
       } else if (pendingInviterId != null && pendingInviterId.isNotEmpty) {
         final user = authService.user;
         if (user != null) {

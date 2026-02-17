@@ -178,14 +178,7 @@ class GuardianService {
   /// E.164 등 전화번호 정규화 (GuardianScreen 등에서 공통 사용)
   static String toE164(String input) => _toE164Internal(input);
 
-  /// nextReminderAt 초기값: 19:00 이전 → 오늘 19:00 KST, 이후 → 내일 19:00 KST
-  static Timestamp _initialNextReminderAt() {
-    final now = tz.TZDateTime.now(tz.getLocation('Asia/Seoul'));
-    final reminderTime = now.hour < 19
-        ? tz.TZDateTime(tz.getLocation('Asia/Seoul'), now.year, now.month, now.day, 19, 0)
-        : tz.TZDateTime(tz.getLocation('Asia/Seoul'), now.year, now.month, now.day + 1, 19, 0);
-    return Timestamp.fromDate(reminderTime);
-  }
+  static Timestamp _epochTimestamp() => Timestamp.fromDate(DateTime(1970, 1, 1));
 
   /// 보호 대상(대상자) 전화번호로 나를 보호자로 등록 → 보호 대상 목록에 추가.
   /// [subjectPhone] 대상자 전화번호. users 쿼리로 찾은 uid = subjectUid 로 subjects 문서 사용 (PRD §9).
@@ -285,8 +278,8 @@ class GuardianService {
         final newData = <String, dynamic>{
           'pairedGuardianUids': paired,
           'guardianInfos': existingInfos,
-          'nextReminderAt': _initialNextReminderAt(),
-          'reminderSentForDate': null,
+          'lastResponseAt': _epochTimestamp(),
+          'createdAt': FieldValue.serverTimestamp(),
         };
         if (subjectDisplayName.isNotEmpty) {
           newData['displayName'] = subjectDisplayName;
@@ -341,8 +334,8 @@ class GuardianService {
       await docRef.set({
         'pairedGuardianUids': paired,
         'guardianInfos': existingInfos,
-        'nextReminderAt': _initialNextReminderAt(),
-        'reminderSentForDate': null,
+        'lastResponseAt': _epochTimestamp(),
+        'createdAt': FieldValue.serverTimestamp(),
       });
     }
   }
@@ -392,8 +385,8 @@ class GuardianService {
     if (docSnap.exists) {
       await docRef.update({'pairedGuardianUids': paired, 'guardianInfos': existingInfos});
     } else {
-      newData['nextReminderAt'] = _initialNextReminderAt();
-      newData['reminderSentForDate'] = null;
+      newData['lastResponseAt'] = _epochTimestamp();
+      newData['createdAt'] = FieldValue.serverTimestamp();
       await docRef.set(newData);
     }
   }

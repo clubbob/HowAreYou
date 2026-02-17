@@ -44,16 +44,6 @@ class MoodService {
     final subjectRef = _firestore.collection('subjects').doc(subjectId);
     final promptRef = subjectRef.collection('prompts').doc(docId);
 
-    final nowKorea = tz.TZDateTime.now(tz.getLocation('Asia/Seoul'));
-    final tomorrow = tz.TZDateTime(
-      tz.getLocation('Asia/Seoul'),
-      nowKorea.year,
-      nowKorea.month,
-      nowKorea.day + 1,
-      19,
-      0,
-    );
-
     await _firestore.runTransaction((transaction) async {
       transaction.set(promptRef, response.toMap());
 
@@ -76,8 +66,6 @@ class MoodService {
       transaction.set(subjectRef, {
         'lastResponseAt': Timestamp.fromDate(now),
         'lastResponseDate': dateStr,
-        'reminderSentForDate': dateStr,
-        'nextReminderAt': Timestamp.fromDate(tomorrow.toUtc()),
         'currentStreak': newStreak,
         'longestStreak': newLongest,
         'lastRecordedDate': dateStr,
@@ -115,15 +103,27 @@ class MoodService {
     return doc.exists;
   }
 
-  /// 오늘 응답을 삭제하여 다시 응답할 수 있게 함 (24시 기준 오늘 문서만 삭제)
+  /// 오늘 응답을 삭제. prompts 삭제 + subjects의 lastResponseAt/스트릭 롤백.
+  /// lastResponseAt = 오늘 00:00 KST - 1초 → 당일 미기록 만족, 3일 무응답 불만족(즉시 경보 방지).
   Future<void> deleteTodayResponse(String subjectId) async {
     final dateStr = DateFormat('yyyy-MM-dd').format(_nowKorea());
-    await _firestore
-        .collection('subjects')
-        .doc(subjectId)
-        .collection('prompts')
-        .doc(dateStr)
-        .delete();
+    final subjectRef = _firestore.collection('subjects').doc(subjectId);
+    final promptRef = subjectRef.collection('prompts').doc(dateStr);
+
+    // 오늘 00:00 KST - 1초 = 어제 23:59:59 KST (epoch 금지: 3일 무응답 즉시 트리거 방지)
+    final k = tz.TZDateTime.now(tz.getLocation('Asia/Seoul'));
+    final todayStartKst =
+        tz.TZDateTime(tz.getLocation('Asia/Seoul'), k.year, k.month, k.day, 0, 0, 0);
+    final yesterdayEndKst = todayStartKst.subtract(const Duration(seconds: 1));
+
+    await _firestore.runTransaction((transaction) async {
+      transaction.delete(promptRef);
+      transaction.set(subjectRef, {
+        'lastResponseAt': Timestamp.fromDate(yesterdayEndKst),
+        'lastRecordedDate': FieldValue.delete(),
+        'currentStreak': 0,
+      }, SetOptions(merge: true));
+    });
   }
 
   /// 현재 응답 가능한 슬롯. 24시 기준 하루 1회이므로 오늘 아직 안 했으면 daily, 했으면 null.

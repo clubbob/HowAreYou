@@ -2,6 +2,8 @@
   "name": "howareyou",
   "private": true,
   "scripts": {
+    "deploy": "npm run deploy --prefix functions",
+    "deploy:full": "cross-env FUNCTIONS_DISCOVERY_TIMEOUT=120000 firebase deploy",
     "sync-legal": "node scripts/sync-legal.js",
     "sync-legal:from-assets": "node scripts/sync-legal.js from-assets",
     "sync-legal:from-web": "node scripts/sync-legal.js from-web",

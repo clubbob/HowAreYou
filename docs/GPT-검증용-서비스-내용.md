@@ -2,15 +2,16 @@
 
 ## 1. 개요
 
-**목표**: 앱이 백그라운드/종료 상태여도 매일 정해진 시간에 알림이 뜨도록, **서버 비용 0원**으로 구현.
+**목표**: 앱이 꺼져 있어도(OS Push) 알림이 정상 발송. **생존 신호 기반 조건부 Push**.
 
-| 구분 | ID | 시간(KST) | 문구 | 방식 |
-|------|-----|-----------|------|------|
-| 보호대상자 | 1 | 19:00 | 오늘 안부 남겨볼까요? | 로컬 알림 |
-| 보호자 | 2 | 20:00 | 오늘 안부 확인하기 | 로컬 알림 |
+| 구분 | 시간(KST) | 조건 | 문구 | 방식 |
+|------|-----------|------|------|------|
+| 보호대상자 | 19:00 | 당일 미기록만 | 오늘 상태를 남겨주세요. | FCM |
+| 보호자 | 20:00 | 당일 보호대상자 미기록만 | 오늘 아직 신호가 없습니다. | FCM |
+| 보호자 3일 | 20:05 | 3일 연속 무응답 | 3일간 신호가 없습니다. 확인이 필요합니다. | FCM |
 
-- **기록/확인 여부와 무관**하게 무조건 매일 반복
-- **3일 미응답 알림**: 미구현 (비용 절감으로 제거)
+- **lastResponseAt** 기반 Firestore 조건 쿼리 (전체 스캔 없음)
+- **로컬 알림** 19/20시: 비활성화 (FCM으로 대체)
 
 ---
 
@@ -27,29 +28,16 @@
 - **둘 다 true 가능**: 한 사람이 두 역할 동시 수행 시 id=1, id=2 둘 다 등록
 - **로그아웃 시**: `ModeService.clearRoleFlags()` 호출
 
-### 2.2 스케줄 호출 위치 (2곳만)
+### 2.2 알림 발송 (Cloud Functions)
 
-| 위치 | 시점 |
-|------|------|
-| auth_service | 로그인 또는 앱 시작 시 auth state 변경 (`user != null`) |
-| _AppLifecycleHandler | 앱 포그라운드 복귀 시 (2초 디바운스) |
+| 함수 | Scheduler | 쿼리 |
+|------|-----------|------|
+| sendSubjectReminder | 19:00 매일 | subjects.where('lastResponseAt', '<', 오늘 00:00) |
+| sendGuardianReminder | 20:00 매일 | 동일 쿼리 → pairedGuardianUids 수집 |
+| sendThreeDayNoResponseAlert | 20:05 매일 | lastResponseAt < now-72h, lastGuardianAlertAt 체크 |
 
-- SubjectModeScreen, GuardianModeScreen: **스케줄 호출 없음**, 역할 플래그만 설정
-- Splash, Home: 스케줄 호출 없음
-
-### 2.3 스케줄 로직
-
-```
-scheduleDailyRemindersByRole():
-  if subjectEnabled → scheduleSubjectDailyReminder()  // id=1
-  if guardianEnabled → scheduleGuardianDailyReminder() // id=2
-  둘 다 false → 아무 것도 하지 않음 (취소도 안 함)
-```
-
-- id=1, id=2 **독립 등록** (서로 취소하지 않음)
-- 예약 전 `cancel(id)` 후 스케줄 (중복 방지)
-- `_nextTimeInKST(hour, minute)`: 정시 지났으면 내일로
-- `matchDateTimeComponents: DateTimeComponents.time`: 매일 반복
+- **로컬 알림** 19/20시: scheduleDailyRemindersByRole() = no-op (FCM으로 대체)
+- 역할 플래그: FCM 토큰 저장/초기화용만 사용
 
 ---
 
@@ -57,10 +45,10 @@ scheduleDailyRemindersByRole():
 
 | 파일 | 역할 |
 |------|------|
-| **lib/services/notification_service.dart** | 로컬 알림 스케줄/취소, 탭 핸들러, 테스트 발송 |
-| **lib/services/mode_service.dart** | roles_subject_enabled, roles_guardian_enabled, lastSelectedMode, clearRoleFlags |
-| **lib/services/auth_service.dart** | 로그인 시 scheduleDailyRemindersByRole, 로그아웃 시 cancelAll + clearRoleFlags |
-| **lib/main.dart** | _AppLifecycleHandler: 포그라운드 복귀 시 2초 디바운스 후 scheduleDailyRemindersByRole |
+| **functions/index.js** | sendSubjectReminder(19:00), sendGuardianReminder(20:00), sendThreeDayNoResponseAlert(20:05) |
+| **lib/services/notification_service.dart** | 로컬 알림 탭 핸들러, 테스트 발송 (스케줄 no-op) |
+| **lib/services/fcm_service.dart** | FCM 토큰 저장, 포그라운드/탭 핸들러, DAILY/GUARDIAN/ESCALATION 라우팅 |
+| **lib/services/mood_service.dart** | saveMoodResponse 시 lastResponseAt 업데이트 |
 | **lib/screens/subject_mode_screen.dart** | 진입 시 setSubjectEnabled(true) |
 | **lib/screens/guardian_mode_screen.dart** | 진입 시 setGuardianEnabled(true) |
 | **lib/screens/guardian_dashboard_screen.dart** | 안부 확인 탭: 카드 UX(오늘 기록 ✅/미기록 ⏳, 정렬) |
@@ -70,10 +58,11 @@ scheduleDailyRemindersByRole():
 
 ## 4. 알림 탭 시 라우팅
 
-| payload | 이동 화면 |
-|---------|-----------|
-| SUBJECT_REMINDER | QuestionScreen (컨디션 기록) |
+| type (FCM data) | 이동 화면 |
+|-----------------|-----------|
+| DAILY_REMINDER | QuestionScreen (컨디션 기록) |
 | GUARDIAN_REMINDER | GuardianDashboardScreen (안부 확인 탭) |
+| ESCALATION_3DAYS | SubjectDetailScreen (subjectId 있으면) 또는 GuardianDashboardScreen |
 | RESPONSE_RECEIVED\|subjectId 등 | GuardianDashboardScreen 또는 SubjectDetailScreen |
 
 ---

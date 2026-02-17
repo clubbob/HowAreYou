@@ -11,19 +11,17 @@ function todayKoreaStr() {
   return new Date(Date.now() + koreaOffset).toISOString().slice(0, 10);
 }
 
-/**
- * nextReminderAt 초기값 (신규 subject 생성 시)
- * - 현재 19:00 이전 → 오늘 19:00 KST
- * - 현재 19:00 이후 → 내일 19:00 KST
- */
-function getInitialNextReminderAt() {
+/** KST 오늘 00:00에 해당하는 Timestamp (lastResponseAt 조건 쿼리용) */
+function todayMidnightKSTTimestamp() {
   const todayStr = todayKoreaStr();
   const [y, m, d] = todayStr.split('-').map(Number);
-  const koreaHour = new Date(Date.now() + 9 * 60 * 60 * 1000).getUTCHours();
-  const isBefore19 = koreaHour < 19;
-  const targetDate = isBefore19 ? new Date(Date.UTC(y, m - 1, d, 10, 0, 0)) : new Date(Date.UTC(y, m - 1, d + 1, 10, 0, 0));
-  return admin.firestore.Timestamp.fromDate(targetDate);
+  // KST 00:00 = UTC 전날 15:00 (예: 2/7 00:00 KST = 2/6 15:00 UTC)
+  const utcDate = new Date(Date.UTC(y, m - 1, d - 1, 15, 0, 0));
+  return admin.firestore.Timestamp.fromDate(utcDate);
 }
+
+/** lastResponseAt이 없을 때 사용할 epoch (미기록 사용자 = 19시 푸시 대상) */
+const EPOCH_TIMESTAMP = admin.firestore.Timestamp.fromDate(new Date(0));
 
 /** 전화번호 E.164 정규화 (매칭용) */
 function normalizePhone(phone) {
@@ -77,9 +75,11 @@ exports.processPendingInvitesOnSignup = functions.auth.user().onCreate(async (us
           pairedAt,
         };
         const setData = { pairedGuardianUids: paired, guardianInfos: infos };
-        if (!subjectSnap.exists || !subjectSnap.data()?.nextReminderAt) {
-          setData.nextReminderAt = getInitialNextReminderAt();
-          setData.reminderSentForDate = null;
+        if (!subjectSnap.exists || !subjectSnap.data()?.lastResponseAt) {
+          setData.lastResponseAt = EPOCH_TIMESTAMP;
+        }
+        if (!subjectSnap.exists) {
+          setData.createdAt = admin.firestore.FieldValue.serverTimestamp();
         }
         await subjectRef.set(setData, { merge: true });
         console.log('[대기초대] 보호자 연결 완료 subject=', uid, 'guardian=', guardianUid);
@@ -114,9 +114,11 @@ exports.processPendingInvitesOnSignup = functions.auth.user().onCreate(async (us
         const pairedAt = todayKoreaStr();
         infos[uid] = { phone: guardianPhone, displayName: guardianDisplayName, pairedAt };
         const setData2 = { pairedGuardianUids: paired, guardianInfos: infos };
-        if (!subjectSnap.exists || !subjectSnap.data()?.nextReminderAt) {
-          setData2.nextReminderAt = getInitialNextReminderAt();
-          setData2.reminderSentForDate = null;
+        if (!subjectSnap.exists || !subjectSnap.data()?.lastResponseAt) {
+          setData2.lastResponseAt = EPOCH_TIMESTAMP;
+        }
+        if (!subjectSnap.exists) {
+          setData2.createdAt = admin.firestore.FieldValue.serverTimestamp();
         }
         await subjectRef.set(setData2, { merge: true });
         console.log('[대기초대] 보호대상자 연결 완료 subject=', subjectUid, 'guardian=', uid);
@@ -364,180 +366,133 @@ exports.onResponseUpdated = functions.firestore
   });
 
 /**
- * 매일 19:00 (Asia/Seoul) 리마인드 푸시 발송
- *
- * [필드 의미]
- * reminderSentForDate: "오늘 기록 완료 또는 오늘 리마인드 발송 완료 마커"
- *   - 기록 시(mood_service): 오늘 날짜로 설정 → 당일 리마인드 제외
- *   - 발송 시: 트랜잭션으로 원자적 업데이트 → 중복 발송 방지
- *
- * reminderSentAt: 실제 발송 시각 (Timestamp, 디버깅용, 비용 미미)
- *
- * nextReminderAt: 항상 "내일 19:00" (Asia/Seoul) 고정
- *   - 기록 시 / 발송 시 동일 규칙
- *
- * [쿼리] nextReminderAt <= now (Firestore inequality 1개 제한)
- * [필터] reminderSentForDate !== today (메모리)
- * [레이스 방지] 발송 직전 트랜잭션으로 "오늘 처리됨" 원자적 선점, 성공 시에만 FCM 발송
- *
- * [필드 위치] 리마인드 스케줄/마커는 subjects에만. users에는 프로필/토큰/역할 등 사용자 공통만.
- * [데이터 타입] reminderSentForDate: "YYYY-MM-DD" 문자열 | nextReminderAt, reminderSentAt: Timestamp
- * [발송 실패 정책 A] 실패해도 "오늘 처리됨" 유지 → 중복발송 방지 최우선, reminderSendError로 로그만 남김
- *
- * [비용 최적화 TODO] 토큰이 users에만 있으면 subjects 조회 후 users 추가 읽기 발생.
- *   → subjects에 fcmTokens 캐시(또는 hasFcmToken) 시 스케줄 함수에서 subjects만 조회 가능
+ * 19:00 보호대상자 푸시 (생존 신호 기반 조건부)
+ * - lastResponseAt < 오늘 00:00 → 당일 미기록 사용자만 조회 (전체 스캔 없음)
  */
-exports.sendDailyReminder = functions.pubsub
+exports.sendSubjectReminder = functions.pubsub
   .schedule('0 19 * * *')
   .timeZone('Asia/Seoul')
-  .onRun(async (context) => {
-    const now = admin.firestore.Timestamp.now();
-    const todayStr = todayKoreaStr(); // Asia/Seoul 기준 오늘 (스케줄 19:00 KST와 일치)
-    
-    console.log(`[리마인드 푸시] ${todayStr} 19:00 실행 시작`);
-    
+  .onRun(async () => {
+    const todayStr = todayKoreaStr();
+    const todayStart = todayMidnightKSTTimestamp();
+    console.log(`[19:00 보호대상자] ${todayStr} 실행, lastResponseAt < ${todayStart.toDate().toISOString()}`);
+
     try {
-      // nextReminderAt <= now 인 사용자 조회 (Firestore는 1개 inequality만 허용)
-      const querySnapshot = await admin.firestore()
-        .collection('subjects')
-        .where('nextReminderAt', '<=', now)
+      const snapshot = await db.collection('subjects')
+        .where('lastResponseAt', '<', todayStart)
         .get();
-      
-      // 오늘 이미 기록했거나 오늘 이미 발송한 사용자 제외
-      const toSend = querySnapshot.docs.filter((doc) => {
-        const sent = doc.data().reminderSentForDate;
-        return sent !== todayStr; // null, 어제 날짜 등 → 발송 대상
-      });
-      
-      console.log(`[리마인드 푸시] 발송 대상: ${toSend.length}명 (쿼리 ${querySnapshot.size}명 중 필터)`);
-      
-      if (toSend.length === 0) {
-        console.log('[리마인드 푸시] 발송 대상 없음');
-        return null;
-      }
-      
-      // 내일 19:00 (Asia/Seoul) 고정 - mood_service와 동일 규칙
-      const [y, m, d] = todayStr.split('-').map(Number);
-      const tomorrow1900KST = new Date(Date.UTC(y, m - 1, d + 1, 10, 0, 0)); // 19:00 KST = 10:00 UTC
-      const tomorrowTimestamp = admin.firestore.Timestamp.fromDate(tomorrow1900KST);
-      
-      // 각 사용자별: 트랜잭션으로 선점 → 성공 시에만 FCM 발송 (레이스/중복 방지)
-      const sendPromises = toSend.map(async (doc) => {
+
+      const toSend = snapshot.docs;
+      console.log(`[19:00 보호대상자] 발송 대상: ${toSend.length}명`);
+
+      for (const doc of toSend) {
         const subjectId = doc.id;
-        const subjectRef = doc.ref;
-
-        try {
-          // 1) FCM 토큰 조회 (토큰 없으면 선점하지 않음 → 내일 재시도)
-          const userDoc = await admin.firestore().collection('users').doc(subjectId).get();
-          if (!userDoc.exists) {
-            console.log(`[리마인드 푸시] 사용자 문서 없음: ${subjectId}`);
-            return { success: false, reason: 'user_not_found' };
-          }
-          const tokens = (userDoc.data()?.fcmTokens || []).filter(Boolean);
-          if (tokens.length === 0) {
-            console.log(`[리마인드 푸시] FCM 토큰 없음: ${subjectId} (선점 안 함, 내일 재시도)`);
-            return { success: false, reason: 'no_tokens' };
-          }
-
-          // 2) 트랜잭션: 조건 2개 재확인 후 선점 (스케줄러 지연/중복/부분실패에도 안정)
-          const claimed = await db.runTransaction(async (transaction) => {
-            const snap = await transaction.get(subjectRef);
-            const data = snap.data() || {};
-            if (data.reminderSentForDate === todayStr) return false; // 이미 오늘 처리됨
-            const nextAt = data.nextReminderAt;
-            if (nextAt && typeof nextAt.toMillis === 'function' && nextAt.toMillis() > now.toMillis()) return false; // 아직 발송 시각 아님
-            transaction.update(subjectRef, {
-              reminderSentForDate: todayStr,
-              nextReminderAt: tomorrowTimestamp, // 항상 내일 19:00 고정
-              reminderSentAt: admin.firestore.Timestamp.now(), // 디버깅용 실제 발송 시각
-            });
-            return true;
-          });
-
-          if (!claimed) {
-            console.log(`[리마인드 푸시] ${subjectId}: 이미 처리됨(레이스) 스킵`);
-            return { success: false, reason: 'already_claimed' };
-          }
-
-          // 3) FCM 발송 (선점 성공한 경우만)
-          const messagePayload = {
-            notification: {
-              title: '',
-              body: '오늘도 잘 지내고 계신가요?',
-            },
-            data: {
-              type: 'DAILY_REMINDER',
-              click_action: 'FLUTTER_NOTIFICATION_CLICK',
-            },
-            android: {
-              priority: 'high',
-              notification: {
-                sound: 'default',
-                channelId: 'daily_mood_check',
-              },
-            },
-            apns: {
-              payload: {
-                aps: {
-                  sound: 'default',
-                  badge: 1,
-                },
-              },
-            },
-            tokens: tokens,
-          };
-
-          const response = await admin.messaging().sendEachForMulticast(messagePayload);
-          console.log(`[리마인드 푸시] ${subjectId}: ${response.successCount}개 성공, ${response.failureCount}개 실패`);
-
-          // Invalid 토큰 정리
-          const invalidTokenErrors = new Set([
-            'messaging/registration-token-not-registered',
-            'messaging/invalid-registration-token',
-          ]);
-          const invalidTokens = [];
-          response.responses.forEach((resp, idx) => {
-            if (!resp.success && invalidTokenErrors.has(resp.error?.code)) {
-              invalidTokens.push(tokens[idx]);
-            }
-          });
-          if (invalidTokens.length > 0) {
-            await admin.firestore().collection('users').doc(subjectId).update({
-              fcmTokens: admin.firestore.FieldValue.arrayRemove(...invalidTokens),
-            });
-            console.log(`[리마인드 푸시] ${subjectId}: Invalid 토큰 ${invalidTokens.length}개 제거`);
-          }
-
-          // 성공 시 reminderSendError 삭제 (과거 에러가 남아 오해 방지)
-          try {
-            await subjectRef.update({
-              reminderSendError: admin.firestore.FieldValue.delete(),
-            });
-          } catch (_) {}
-
-          return { success: true, successCount: response.successCount, failureCount: response.failureCount };
-        } catch (error) {
-          console.error(`[리마인드 푸시] ${subjectId} 발송 오류:`, error);
-          // 정책 A: 실패해도 "오늘 처리됨" 유지. reminderSendError만 남겨 운영 디버깅
-          try {
-            await subjectRef.update({
-              reminderSendError: String(error?.message || error).slice(0, 200),
-            });
-          } catch (_) {}
-          return { success: false, reason: 'error', error: error.message };
-        }
-      });
-      
-      const results = await Promise.all(sendPromises);
-      const totalSuccess = results.filter(r => r.success).length;
-      const totalFailure = results.filter(r => !r.success).length;
-      const totalSent = results.reduce((sum, r) => sum + (r.successCount || 0), 0);
-      
-      console.log(`[리마인드 푸시] 완료: ${totalSuccess}명 성공, ${totalFailure}명 실패, 총 ${totalSent}개 알림 발송`);
-      
+        const r = await sendToUser(subjectId, {
+          notification: { title: '', body: '오늘 상태를 남겨주세요.' },
+          data: { type: 'DAILY_REMINDER', click_action: 'FLUTTER_NOTIFICATION_CLICK' },
+          android: { priority: 'high', notification: { sound: 'default', channelId: 'daily_mood_check' } },
+          apns: { payload: { aps: { sound: 'default', badge: 1 } } },
+        });
+        if (r.successCount > 0) console.log(`[19:00 보호대상자] ${subjectId} 발송 완료`);
+      }
       return null;
-    } catch (error) {
-      console.error('[리마인드 푸시] 전체 오류:', error);
+    } catch (e) {
+      console.error('[19:00 보호대상자] 오류:', e);
+      return null;
+    }
+  });
+
+/**
+ * 20:00 보호자 푸시 (당일 보호대상자 기록 없으면 발송)
+ * - lastResponseAt < 오늘 00:00 인 subjects → pairedGuardianUids 수집
+ * - **보호자당 1회만** 발송 (푸시 폭탄 방지). 미기록 인원이 여러 명이면 문구에 반영
+ */
+exports.sendGuardianReminder = functions.pubsub
+  .schedule('0 20 * * *')
+  .timeZone('Asia/Seoul')
+  .onRun(async () => {
+    const todayStr = todayKoreaStr();
+    const todayStart = todayMidnightKSTTimestamp();
+    console.log(`[20:00 보호자] ${todayStr} 실행`);
+
+    try {
+      const snapshot = await db.collection('subjects')
+        .where('lastResponseAt', '<', todayStart)
+        .get();
+
+      // guardianId -> 미기록 subject 수
+      const guardianCounts = new Map();
+      for (const doc of snapshot.docs) {
+        const uids = doc.data().pairedGuardianUids || [];
+        for (const uid of uids) {
+          guardianCounts.set(uid, (guardianCounts.get(uid) || 0) + 1);
+        }
+      }
+      console.log(`[20:00 보호자] 발송 대상: ${guardianCounts.size}명`);
+
+      for (const [guardianId, count] of guardianCounts) {
+        const body = count > 1
+          ? `오늘 아직 신호가 없는 분이 ${count}명 있습니다.`
+          : '오늘 아직 신호가 없습니다.';
+        await sendToGuardian(guardianId, {
+          notification: { title: '안부 확인', body },
+          data: { type: 'GUARDIAN_REMINDER', click_action: 'FLUTTER_NOTIFICATION_CLICK' },
+          android: { priority: 'high', notification: { sound: 'default', channelId: 'guardian_notifications' } },
+          apns: { payload: { aps: { sound: 'default', badge: 1 } } },
+        });
+      }
+      return null;
+    } catch (e) {
+      console.error('[20:00 보호자] 오류:', e);
+      return null;
+    }
+  });
+
+/**
+ * 20:05 3일 무응답 보호자 강한 알림
+ * - lastResponseAt < now - 72h 인 subjects
+ * - createdAt < now - 72h (가입 72h 미만이면 스킵, 신규 epoch 과경보 방지)
+ * - createdAt 없는 기존 문서 스킵 (마이그레이션 전 안전)
+ * - lastGuardianAlertAt 미설정 또는 lastGuardianAlertAt < now - 72h 인 경우만 발송
+ */
+exports.sendThreeDayNoResponseAlert = functions.pubsub
+  .schedule('5 20 * * *')
+  .timeZone('Asia/Seoul')
+  .onRun(async () => {
+    const now = admin.firestore.Timestamp.now();
+    const cutoff = admin.firestore.Timestamp.fromDate(new Date(now.toMillis() - 72 * 60 * 60 * 1000));
+    console.log(`[20:05 3일 무응답] lastResponseAt < ${cutoff.toDate().toISOString()}`);
+
+    try {
+      const snapshot = await db.collection('subjects')
+        .where('lastResponseAt', '<', cutoff)
+        .get();
+
+      const toAlert = [];
+      for (const doc of snapshot.docs) {
+        const d = doc.data();
+        if (!d.createdAt || d.createdAt.toMillis() >= cutoff.toMillis()) continue;
+        const lastAlert = d.lastGuardianAlertAt;
+        if (lastAlert && lastAlert.toMillis && lastAlert.toMillis() > cutoff.toMillis()) continue;
+        toAlert.push({ doc, subjectId: doc.id, guardians: d.pairedGuardianUids || [] });
+      }
+      console.log(`[20:05 3일 무응답] 발송 대상: ${toAlert.length}건`);
+
+      for (const { doc, subjectId, guardians } of toAlert) {
+        const displayName = doc.data().displayName || '보호 대상';
+        for (const guardianId of guardians) {
+          await sendToGuardian(guardianId, {
+            notification: { title: '안부 확인 필요', body: '3일간 신호가 없습니다. 확인이 필요합니다.' },
+            data: { type: 'ESCALATION_3DAYS', subjectId: String(subjectId), subjectDisplayName: String(displayName), click_action: 'FLUTTER_NOTIFICATION_CLICK' },
+            android: { priority: 'high', notification: { sound: 'default', channelId: 'guardian_notifications' } },
+            apns: { payload: { aps: { sound: 'default', badge: 1 } } },
+          });
+        }
+        await doc.ref.update({ lastGuardianAlertAt: now });
+      }
+      return null;
+    } catch (e) {
+      console.error('[20:05 3일 무응답] 오류:', e);
       return null;
     }
   });
@@ -557,20 +512,7 @@ exports.migrateReminderFields = functions.https.onRequest(async (req, res) => {
   console.log('[마이그레이션] 시작');
   
   try {
-    const now = admin.firestore.Timestamp.now();
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
-    const todayStr = `${year}-${month}-${day}`;
-    
-    // 내일 19:00 계산 (Asia/Seoul 기준)
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    tomorrow.setHours(19, 0, 0, 0);
-    const tomorrowTimestamp = admin.firestore.Timestamp.fromDate(tomorrow);
-    
-    // 모든 subjects 문서 조회 (배치 처리)
+    // subjects 문서 조회
     let batch = admin.firestore().batch();
     let batchCount = 0;
     let migratedCount = 0;
@@ -582,21 +524,7 @@ exports.migrateReminderFields = functions.https.onRequest(async (req, res) => {
     for (const doc of subjectsSnapshot.docs) {
       const data = doc.data();
       const needsUpdate = {};
-      
-      // 필드가 없으면 초기화
-      if (!data.nextReminderAt) {
-        needsUpdate.nextReminderAt = tomorrowTimestamp;
-      }
-      if (!data.hasOwnProperty('reminderSentForDate')) {
-        needsUpdate.reminderSentForDate = null;
-      }
-      if (!data.lastResponseAt) {
-        needsUpdate.lastResponseAt = null;
-      }
-      if (!data.lastResponseDate) {
-        needsUpdate.lastResponseDate = null;
-      }
-      
+      if (!data.lastResponseAt) needsUpdate.lastResponseAt = EPOCH_TIMESTAMP;
       if (Object.keys(needsUpdate).length > 0) {
         batch.update(doc.ref, needsUpdate);
         batchCount++;
