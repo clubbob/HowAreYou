@@ -2,6 +2,8 @@ import { redirect } from 'next/navigation';
 import { verifyAdminSession } from '@/lib/admin-auth';
 import AdminNav from '../AdminNav';
 
+export const dynamic = 'force-dynamic';
+
 export default async function AdminDashboardLayout({
   children,
 }: {

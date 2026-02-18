@@ -6,11 +6,12 @@ const FEATURES = [
   '보호대상자 1명 포함',
   '매일 안부 알림',
   '3일 무응답 통지',
+  '1개월 무료 체험',
 ];
 
 const EXAMPLES = [
-  { label: '부모님 2명', monthly: PRICING.baseMonthly + PRICING.extraMonthly },
-  { label: '부모님 3명', monthly: PRICING.baseMonthly + PRICING.extraMonthly * 2 },
+  { label: '보호대상자 2명', monthly: PRICING.baseMonthly + PRICING.extraMonthly },
+  { label: '보호대상자 3명', monthly: PRICING.baseMonthly + PRICING.extraMonthly * 2 },
 ];
 
 export function PricingSection() {
@@ -71,8 +72,8 @@ export function PricingSection() {
           </div>
 
           <div className="mb-8 space-y-1 text-center text-[14px] text-navy-500">
-            <p>커피 한 잔 값으로 부모님의 안부를 확인하세요.</p>
-            <p>언제든 해지 가능합니다.</p>
+            <p>결제는 보호자만 진행합니다.</p>
+            <p>언제든지 앱 내 &apos;구독 관리&apos; 메뉴에서 해지할 수 있습니다.</p>
           </div>
 
           <button

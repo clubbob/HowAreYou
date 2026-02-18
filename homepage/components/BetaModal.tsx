@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { addToWaitlist } from '@/lib/waitlist';
+import { BETA } from '@/lib/config/beta';
 
 type Props = {
   open: boolean;
@@ -10,7 +11,7 @@ type Props = {
 
 export function BetaModal({ open, onClose }: Props) {
   const [email, setEmail] = useState('');
-  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'already_registered' | 'error'>('idle');
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'already_registered' | 'full' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
   const closeBtnRef = useRef<HTMLButtonElement>(null);
   const submittingRef = useRef(false);
@@ -33,7 +34,7 @@ export function BetaModal({ open, onClose }: Props) {
     try {
       const result = await addToWaitlist(email.trim());
       setEmail('');
-      setStatus(result.status === 'already_registered' ? 'already_registered' : 'success');
+      setStatus(result.status === 'already_registered' ? 'already_registered' : result.status === 'full' ? 'full' : 'success');
     } catch (err) {
       setStatus('error');
       setErrorMsg(err instanceof Error ? err.message : '등록에 실패했습니다. 다시 시도해 주세요.');
@@ -84,6 +85,22 @@ export function BetaModal({ open, onClose }: Props) {
               확인
             </button>
           </div>
+        ) : status === 'full' ? (
+          <div className="py-8 text-center">
+            <div className="mb-5 inline-flex h-16 w-16 items-center justify-center rounded-[1rem] bg-navy-100">
+              <svg className="h-8 w-8 text-navy-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <p className="text-lg font-semibold text-navy-900">마감되었습니다</p>
+            <p className="mt-1 text-[17px] text-navy-600">선착순 {BETA.limit}명이 마감되었습니다. 관심 가져 주셔서 감사합니다.</p>
+            <button
+              onClick={onClose}
+              className="mx-auto mt-6 flex h-[52px] items-center justify-center rounded-[14px] bg-navy-200 px-8 text-[17px] font-medium text-navy-800 transition-colors hover:bg-navy-300 active:bg-navy-400"
+            >
+              확인
+            </button>
+          </div>
         ) : status === 'already_registered' ? (
           <div className="py-8 text-center">
             <div className="mb-5 inline-flex h-16 w-16 items-center justify-center rounded-[1rem] bg-navy-100">
@@ -102,8 +119,12 @@ export function BetaModal({ open, onClose }: Props) {
           </div>
         ) : (
           <form onSubmit={handleSubmit}>
+            <div className="mb-4 rounded-xl bg-primary-50 px-4 py-3">
+              <p className="mb-2 text-sm font-semibold text-primary-700">베타 참여 혜택 (선착순 {BETA.limit}명)</p>
+              <p className="text-[15px] text-navy-700">출시 시 최우선 안내 · 1년 무료 이용</p>
+            </div>
             <p className="mb-4 text-[17px] leading-[1.6] text-navy-700">
-              베타 참여를 위한 이메일을 입력해 주세요. 출시 시 안내해 드립니다.
+              이메일을 입력해 주세요. 출시 시 안내해 드립니다.
             </p>
             <input
               type="email"

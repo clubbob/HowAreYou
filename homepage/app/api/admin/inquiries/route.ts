@@ -23,10 +23,12 @@ export async function GET() {
       role: d.role ?? 'subject',
       message: d.message ?? '',
       createdAt: createdAt.toISOString(),
-      replies: (d.replies ?? []).map((r: { message?: string; createdAt?: { toDate?: () => Date } }) => ({
-        message: r.message ?? '',
-        createdAt: r.createdAt?.toDate?.() ?? new Date(),
-      })),
+      replies: (d.replies ?? []).map((r: { message?: string; createdAt?: { toDate?: () => Date } | Date }) => {
+        const dt = r.createdAt && typeof r.createdAt === 'object' && 'toDate' in r.createdAt
+          ? (r.createdAt as { toDate: () => Date }).toDate()
+          : r.createdAt instanceof Date ? r.createdAt : new Date();
+        return { message: r.message ?? '', createdAt: dt.toISOString() };
+      }),
     };
   });
   return NextResponse.json(list);

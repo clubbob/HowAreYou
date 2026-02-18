@@ -1,8 +1,8 @@
 'use client';
 
 import Image from 'next/image';
-import { BetaModal } from './BetaModal';
 import { useState } from 'react';
+import { BetaModal } from './BetaModal';
 
 const HERO_IMAGES = [
   { src: '/image 1.png', alt: '역할 선택' },
@@ -12,8 +12,8 @@ const HERO_IMAGES = [
 ];
 
 export function HeroSection() {
-  const [showModal, setShowModal] = useState(false);
   const [slideIndex, setSlideIndex] = useState(0);
+  const [showModal, setShowModal] = useState(false);
 
   const goPrev = () => setSlideIndex((i) => (i <= 0 ? HERO_IMAGES.length - 1 : i - 1));
   const goNext = () => setSlideIndex((i) => (i >= HERO_IMAGES.length - 1 ? 0 : i + 1));
@@ -35,18 +35,13 @@ export function HeroSection() {
             />
             <span className="text-2xl font-bold text-navy-900 md:text-3xl">여기 어때?</span>
           </div>
-          <h1 className="mb-4 whitespace-nowrap text-[1.125rem] font-bold leading-[1.3] tracking-tight text-navy-900 sm:text-[1.5rem] md:text-[2rem] lg:text-[2.25rem]">
-            매일 전화하지 않아도 됩니다.
+          <h1 className="mb-4 text-[1.125rem] font-bold leading-[1.3] tracking-tight text-navy-900 sm:text-[1.5rem] md:text-[2rem] lg:text-[2.25rem]">
+            안부로 안심을 전하는 가족 앱
           </h1>
           <p className="mb-3 text-lg font-medium text-primary-400 md:text-xl">
-            하루 3초 기록으로 충분합니다.
+            매일 전화하지 않아도, 안부는 전해집니다.
             <br />
-            부모님도 부담 없이 사용할 수 있습니다.
-          </p>
-          <p className="mb-10 text-[17px] leading-[1.6] text-navy-600">
-            하루 한 번, 가볍게 안부를 확인하는
-            <br />
-            마음을 편하게 해주는 관계 습관 앱입니다.
+            작은 기록 하나로 서로의 안심을 확인하세요.
           </p>
           <div>
             <button
@@ -57,9 +52,7 @@ export function HeroSection() {
               베타 참여하기
             </button>
             <p className="mt-3 text-sm leading-relaxed text-navy-500">
-              베타 신청은 1분 내 완료됩니다.
-              <br />
-              신청 시 이메일만 수집됩니다.
+              선착순 100명 · 출시 최우선 안내 · 1년 무료 이용
             </p>
           </div>
         </div>

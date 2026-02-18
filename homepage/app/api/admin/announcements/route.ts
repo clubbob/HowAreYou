@@ -14,12 +14,14 @@ export async function GET() {
   const list = snap.docs.map((doc) => {
     const d = doc.data();
     const createdAt = d.createdAt?.toDate?.() ?? new Date();
+    const updatedAt = d.updatedAt?.toDate?.();
     return {
       id: doc.id,
       title: d.title ?? '',
       content: d.content ?? '',
       pinned: d.pinned ?? false,
       createdAt: createdAt.toISOString(),
+      updatedAt: updatedAt ? updatedAt.toISOString() : null,
     };
   });
   return NextResponse.json(list);

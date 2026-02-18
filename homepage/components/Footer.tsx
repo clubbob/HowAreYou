@@ -15,6 +15,12 @@ export function Footer() {
       <div className="mx-auto max-w-3xl space-y-5 text-center">
         <nav className="flex flex-wrap items-center justify-center gap-4">
           <Link
+            href="/inquiry"
+            className="text-[17px] font-medium text-primary-400 transition-colors hover:text-primary-500 hover:underline active:text-primary-600"
+          >
+            1:1 문의
+          </Link>
+          <Link
             href="/terms"
             className="text-[17px] font-medium text-primary-400 transition-colors hover:text-primary-500 hover:underline active:text-primary-600"
           >

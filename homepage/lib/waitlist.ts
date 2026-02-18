@@ -2,7 +2,10 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { app, firestore } from './firebase';
 
-export type WaitlistResult = { status: 'success' } | { status: 'already_registered' };
+export type WaitlistResult =
+  | { status: 'success' }
+  | { status: 'already_registered' }
+  | { status: 'full' };
 
 /** Callable 실패 시 Firestore 직접 등록으로 폴백 */
 async function addToWaitlistFallback(email: string): Promise<WaitlistResult> {

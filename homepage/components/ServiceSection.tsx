@@ -3,9 +3,9 @@
 import { useEffect, useRef, useState } from 'react';
 
 const STEPS = [
-  { num: 1, title: '하루 한 번, 가볍게 안부를 남깁니다' },
-  { num: 2, title: '기록은 보호자에게 조용히 전달됩니다' },
-  { num: 3, title: '매일 전화 대신 3초로 확인합니다' },
+  { title: '간단하게 남깁니다', subtitle: '버튼 한 번으로 오늘의 안부를 기록합니다. 길게 쓰지 않아도 괜찮습니다.' },
+  { title: '기록이 없을 때만 안내합니다', subtitle: '기록이 없는 경우에만 보호자에게 알림이 전달됩니다. 불필요한 알림은 보내지 않습니다.' },
+  { title: '3일 이상 신호가 없을 때', subtitle: '일정 기간 기록이 없으면 추가 안내가 이루어집니다. 조용하지만 놓치지 않는 구조입니다.' },
 ];
 
 export function ServiceSection() {
@@ -76,13 +76,13 @@ export function ServiceSection() {
             transition: reduceMotion ? 'none' : 'opacity 0.5s ease-out, transform 0.5s ease-out',
           }}
         >
-          안부는 이렇게 전해집니다
+          이렇게 안부를 전합니다
         </h2>
 
         <div className="space-y-5">
           {STEPS.map((s, i) => (
             <div
-              key={s.num}
+              key={`step-${i}`}
               style={{
                 opacity: animate ? 1 : 0,
                 transform: reduceMotion ? 'none' : animate ? 'translateY(0)' : 'translateY(20px)',
@@ -106,11 +106,12 @@ export function ServiceSection() {
                   }}
                 >
                   <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[14px] bg-primary-400 text-xl font-bold text-white transition-all duration-300 group-hover:scale-110 group-hover:bg-primary-500">
-                    {s.num}
+                    {i + 1}
                   </span>
                 </span>
-                <span className="text-[18px] font-medium text-navy-800 transition-colors duration-300 group-hover:text-primary-600">
-                  {s.title}
+                <span className="flex flex-col gap-1 transition-colors duration-300 group-hover:text-primary-600">
+                  <span className="text-[18px] font-medium text-navy-800">{s.title}</span>
+                  <span className="text-[16px] text-navy-600">{s.subtitle}</span>
                 </span>
               </div>
             </div>
@@ -126,7 +127,7 @@ export function ServiceSection() {
         >
           ※ 본 서비스는 의료·응급 구조 서비스가 아닙니다.
           <br />
-          네트워크 및 기기 설정에 따라 알림이 지연되거나 수신되지 않을 수 있습니다.
+          네트워크 및 기기 환경에 따라 알림이 지연될 수 있습니다.
         </p>
       </div>
     </section>
