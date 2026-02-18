@@ -51,12 +51,22 @@ export default function AdminNav() {
             </Link>
           ))}
         </div>
-        <button
-          onClick={handleLogout}
-          className="text-sm text-slate-500 hover:text-red-600"
-        >
-          로그아웃
-        </button>
+        <div className="flex items-center gap-4">
+          <Link
+            href="/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm font-medium text-slate-600 hover:text-slate-900"
+          >
+            홈페이지
+          </Link>
+          <button
+            onClick={handleLogout}
+            className="text-sm text-slate-500 hover:text-red-600"
+          >
+            로그아웃
+          </button>
+        </div>
       </div>
     </nav>
   );

@@ -1,39 +1,30 @@
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { getFunctions, httpsCallable } from 'firebase/functions';
-import { app, firestore } from './firebase';
-
 export type WaitlistResult =
   | { status: 'success' }
   | { status: 'already_registered' }
   | { status: 'full' };
 
-/** Callable 실패 시 Firestore 직접 등록으로 폴백 */
-async function addToWaitlistFallback(email: string): Promise<WaitlistResult> {
-  if (!firestore) {
-    throw new Error('Firebase가 설정되지 않았습니다. 관리자에게 문의해 주세요.');
-  }
-  await addDoc(collection(firestore, 'waitlist'), {
-    email: email.trim().toLowerCase(),
-    createdAt: serverTimestamp(),
+/**
+ * 베타 대기 등록 - Next.js API 사용 (연락처 포함 저장, Cloud Function 배포 불필요)
+ */
+export async function addToWaitlist(email: string, phone?: string): Promise<WaitlistResult> {
+  const res = await fetch('/api/waitlist', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      email: email.trim(),
+      phone: phone?.trim() || undefined,
+    }),
   });
-  return { status: 'success' };
-}
 
-export async function addToWaitlist(email: string): Promise<WaitlistResult> {
-  if (!app) {
-    throw new Error('Firebase가 설정되지 않았습니다. 관리자에게 문의해 주세요.');
-  }
+  const data = await res.json().catch(() => ({}));
 
-  const functions = getFunctions(app);
-  const addToWaitlistFn = httpsCallable<
-    { email: string },
-    { status: 'success' | 'already_registered' }
-  >(functions, 'addToWaitlist');
-
-  try {
-    const { data } = await addToWaitlistFn({ email: email.trim() });
+  if (res.ok && (data.status === 'success' || data.status === 'already_registered' || data.status === 'full')) {
     return data as WaitlistResult;
-  } catch {
-    return addToWaitlistFallback(email);
   }
+
+  if (res.status === 400 || res.status === 500) {
+    throw new Error(data.error || '등록에 실패했습니다. 다시 시도해 주세요.');
+  }
+
+  throw new Error('등록에 실패했습니다. 다시 시도해 주세요.');
 }

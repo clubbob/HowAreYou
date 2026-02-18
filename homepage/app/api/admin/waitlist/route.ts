@@ -19,6 +19,7 @@ export async function GET() {
       return {
         id: doc.id,
         email: d.email ?? '',
+        phone: d.phone ?? '',
         createdAt: createdAt.toISOString(),
       };
     })

@@ -11,6 +11,7 @@ type Props = {
 
 export function BetaModal({ open, onClose }: Props) {
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'already_registered' | 'full' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
   const closeBtnRef = useRef<HTMLButtonElement>(null);
@@ -32,8 +33,9 @@ export function BetaModal({ open, onClose }: Props) {
     setStatus('loading');
     setErrorMsg('');
     try {
-      const result = await addToWaitlist(email.trim());
+      const result = await addToWaitlist(email.trim(), phone.trim() || undefined);
       setEmail('');
+      setPhone('');
       setStatus(result.status === 'already_registered' ? 'already_registered' : result.status === 'full' ? 'full' : 'success');
     } catch (err) {
       setStatus('error');
@@ -124,19 +126,32 @@ export function BetaModal({ open, onClose }: Props) {
               <p className="text-[15px] text-navy-700">출시 시 최우선 안내 · 1년 무료 이용</p>
             </div>
             <p className="mb-4 text-[17px] leading-[1.6] text-navy-700">
-              이메일을 입력해 주세요. 출시 시 안내해 드립니다.
+              이메일과 연락처를 입력해 주세요. 출시 시 안내 및 코드 전달에 사용됩니다.
             </p>
-            <input
-              type="email"
-              inputMode="email"
-              autoComplete="off"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="example@email.com"
-              required
-              disabled={status === 'loading'}
-              className="w-full rounded-[14px] border border-navy-200 px-4 py-4 text-[17px] text-navy-900 placeholder:text-navy-400 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-400/20 disabled:bg-navy-50 disabled:opacity-70"
-            />
+            <div className="space-y-3">
+              <input
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="이메일 (example@email.com)"
+                required
+                disabled={status === 'loading'}
+                className="w-full rounded-[14px] border border-navy-200 px-4 py-4 text-[17px] text-navy-900 placeholder:text-navy-400 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-400/20 disabled:bg-navy-50 disabled:opacity-70"
+              />
+              <input
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="연락처 (010-1234-5678) - 코드 전달용"
+                required
+                disabled={status === 'loading'}
+                className="w-full rounded-[14px] border border-navy-200 px-4 py-4 text-[17px] text-navy-900 placeholder:text-navy-400 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-400/20 disabled:bg-navy-50 disabled:opacity-70"
+              />
+            </div>
             {errorMsg && <p className="mt-2 text-sm font-medium text-red-600">{errorMsg}</p>}
             <div className="mt-6 flex gap-3">
               <button
