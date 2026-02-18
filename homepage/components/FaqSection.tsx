@@ -1,8 +1,22 @@
 'use client';
 
 import { useState } from 'react';
+import { PRICING, formatPrice } from '@/lib/config/pricing';
 
 const FAQ_ITEMS = [
+  { q: '누가 결제하나요?', a: '보호자만 결제합니다. 보호대상자는 무료로 이용합니다.' },
+  {
+    q: '무료 체험은 어떻게 되나요?',
+    a: `가입 후 1개월 동안 모든 기능을 무료로 이용할 수 있습니다. 이후 연 ${formatPrice(PRICING.baseYearly)}이 자동 결제됩니다.`,
+  },
+  {
+    q: '보호대상자를 추가하면 얼마인가요?',
+    a: `1명당 월 ${formatPrice(PRICING.extraMonthly)}(연 ${formatPrice(PRICING.extraYearly)})이 추가됩니다.`,
+  },
+  {
+    q: '언제든 해지할 수 있나요?',
+    a: '앱스토어에서 언제든 구독 해지가 가능합니다.',
+  },
   {
     q: '위치 추적 기능이 있나요?',
     a: '위치 추적 기능은 제공하지 않습니다.',

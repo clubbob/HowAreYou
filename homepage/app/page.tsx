@@ -1,6 +1,7 @@
 import { HeroSection } from '@/components/HeroSection';
 import { ProblemSection } from '@/components/ProblemSection';
 import { ServiceSection } from '@/components/ServiceSection';
+import { PricingSection } from '@/components/PricingSection';
 import { TrustSection } from '@/components/TrustSection';
 import { FaqSection } from '@/components/FaqSection';
 import { AnnouncementsSection } from '@/components/AnnouncementsSection';
@@ -16,6 +17,9 @@ export default function HomePage() {
         <ProblemSection />
       </FadeInSection>
       <ServiceSection />
+      <FadeInSection>
+        <PricingSection />
+      </FadeInSection>
       <FadeInSection>
         <TrustSection />
       </FadeInSection>
