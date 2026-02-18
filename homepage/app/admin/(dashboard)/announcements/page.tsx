@@ -193,6 +193,7 @@ export default function AdminAnnouncementsPage() {
                   content: content.trim(),
                   pinned,
                   createdAt: new Date().toISOString(),
+                  updatedAt: null,
                 })
               }
               disabled={!title.trim() || !content.trim()}
