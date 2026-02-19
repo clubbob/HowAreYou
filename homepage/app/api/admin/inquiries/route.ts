@@ -21,6 +21,7 @@ export async function GET() {
       userPhone: d.userPhone ?? '',
       userDisplayName: d.userDisplayName ?? null,
       role: d.role ?? 'subject',
+      inquiryCode: d.inquiryCode ?? null,
       message: d.message ?? '',
       createdAt: createdAt.toISOString(),
       replies: (d.replies ?? []).map((r: { message?: string; createdAt?: { toDate?: () => Date } | Date }) => {

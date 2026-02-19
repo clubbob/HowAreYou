@@ -1,12 +1,18 @@
 import { NextResponse } from 'next/server';
 import { getAdminFirestore } from '@/lib/firebase-admin';
+import { verifyPassword } from '@/lib/inquiry-utils';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const email = searchParams.get('email')?.trim().toLowerCase();
+  const code = searchParams.get('code')?.trim().toUpperCase();
+  const password = searchParams.get('password') ?? '';
 
-  if (!email || email.length < 3) {
-    return NextResponse.json({ error: '이메일을 입력해주세요.' }, { status: 400 });
+  if (!code || code.length !== 6) {
+    return NextResponse.json({ error: '문의 번호를 입력해주세요.' }, { status: 400 });
+  }
+
+  if (!password) {
+    return NextResponse.json({ error: '비밀번호를 입력해주세요.' }, { status: 400 });
   }
 
   const db = getAdminFirestore();
@@ -15,44 +21,33 @@ export async function GET(request: Request) {
   }
 
   try {
-    let snap;
-    try {
-      snap = await db
-        .collection('inquiries')
-        .where('role', '==', 'visitor')
-        .where('email', '==', email)
-        .orderBy('createdAt', 'desc')
-        .limit(20)
-        .get();
-    } catch {
-      // 인덱스 미배포 시: role=visitor만 조회 후 이메일로 필터 (기존 문의 호환)
-      const allVisitor = await db
-        .collection('inquiries')
-        .where('role', '==', 'visitor')
-        .limit(100)
-        .get();
-      const filtered = allVisitor.docs.filter((d) => {
-        const data = d.data();
-        const storedEmail = data.email?.toLowerCase?.();
-        const userPhone = (data.userPhone ?? '').toLowerCase();
-        return storedEmail === email || userPhone.includes(email);
-      });
-      filtered.sort((a, b) => {
-        const ta = a.data().createdAt?.toDate?.()?.getTime() ?? 0;
-        const tb = b.data().createdAt?.toDate?.()?.getTime() ?? 0;
-        return tb - ta;
-      });
-      snap = { docs: filtered.slice(0, 20) };
+    const snap = await db
+      .collection('inquiries')
+      .where('role', '==', 'visitor')
+      .where('inquiryCode', '==', code)
+      .limit(1)
+      .get();
+
+    if (snap.empty) {
+      return NextResponse.json({ error: '문의를 찾을 수 없습니다.' }, { status: 404 });
     }
 
-    const list = snap.docs.map((doc) => {
-      const d = doc.data();
-      const createdAt = d.createdAt?.toDate?.() ?? new Date();
-      return {
-        id: doc.id,
-        message: d.message ?? '',
-        createdAt: createdAt.toISOString(),
-        replies: (d.replies ?? []).map((r: { message?: string; createdAt?: { toDate?: () => Date } | Date }) => {
+    const doc = snap.docs[0];
+    const d = doc.data();
+    const passwordHash = d.passwordHash;
+
+    if (!passwordHash || !verifyPassword(password, passwordHash)) {
+      return NextResponse.json({ error: '비밀번호가 일치하지 않습니다.' }, { status: 401 });
+    }
+
+    const createdAt = d.createdAt?.toDate?.() ?? new Date();
+    const item = {
+      id: doc.id,
+      inquiryCode: code,
+      message: d.message ?? '',
+      createdAt: createdAt.toISOString(),
+      replies: (d.replies ?? []).map(
+        (r: { message?: string; createdAt?: { toDate?: () => Date } | Date }) => {
           const dt =
             r.createdAt && typeof r.createdAt === 'object' && 'toDate' in r.createdAt
               ? (r.createdAt as { toDate: () => Date }).toDate()
@@ -60,11 +55,11 @@ export async function GET(request: Request) {
                 ? r.createdAt
                 : new Date();
           return { message: r.message ?? '', createdAt: dt.toISOString() };
-        }),
-      };
-    });
+        }
+      ),
+    };
 
-    return NextResponse.json(list);
+    return NextResponse.json(item);
   } catch (e) {
     console.error('[inquiry/check]', e);
     return NextResponse.json({ error: '조회에 실패했습니다.' }, { status: 500 });

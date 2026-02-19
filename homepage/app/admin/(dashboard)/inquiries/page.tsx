@@ -3,6 +3,21 @@
 import { useEffect, useState } from 'react';
 
 type Reply = { message: string; createdAt: string };
+
+function roleLabel(role: string): string {
+  switch (role) {
+    case 'visitor':
+      return '홈페이지 방문자';
+    case 'subject':
+      return '보호대상자';
+    case 'guardian':
+      return '보호자';
+    case 'both':
+      return '둘 다';
+    default:
+      return role;
+  }
+}
 type StatusFilter = 'all' | 'unanswered' | 'answered';
 type DateFilter = 'all' | '7d' | '30d';
 type Inquiry = {
@@ -11,6 +26,7 @@ type Inquiry = {
   userPhone: string;
   userDisplayName: string | null;
   role: string;
+  inquiryCode?: string | null;
   message: string;
   createdAt: string;
   replies: Reply[];
@@ -178,7 +194,7 @@ export default function AdminInquiriesPage() {
                   </span>
                 </div>
                 <p className="text-xs text-slate-400 mt-1">
-                  {i.userPhone} · {new Date(i.createdAt).toLocaleString('ko-KR')}
+                  {(i.role === 'visitor' && i.inquiryCode) ? `문의번호 ${i.inquiryCode}` : i.userPhone} · {new Date(i.createdAt).toLocaleString('ko-KR')}
                   {i.replies.length > 0 && ` · 답변 ${i.replies.length}건`}
                 </p>
               </div>
@@ -194,7 +210,7 @@ export default function AdminInquiriesPage() {
           {selected ? (
             <div className="p-6">
               <div className="text-sm text-slate-500 mb-2">
-                {selected.userPhone} · {selected.userDisplayName ?? '-'} · {selected.role === 'visitor' ? '홈페이지 방문자' : selected.role}
+                {(selected.role === 'visitor' && selected.inquiryCode) ? `문의번호 ${selected.inquiryCode}` : `${selected.userPhone ?? ''} · ${selected.userDisplayName ?? '-'}`} · {roleLabel(selected.role)}
               </div>
               <p className="text-slate-800 whitespace-pre-wrap mb-6">{selected.message}</p>
               {selected.replies.length > 0 && (

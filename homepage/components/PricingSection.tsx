@@ -3,15 +3,10 @@
 import { PRICING, formatPrice } from '@/lib/config/pricing';
 
 const FEATURES = [
-  '보호대상자 1명 포함',
+  '보호대상자 무제한 추가',
   '매일 안부 알림',
   '3일 무응답 통지',
-  '1개월 무료 체험',
-];
-
-const EXAMPLES = [
-  { label: '보호대상자 2명', monthly: PRICING.baseMonthly + PRICING.extraMonthly },
-  { label: '보호대상자 3명', monthly: PRICING.baseMonthly + PRICING.extraMonthly * 2 },
+  '1개월 무료 체험 (계정 생성일 기준)',
 ];
 
 export function PricingSection() {
@@ -38,12 +33,9 @@ export function PricingSection() {
         <div className="rounded-2xl border border-navy-100 bg-white p-6 shadow-[0_2px_16px_rgba(31,42,68,0.06)] md:p-8">
           <div className="mb-6 flex items-baseline justify-center gap-2">
             <span className="text-[2rem] font-bold text-primary-600 md:text-[2.5rem]">
-              월 {formatPrice(PRICING.baseMonthly)}
+              연 {formatPrice(PRICING.yearly)}
             </span>
-            <span className="text-base text-navy-500">(연 {formatPrice(PRICING.baseYearly)})</span>
           </div>
-
-          <p className="mb-5 text-center text-sm font-medium text-navy-600">기본 플랜</p>
 
           <ul className="mb-6 space-y-3">
             {FEATURES.map((f) => (
@@ -57,19 +49,6 @@ export function PricingSection() {
               </li>
             ))}
           </ul>
-
-          <div className="mb-6 rounded-xl bg-navy-50 px-4 py-3">
-            <p className="text-[15px] font-medium text-navy-700">➕ 추가 보호대상자</p>
-            <p className="mt-1 text-[15px] text-navy-600">
-              1명당 월 {formatPrice(PRICING.extraMonthly)} 추가 (연 {formatPrice(PRICING.extraYearly)})
-            </p>
-          </div>
-
-          <div className="mb-6 space-y-2 text-sm text-navy-600">
-            {EXAMPLES.map((ex) => (
-              <p key={ex.label}>{ex.label} → 월 {formatPrice(ex.monthly)}</p>
-            ))}
-          </div>
 
           <div className="mb-8 space-y-1 text-center text-[14px] text-navy-500">
             <p>결제는 보호자만 진행합니다.</p>

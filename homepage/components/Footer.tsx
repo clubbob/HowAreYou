@@ -42,18 +42,8 @@ export function Footer() {
 
         <p className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[17px] leading-[1.6] text-navy-700">
           <span>개인정보 보호책임자 : {FOOTER_INFO.privacyOfficer}</span>
-          <span>
-            이메일 :{' '}
-            <a href={`mailto:${FOOTER_INFO.email}`} className="text-primary-400 hover:underline">
-              {FOOTER_INFO.email}
-            </a>
-          </span>
-          <span>
-            연락처 :{' '}
-            <a href={`tel:${FOOTER_INFO.phone.replace(/-/g, '')}`} className="text-primary-400 hover:underline">
-              {FOOTER_INFO.phone}
-            </a>
-          </span>
+          <span>이메일 : {FOOTER_INFO.email}</span>
+          <span>연락처 : {FOOTER_INFO.phone}</span>
         </p>
 
         <p className="pt-2 text-[17px] text-navy-500">
