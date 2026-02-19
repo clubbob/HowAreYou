@@ -29,6 +29,7 @@ type Inquiry = {
   inquiryCode?: string | null;
   message: string;
   createdAt: string;
+  deletedByUserAt: string | null;
   replies: Reply[];
 };
 
@@ -185,13 +186,20 @@ export default function AdminInquiriesPage() {
               >
                 <div className="flex items-start justify-between gap-2">
                   <p className="text-sm text-slate-600 truncate flex-1">{i.message}</p>
-                  <span
-                    className={`shrink-0 px-2 py-0.5 rounded text-xs font-medium ${
-                      i.replies.length > 0 ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
-                    }`}
-                  >
-                    {i.replies.length > 0 ? '답변완료' : '미답변'}
-                  </span>
+                  <div className="shrink-0 flex gap-1 flex-wrap justify-end">
+                    {i.deletedByUserAt && (
+                      <span className="px-2 py-0.5 rounded text-xs font-medium bg-slate-200 text-slate-600">
+                        문의자 삭제
+                      </span>
+                    )}
+                    <span
+                      className={`px-2 py-0.5 rounded text-xs font-medium ${
+                        i.replies.length > 0 ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+                      }`}
+                    >
+                      {i.replies.length > 0 ? '답변완료' : '미답변'}
+                    </span>
+                  </div>
                 </div>
                 <p className="text-xs text-slate-400 mt-1">
                   {(i.role === 'visitor' && i.inquiryCode) ? `문의번호 ${i.inquiryCode}` : i.userPhone} · {new Date(i.createdAt).toLocaleString('ko-KR')}
@@ -211,6 +219,11 @@ export default function AdminInquiriesPage() {
             <div className="p-6">
               <div className="text-sm text-slate-500 mb-2">
                 {(selected.role === 'visitor' && selected.inquiryCode) ? `문의번호 ${selected.inquiryCode}` : `${selected.userPhone ?? ''} · ${selected.userDisplayName ?? '-'}`} · {roleLabel(selected.role)}
+                {selected.deletedByUserAt && (
+                  <span className="ml-2 px-2 py-0.5 rounded text-xs font-medium bg-slate-200 text-slate-600">
+                    문의자 삭제됨
+                  </span>
+                )}
               </div>
               <p className="text-slate-800 whitespace-pre-wrap mb-6">{selected.message}</p>
               {selected.replies.length > 0 && (

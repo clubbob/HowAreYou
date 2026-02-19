@@ -80,6 +80,7 @@ function InquiryCheckTab({ preset }: { preset: { code: string; password: string 
   const [code, setCode] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [item, setItem] = useState<InquiryItem | null>(null);
   const [error, setError] = useState('');
 
@@ -125,6 +126,32 @@ function InquiryCheckTab({ preset }: { preset: { code: string; password: string 
     e.preventDefault();
     if (!code.trim() || !password) return;
     await fetchInquiry(code, password);
+  }
+
+  async function handleDelete() {
+    if (!code.trim() || !password || deleting) return;
+    if (!confirm('문의를 삭제하시겠습니까? 삭제하시면 문의 확인 화면에서는 더 이상 볼 수 없습니다.')) return;
+
+    setDeleting(true);
+    setError('');
+    try {
+      const res = await fetch('/api/inquiry/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: code.trim().toUpperCase(), password }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error || '삭제에 실패했습니다.');
+        return;
+      }
+      setItem(null);
+      setError('');
+    } catch {
+      setError('삭제에 실패했습니다.');
+    } finally {
+      setDeleting(false);
+    }
   }
 
   const cameViaPreset = !!(preset?.code?.trim() && preset?.password);
@@ -211,6 +238,16 @@ function InquiryCheckTab({ preset }: { preset: { code: string; password: string 
           ) : (
             <p className="mt-4 text-[15px] text-navy-500">답변 대기 중입니다.</p>
           )}
+          <div className="mt-6 pt-4 border-t border-navy-100">
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={deleting}
+              className="text-[14px] text-red-600 hover:text-red-700 hover:underline disabled:opacity-50"
+            >
+              {deleting ? '삭제 중...' : '문의 삭제'}
+            </button>
+          </div>
         </div>
       )}
 

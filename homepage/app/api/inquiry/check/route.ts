@@ -36,6 +36,10 @@ export async function GET(request: Request) {
     const d = doc.data();
     const passwordHash = d.passwordHash;
 
+    if (d.deletedByUserAt) {
+      return NextResponse.json({ error: '문의를 찾을 수 없습니다.' }, { status: 404 });
+    }
+
     if (!passwordHash || !verifyPassword(password, passwordHash)) {
       return NextResponse.json({ error: '비밀번호가 일치하지 않습니다.' }, { status: 401 });
     }

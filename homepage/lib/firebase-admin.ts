@@ -2,8 +2,10 @@ import { initializeApp, getApps, cert, App } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 
 let adminApp: App | null = null;
+let _firestore: ReturnType<typeof getFirestore> | null = null;
 
 export function getAdminFirestore() {
+  if (_firestore) return _firestore;
   if (!adminApp) {
     const existing = getApps();
     if (existing.length > 0) {
@@ -26,5 +28,13 @@ export function getAdminFirestore() {
       }
     }
   }
-  return adminApp ? getFirestore(adminApp) : null;
+  if (adminApp) {
+    _firestore = getFirestore(adminApp);
+  }
+  return _firestore;
+}
+
+// API 라우트 로드 시 사전 초기화 (첫 요청 지연 완화)
+if (typeof process !== 'undefined' && process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+  getAdminFirestore();
 }

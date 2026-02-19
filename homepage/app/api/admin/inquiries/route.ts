@@ -15,6 +15,7 @@ export async function GET() {
   const list = snap.docs.map((doc) => {
     const d = doc.data();
     const createdAt = d.createdAt?.toDate?.() ?? new Date();
+    const deletedByUserAt = d.deletedByUserAt?.toDate?.();
     return {
       id: doc.id,
       userId: d.userId ?? '',
@@ -24,6 +25,7 @@ export async function GET() {
       inquiryCode: d.inquiryCode ?? null,
       message: d.message ?? '',
       createdAt: createdAt.toISOString(),
+      deletedByUserAt: deletedByUserAt ? deletedByUserAt.toISOString() : null,
       replies: (d.replies ?? []).map((r: { message?: string; createdAt?: { toDate?: () => Date } | Date }) => {
         const dt = r.createdAt && typeof r.createdAt === 'object' && 'toDate' in r.createdAt
           ? (r.createdAt as { toDate: () => Date }).toDate()
