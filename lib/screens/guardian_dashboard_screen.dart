@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -1775,6 +1776,8 @@ class GuardianSettingsScreen extends StatefulWidget {
 class _GuardianSettingsScreenState extends State<GuardianSettingsScreen> {
   bool _notificationSoundEnabled = true;
   bool _isLoading = true;
+  String _appVersion = '-';
+  ({String phone, DateTime? createdAt, String subscriptionStatus, DateTime? subscriptionExpiry})? _accountInfo;
 
   @override
   void initState() {
@@ -1783,10 +1786,15 @@ class _GuardianSettingsScreenState extends State<GuardianSettingsScreen> {
   }
 
   Future<void> _loadSettings() async {
+    final authService = Provider.of<AuthService>(context, listen: false);
     final enabled = await FCMService.instance.getNotificationSoundEnabled();
+    final accountInfo = await authService.getAccountInfo();
+    final packageInfo = await PackageInfo.fromPlatform();
     if (mounted) {
       setState(() {
         _notificationSoundEnabled = enabled;
+        _accountInfo = accountInfo;
+        _appVersion = '${packageInfo.version} (${packageInfo.buildNumber})';
         _isLoading = false;
       });
     }
@@ -1970,6 +1978,22 @@ class _GuardianSettingsScreenState extends State<GuardianSettingsScreen> {
           : ListView(
               padding: const EdgeInsets.all(16),
               children: [
+                // [ 계정 정보 ]
+                _buildSettingsSectionHeader('계정 정보'),
+                _buildAccountInfoCard(),
+                const SizedBox(height: 24),
+                // [ 구독 관리 ]
+                _buildSettingsSectionHeader('구독 관리'),
+                Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.credit_card_outlined),
+                    title: const Text('구독 관리하기'),
+                    subtitle: const Text('구독 변경·해지는 앱스토어에서 관리합니다'),
+                    trailing: const Icon(Icons.open_in_new),
+                    onTap: () => _openSubscriptionManagement(),
+                  ),
+                ),
+                const SizedBox(height: 24),
                 // [ 알림 설정 ]
                 _buildSettingsSectionHeader('알림 설정'),
                 Card(
@@ -2016,6 +2040,23 @@ class _GuardianSettingsScreenState extends State<GuardianSettingsScreen> {
                         trailing: const Icon(Icons.chevron_right),
                         onTap: () => LegalDialog.showPrivacy(context),
                       ),
+                      const Divider(height: 1),
+                      ListTile(
+                        leading: const Icon(Icons.code_outlined),
+                        title: const Text('오픈소스 라이선스'),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => showLicensePage(
+                          context: context,
+                          applicationName: '지금 어때',
+                          applicationVersion: _appVersion,
+                        ),
+                      ),
+                      const Divider(height: 1),
+                      ListTile(
+                        leading: const Icon(Icons.info_outline),
+                        title: const Text('버전 정보'),
+                        trailing: Text(_appVersion, style: TextStyle(fontSize: 15, color: Colors.grey.shade600)),
+                      ),
                     ],
                   ),
                 ),
@@ -2042,6 +2083,64 @@ class _GuardianSettingsScreenState extends State<GuardianSettingsScreen> {
     );
   }
 
+  Widget _buildAccountInfoCard() {
+    final info = _accountInfo;
+    if (info == null) return const Card(child: ListTile(title: Text('계정 정보를 불러오는 중...')));
+    final dateFormat = DateFormat('yyyy.MM.dd');
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildAccountInfoRow(Icons.phone_outlined, '휴대폰 번호', AuthService.formatPhoneForDisplay(info.phone)),
+            const Divider(height: 24),
+            _buildAccountInfoRow(
+              Icons.calendar_today_outlined,
+              '가입일',
+              info.createdAt != null ? dateFormat.format(info.createdAt!) : '-',
+            ),
+            const Divider(height: 24),
+            _buildAccountInfoRow(
+              Icons.credit_card_outlined,
+              '구독 상태',
+              info.subscriptionStatus,
+            ),
+            const Divider(height: 24),
+            _buildAccountInfoRow(
+              Icons.event_outlined,
+              '구독 만료일',
+              info.subscriptionExpiry != null ? dateFormat.format(info.subscriptionExpiry!) : '-',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAccountInfoRow(IconData icon, String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 20, color: Colors.grey.shade600),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+              ),
+              const SizedBox(height: 2),
+              Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildSettingsSectionHeader(String title) {
     return Padding(
       padding: const EdgeInsets.only(left: 4, bottom: 8),
@@ -2054,6 +2153,22 @@ class _GuardianSettingsScreenState extends State<GuardianSettingsScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _openSubscriptionManagement() async {
+    String url;
+    try {
+      if (Platform.isIOS) {
+        url = 'https://apps.apple.com/account/subscriptions';
+      } else if (Platform.isAndroid) {
+        url = 'https://play.google.com/store/account/subscriptions';
+      } else {
+        url = 'https://play.google.com/store/account/subscriptions';
+      }
+    } catch (_) {
+      url = 'https://play.google.com/store/account/subscriptions';
+    }
+    await _launchSettingsUrl(url);
   }
 
   Future<void> _launchSettingsUrl(String url) async {

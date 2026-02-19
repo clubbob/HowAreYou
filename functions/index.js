@@ -561,10 +561,15 @@ exports.migrateReminderFields = functions.https.onRequest(async (req, res) => {
   }
 });
 
+/** 베타 선착순 제한 인원 */
+const BETA_LIMIT = 100;
+
 /**
  * 베타 대기목록 등록 (Callable)
+ * - 선착순 BETA_LIMIT명까지 등록 가능
  * - 트랜잭션으로 동시 요청 시에도 중복 등록 방지
  * - 이미 등록된 이메일이면 { status: 'already_registered' } 반환
+ * - 인원 마감 시 { status: 'full' } 반환
  * - 신규 등록이면 { status: 'success' } 반환
  */
 exports.addToWaitlist = functions.https.onCall(async (data) => {
@@ -578,19 +583,29 @@ exports.addToWaitlist = functions.https.onCall(async (data) => {
     throw new functions.https.HttpsError('invalid-argument', '이메일을 입력해 주세요.');
   }
 
+  const phone = data?.phone && typeof data.phone === 'string' ? data.phone.trim().replace(/\s/g, '') : null;
+
   try {
+    const countSnap = await db.collection('waitlist').count().get();
+    const count = countSnap.data().count;
+    if (count >= BETA_LIMIT) {
+      return { status: 'full' };
+    }
+
     const status = await db.runTransaction(async (transaction) => {
-      const snapshot = await transaction.get(
+      const existingSnapshot = await transaction.get(
         db.collection('waitlist').where('email', '==', normalized).limit(1)
       );
-      if (!snapshot.empty) {
+      if (!existingSnapshot.empty) {
         return 'already_registered';
       }
-      const ref = db.collection('waitlist').doc();
-      transaction.set(ref, {
+      const docData = {
         email: normalized,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
+      };
+      if (phone) docData.phone = phone;
+      const ref = db.collection('waitlist').doc();
+      transaction.set(ref, docData);
       return 'success';
     });
 

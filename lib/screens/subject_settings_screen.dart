@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/auth_service.dart';
@@ -19,6 +21,8 @@ class SubjectSettingsScreen extends StatefulWidget {
 class _SubjectSettingsScreenState extends State<SubjectSettingsScreen> {
   bool _notificationSoundEnabled = true;
   bool _isLoading = true;
+  String _appVersion = '-';
+  ({String phone, DateTime? createdAt, String subscriptionStatus, DateTime? subscriptionExpiry})? _accountInfo;
 
   @override
   void initState() {
@@ -27,10 +31,15 @@ class _SubjectSettingsScreenState extends State<SubjectSettingsScreen> {
   }
 
   Future<void> _loadSettings() async {
+    final authService = Provider.of<AuthService>(context, listen: false);
     final enabled = await FCMService.instance.getNotificationSoundEnabled();
+    final accountInfo = await authService.getAccountInfo();
+    final packageInfo = await PackageInfo.fromPlatform();
     if (mounted) {
       setState(() {
         _notificationSoundEnabled = enabled;
+        _accountInfo = accountInfo;
+        _appVersion = '${packageInfo.version} (${packageInfo.buildNumber})';
         _isLoading = false;
       });
     }
@@ -41,6 +50,56 @@ class _SubjectSettingsScreenState extends State<SubjectSettingsScreen> {
       _notificationSoundEnabled = value;
     });
     await FCMService.instance.setNotificationSoundEnabled(value);
+  }
+
+  Widget _buildAccountInfoCard() {
+    final info = _accountInfo;
+    if (info == null) return const Card(child: ListTile(title: Text('계정 정보를 불러오는 중...')));
+    final dateFormat = DateFormat('yyyy.MM.dd');
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildAccountInfoRow(Icons.phone_outlined, '휴대폰 번호', AuthService.formatPhoneForDisplay(info.phone)),
+            const Divider(height: 24),
+            _buildAccountInfoRow(
+              Icons.calendar_today_outlined,
+              '가입일',
+              info.createdAt != null ? dateFormat.format(info.createdAt!) : '-',
+            ),
+            const Divider(height: 24),
+            _buildAccountInfoRow(Icons.credit_card_outlined, '구독 상태', '무료'),
+            const Divider(height: 24),
+            _buildAccountInfoRow(Icons.event_outlined, '구독 만료일', '해당 없음'),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAccountInfoRow(IconData icon, String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 20, color: Colors.grey.shade600),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+              ),
+              const SizedBox(height: 2),
+              Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+            ],
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _buildSectionHeader(String title) {
@@ -226,6 +285,10 @@ class _SubjectSettingsScreenState extends State<SubjectSettingsScreen> {
           : ListView(
               padding: const EdgeInsets.all(16),
               children: [
+                // [ 계정 정보 ] (보호대상자는 무료)
+                _buildSectionHeader('계정 정보'),
+                _buildAccountInfoCard(),
+                const SizedBox(height: 24),
                 // [ 알림 설정 ]
                 _buildSectionHeader('알림 설정'),
                 Card(
@@ -271,6 +334,23 @@ class _SubjectSettingsScreenState extends State<SubjectSettingsScreen> {
                         title: const Text('개인정보처리방침'),
                         trailing: const Icon(Icons.chevron_right),
                         onTap: () => LegalDialog.showPrivacy(context),
+                      ),
+                      const Divider(height: 1),
+                      ListTile(
+                        leading: const Icon(Icons.code_outlined),
+                        title: const Text('오픈소스 라이선스'),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => showLicensePage(
+                          context: context,
+                          applicationName: '지금 어때',
+                          applicationVersion: _appVersion,
+                        ),
+                      ),
+                      const Divider(height: 1),
+                      ListTile(
+                        leading: const Icon(Icons.info_outline),
+                        title: const Text('버전 정보'),
+                        trailing: Text(_appVersion, style: TextStyle(fontSize: 15, color: Colors.grey.shade600)),
                       ),
                     ],
                   ),

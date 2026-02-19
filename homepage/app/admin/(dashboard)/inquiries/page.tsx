@@ -43,16 +43,24 @@ export default function AdminInquiriesPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [dateFilter, setDateFilter] = useState<DateFilter>('all');
 
-  function load() {
+  async function load() {
     setLoading(true);
-    fetch('/api/admin/inquiries')
-      .then((res) => {
-        if (!res.ok) throw new Error('조회 실패');
-        return res.json();
-      })
-      .then(setList)
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
+    setError('');
+    try {
+      const res = await fetch('/api/admin/inquiries', { credentials: 'include' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || (res.status === 401 ? '로그인이 필요합니다.' : '조회에 실패했습니다.'));
+      }
+      setList(Array.isArray(data) ? data : []);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setError(msg === 'Failed to fetch'
+        ? '서버에 연결할 수 없습니다. 개발 서버가 실행 중인지 확인해 주세요.'
+        : msg);
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {

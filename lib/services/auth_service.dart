@@ -31,6 +31,102 @@ class AuthService extends ChangeNotifier {
   UserModel? get userModel => _userModel;
   bool get isAuthenticated => _user != null;
 
+  /// 계정 정보 (휴대폰 번호, 가입일, 구독 상태, 구독 만료일)
+  Future<({
+    String phone,
+    DateTime? createdAt,
+    String subscriptionStatus,
+    DateTime? subscriptionExpiry,
+  })> getAccountInfo() async {
+    final uid = _user?.uid;
+    if (uid == null) {
+      return (
+        phone: '',
+        createdAt: null,
+        subscriptionStatus: '무료 체험 중',
+        subscriptionExpiry: null,
+      );
+    }
+    try {
+      final doc = await _firestore.collection('users').doc(uid).get();
+      final data = doc.data();
+      final p = data?['phone'];
+      final phone = _user?.phoneNumber ??
+          _userModel?.phone ??
+          (p is String ? p : '');
+      DateTime? createdAt = _parseTimestamp(data?['createdAt']);
+      if (createdAt == null) {
+        final subDoc = await _firestore.collection('subjects').doc(uid).get();
+        createdAt = _parseTimestamp(subDoc.data()?['createdAt']);
+      }
+      if (createdAt == null) {
+        final termsTs = data?['termsAgreedAt'];
+        createdAt = _parseTimestamp(termsTs);
+      }
+      if (createdAt == null) {
+        createdAt = _parseTimestamp(data?['privacyAgreedAt']);
+      }
+      if (createdAt == null && _user?.metadata.creationTime != null) {
+        createdAt = _user!.metadata.creationTime;
+      }
+      final statusRaw = data?['subscriptionStatus'] as String?;
+      final expiryTs = data?['subscriptionExpiryAt'] as Timestamp?;
+      DateTime? expiry = expiryTs?.toDate();
+      String subscriptionStatus = '무료 체험 중';
+      if (statusRaw != null && statusRaw.isNotEmpty) {
+        switch (statusRaw) {
+          case 'active':
+            subscriptionStatus = '활성';
+            break;
+          case 'expiring_soon':
+            subscriptionStatus = '만료 예정';
+            break;
+          case 'expired':
+            subscriptionStatus = '만료됨';
+            break;
+          default:
+            subscriptionStatus = statusRaw;
+        }
+      }
+      return (
+        phone: phone,
+        createdAt: createdAt,
+        subscriptionStatus: subscriptionStatus,
+        subscriptionExpiry: expiry,
+      );
+    } catch (e) {
+      debugPrint('getAccountInfo 오류: $e');
+      return (
+        phone: _user?.phoneNumber ?? _userModel?.phone ?? '',
+        createdAt: null,
+        subscriptionStatus: '무료 체험 중',
+        subscriptionExpiry: null,
+      );
+    }
+  }
+
+  static DateTime? _parseTimestamp(dynamic v) {
+    if (v == null) return null;
+    if (v is Timestamp) return v.toDate();
+    if (v is DateTime) return v;
+    if (v is Map) {
+      final sec = v['_seconds'] ?? v['seconds'];
+      if (sec != null) return DateTime.fromMillisecondsSinceEpoch((sec as int) * 1000);
+    }
+    return null;
+  }
+
+  static String formatPhoneForDisplay(String phone) {
+    final digits = phone.replaceAll(RegExp(r'[^\d]'), '');
+    if (digits.length >= 10) {
+      final d = digits.startsWith('82') ? digits.substring(2) : digits;
+      if (d.length >= 10 && d.startsWith('10')) {
+        return '010-${d.substring(2, 6)}-${d.substring(6)}';
+      }
+    }
+    return phone.isNotEmpty ? phone : '-';
+  }
+
   /// 앱 시작 시 저장된 로그인 상태가 복원될 때까지 기다릴 때 사용
   /// Firebase Auth는 한 번 로그인하면 기기에서 자동으로 유지됨(명시적 로그아웃 전까지).
   Future<void> get authReady => _authReadyCompleter.future;
@@ -337,6 +433,7 @@ class AuthService extends ChangeNotifier {
         'phone': normalizedPhone,
         'role': 'subject',
         'fcmTokens': [],
+        'createdAt': FieldValue.serverTimestamp(),
       };
       if (termsAgreedAt != null) {
         data['termsAgreedAt'] = Timestamp.fromDate(termsAgreedAt);

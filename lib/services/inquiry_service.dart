@@ -101,19 +101,22 @@ class InquiryService {
     return snap.docs.map((d) => InquiryModel.fromFirestore(d)).toList();
   }
 
-  /// 문의 등록
+  /// 문의 등록 (웹과 동일 필드: name, email, phone, message)
   Future<String?> createInquiry({
     required String userId,
     required String userPhone,
     String? userDisplayName,
+    String? email,
     required String role,
     required String message,
   }) async {
     try {
+      final emailTrimmed = email != null && email.trim().isNotEmpty ? email.trim().toLowerCase() : null;
       final ref = await _firestore.collection(AppConstants.inquiriesCollection).add({
         'userId': userId,
         'userPhone': userPhone,
         'userDisplayName': userDisplayName,
+        if (emailTrimmed != null) 'email': emailTrimmed,
         'role': role,
         'message': message,
         'createdAt': FieldValue.serverTimestamp(),

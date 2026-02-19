@@ -31,6 +31,70 @@ class _ReplaceWhenTypingAtStartFormatter extends TextInputFormatter {
   }
 }
 
+/// 오버플로우 없이 레이아웃되는 약관 동의 체크박스
+class _AgreeCheckRow extends StatelessWidget {
+  const _AgreeCheckRow({
+    required this.value,
+    required this.onChanged,
+    required this.label,
+    required this.onViewTap,
+    required this.required,
+  });
+
+  final bool value;
+  final ValueChanged<bool?> onChanged;
+  final String label;
+  final VoidCallback onViewTap;
+  final bool required;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 40,
+          height: 40,
+          child: Checkbox(
+              value: value,
+              onChanged: onChanged,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+          ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(fontSize: 14, color: Colors.grey.shade800),
+                    softWrap: true,
+                  ),
+                  const SizedBox(height: 2),
+                  GestureDetector(
+                    onTap: onViewTap,
+                    behavior: HitTestBehavior.opaque,
+                    child: Text(
+                      required ? '보기 (필수)' : '보기',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Theme.of(context).colorScheme.primary,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+    );
+  }
+}
+
 class AuthScreen extends StatefulWidget {
   const AuthScreen({
     super.key,
@@ -205,7 +269,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                             contentPadding: EdgeInsets.zero,
                             title: Row(
                               children: [
-                                const Text('이용약관에 동의합니다. ', style: TextStyle(fontSize: 14)),
+                                const Text('이용약관에 동의 ', style: TextStyle(fontSize: 14)),
                                 TextButton(
                                   style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
                                   onPressed: () => LegalDialog.showTerms(context),
@@ -227,7 +291,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                             contentPadding: EdgeInsets.zero,
                             title: Row(
                               children: [
-                                const Text('개인정보처리방침에 동의합니다. ', style: TextStyle(fontSize: 14)),
+                                const Text('개인정보처리방침에 동의 ', style: TextStyle(fontSize: 14)),
                                 TextButton(
                                   style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
                                   onPressed: () => LegalDialog.showPrivacy(context),
@@ -377,10 +441,27 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
     return phone;
   }
 
+  /// 한국 휴대폰 번호 형식 검증 (010으로 시작, 11자리)
+  bool _isValidKoreanMobile(String digits) {
+    if (digits.length != 11) return false;
+    return digits.startsWith('010');
+  }
+
   Future<void> _sendOTP() async {
     if (_phoneController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('핸드폰 번호를 입력해주세요.')),
+      );
+      return;
+    }
+
+    final digits = _phoneController.text.replaceAll(RegExp(r'[^\d]'), '');
+    if (!_isValidKoreanMobile(digits)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('010으로 시작하는 11자리 번호를 입력해 주세요.'),
+          duration: Duration(seconds: 4),
+        ),
       );
       return;
     }
@@ -556,10 +637,10 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
             setState(() => _isLoading = false);
             String errorMessage = '인증 실패';
             
-            // 에러 코드에 따른 구체적인 메시지
+            // 에러 코드에 따른 사용자 친화적 메시지
             switch (e.code) {
               case 'invalid-phone-number':
-                errorMessage = '핸드폰 번호 형식이 올바르지 않습니다.\n\n입력한 번호: ${_phoneController.text}\n변환된 번호: $phoneNumber\n\nFirebase Console에 테스트 번호가 등록되어 있는지 확인해주세요.\n\n테스트 번호:\n- +821011112222 (111111)\n- +821033334444 (333333)\n- +821055556666 (555555)\n- +821077778888 (777777)';
+                errorMessage = '입력한 핸드폰 번호 형식이 올바르지 않습니다.\n010으로 시작하는 11자리 번호를 입력해 주세요.';
                 break;
               case 'missing-phone-number':
                 errorMessage = '핸드폰 번호를 입력해주세요.';
@@ -571,7 +652,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                 errorMessage = '너무 많은 요청이 발생했습니다. 5-10분 후 다시 시도해주세요.';
                 break;
               default:
-                errorMessage = '인증 실패: ${e.message ?? e.code}\n\n핸드폰 번호: $phoneNumber\n\nFirebase Console에서 테스트 번호가 등록되어 있는지 확인해주세요.\n\n테스트 번호:\n- +821011112222 (111111)\n- +821033334444 (333333)\n- +821055556666 (555555)\n- +821077778888 (777777)';
+                errorMessage = '인증에 실패했습니다. 핸드폰 번호를 확인한 후 다시 시도해 주세요.';
             }
             
             ScaffoldMessenger.of(context).showSnackBar(
@@ -835,69 +916,20 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                 ),
                 const SizedBox(height: 20),
                 if (_showTermsCheckboxes) ...[
-                  Theme(
-                    data: Theme.of(context).copyWith(
-                      listTileTheme: ListTileThemeData(
-                        visualDensity: const VisualDensity(horizontal: 0, vertical: -4),
-                      ),
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        CheckboxListTile(
-                          value: _agreedToTerms,
-                          onChanged: (v) => setState(() => _agreedToTerms = v ?? false),
-                          controlAffinity: ListTileControlAffinity.leading,
-                          contentPadding: EdgeInsets.zero,
-                          title: Row(
-                            children: [
-                              Text('이용약관에 동의합니다. ', style: TextStyle(fontSize: 14, color: Colors.grey.shade800)),
-                              TextButton(
-                                style: TextButton.styleFrom(
-                                  padding: EdgeInsets.zero,
-                                  minimumSize: Size.zero,
-                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                ),
-                                onPressed: () => LegalDialog.showTerms(context),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text('보기', style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.primary, decoration: TextDecoration.underline)),
-                                    Text(' (필수)', style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.primary, decoration: TextDecoration.none)),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        CheckboxListTile(
-                          value: _agreedToPrivacy,
-                          onChanged: (v) => setState(() => _agreedToPrivacy = v ?? false),
-                          controlAffinity: ListTileControlAffinity.leading,
-                          contentPadding: EdgeInsets.zero,
-                          title: Row(
-                            children: [
-                              Text('개인정보처리방침에 동의합니다. ', style: TextStyle(fontSize: 14, color: Colors.grey.shade800)),
-                              TextButton(
-                                style: TextButton.styleFrom(
-                                  padding: EdgeInsets.zero,
-                                  minimumSize: Size.zero,
-                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                ),
-                                onPressed: () => LegalDialog.showPrivacy(context),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text('보기', style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.primary, decoration: TextDecoration.underline)),
-                                    Text(' (필수)', style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.primary, decoration: TextDecoration.none)),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
+                  _AgreeCheckRow(
+                    value: _agreedToTerms,
+                    onChanged: (v) => setState(() => _agreedToTerms = v ?? false),
+                    label: '이용약관에 동의',
+                    onViewTap: () => LegalDialog.showTerms(context),
+                    required: true,
+                  ),
+                  const SizedBox(height: 8),
+                  _AgreeCheckRow(
+                    value: _agreedToPrivacy,
+                    onChanged: (v) => setState(() => _agreedToPrivacy = v ?? false),
+                    label: '개인정보처리방침에 동의',
+                    onViewTap: () => LegalDialog.showPrivacy(context),
+                    required: true,
                   ),
                   const SizedBox(height: 12),
                 ],

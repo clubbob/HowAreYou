@@ -182,6 +182,7 @@ class MyApp extends StatelessWidget {
       ],
       child: _AppLifecycleHandler(
         child: MaterialApp(
+        debugShowCheckedModeBanner: false,
         navigatorKey: navigatorKey,
         title: '지금 어때?',
         locale: const Locale('ko', 'KR'),

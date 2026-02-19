@@ -109,7 +109,7 @@ service cloud.firestore {
       allow read, update, delete: if false;
     }
 
-    // 홈페이지 베타 대기목록 - 누구나 생성 가능 (이메일만 수집)
+    // 홈페이지 베타 대기목록 - 누구나 생성 가능 (이메일, 연락처 수집)
     match /waitlist/{docId} {
       allow create: if true;
       allow read, update, delete: if false;
