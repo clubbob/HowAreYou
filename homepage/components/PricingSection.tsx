@@ -52,7 +52,7 @@ export function PricingSection() {
 
           <div className="mb-8 space-y-1 text-center text-[14px] text-navy-500">
             <p>결제는 보호자만 진행합니다.</p>
-            <p>언제든지 앱 내 &apos;구독 관리&apos; 메뉴에서 해지할 수 있습니다.</p>
+            <p>언제든지 앱 설정에서 스토어로 이동해 연 결제를 취소할 수 있습니다.</p>
           </div>
 
           <button

@@ -136,12 +136,15 @@ class TodayStatusWidget extends StatelessWidget {
 }
 
 /// 최근 7일 상태 추이 그래프 위젯 (보호자/보호대상자 공통)
+/// [isGuardianView] = true면 "기록 여부"만 (mood 비공개), 단일 막대
 class StatusTrendChart extends StatelessWidget {
   final Map<String, Map<TimeSlot, MoodResponseModel?>>? historyResponses;
+  final bool isGuardianView;
 
   const StatusTrendChart({
     super.key,
     required this.historyResponses,
+    this.isGuardianView = false,
   });
 
   @override
@@ -161,21 +164,24 @@ class StatusTrendChart extends StatelessWidget {
       final dateStr = entry.key;
       final dayResponses = entry.value;
 
-      // 2가지 상태로 집계: 괜찮아(좋아+괜찮아+보통), 별로(별로+힘들어)
       int okayCount = 0;
       int notGoodCount = 0;
 
-      for (final response in dayResponses.values) {
-        if (response != null) {
-          switch (response.mood.displayAsSelectable) {
-            case Mood.okay:
-              okayCount++;
-              break;
-            case Mood.notGood:
-              notGoodCount++;
-              break;
-            default:
-              break;
+      if (isGuardianView) {
+        okayCount = dayResponses.values.any((r) => r != null) ? 1 : 0;
+      } else {
+        for (final response in dayResponses.values) {
+          if (response != null) {
+            switch (response.mood.displayAsSelectable) {
+              case Mood.okay:
+                okayCount++;
+                break;
+              case Mood.notGood:
+                notGoodCount++;
+                break;
+              default:
+                break;
+            }
           }
         }
       }
@@ -190,26 +196,42 @@ class StatusTrendChart extends StatelessWidget {
       final dateLabel = DateFormat('M/d', 'ko_KR').format(date);
       xLabels.add(dateLabel);
 
-      chartData.add(
-        BarChartGroupData(
-          x: index,
-          groupVertically: false,
-          barRods: [
-            BarChartRodData(
-              toY: okayCount.toDouble(),
-              color: Colors.lightGreen,
-              width: 12,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
-            ),
-            BarChartRodData(
-              toY: notGoodCount.toDouble(),
-              color: Colors.deepOrange,
-              width: 12,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
-            ),
-          ],
-        ),
-      );
+      if (isGuardianView) {
+        chartData.add(
+          BarChartGroupData(
+            x: index,
+            barRods: [
+              BarChartRodData(
+                toY: okayCount.toDouble(),
+                color: Colors.blueGrey.shade300,
+                width: 16,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+              ),
+            ],
+          ),
+        );
+      } else {
+        chartData.add(
+          BarChartGroupData(
+            x: index,
+            groupVertically: false,
+            barRods: [
+              BarChartRodData(
+                toY: okayCount.toDouble(),
+                color: Colors.lightGreen,
+                width: 12,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+              ),
+              BarChartRodData(
+                toY: notGoodCount.toDouble(),
+                color: Colors.deepOrange,
+                width: 12,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+              ),
+            ],
+          ),
+        );
+      }
       index++;
     }
 
@@ -257,6 +279,16 @@ class StatusTrendChart extends StatelessWidget {
                   tooltipRoundedRadius: 8,
                   tooltipPadding: const EdgeInsets.all(8),
                   getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                    if (isGuardianView) {
+                      return BarTooltipItem(
+                        rod.toY.toInt() > 0 ? '기록함' : '기록 없음',
+                        const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      );
+                    }
                     final moodLabels = ['괜찮아', '별로'];
                     final moodLabel = rodIndex < moodLabels.length
                         ? moodLabels[rodIndex]

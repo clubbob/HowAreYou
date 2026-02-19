@@ -31,6 +31,8 @@ class AppConstants {
   static const String usersCollection = 'users';
   static const String subjectsCollection = 'subjects';
   static const String promptsCollection = 'prompts';
+  /// mood, note — 본인(보호대상자)만 접근. prompts는 answeredAt만 (보호자 "기록 여부" 공개)
+  static const String privatePromptsCollection = 'private_prompts';
   static const String alertsCollection = 'alerts';
 
   /// 보호자→대상자 대기 초대 (가입 시 자동 연결)

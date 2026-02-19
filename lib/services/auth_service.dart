@@ -556,6 +556,10 @@ class AuthService extends ChangeNotifier {
       for (final doc in promptsSnap.docs) {
         await doc.reference.delete();
       }
+      final privateSnap = await subjectRef.collection(AppConstants.privatePromptsCollection).get();
+      for (final doc in privateSnap.docs) {
+        await doc.reference.delete();
+      }
       await subjectRef.delete();
 
       // 2. 다른 보호대상자 문서에서 본인을 보호자로 제거

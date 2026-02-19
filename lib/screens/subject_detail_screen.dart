@@ -62,9 +62,9 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
   }
 
   Future<void> _loadResponses() async {
-    // 보호자용: note 필드 제외
+    // 보호자용: prompts만 (기록 여부만, mood/note 비공개)
     final responses =
-        await widget.moodService.getTodayResponses(widget.subjectId, excludeNote: true);
+        await widget.moodService.getTodayResponses(widget.subjectId, forGuardian: true);
     if (mounted) {
       setState(() {
         _responses = responses;
@@ -82,7 +82,7 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
       widget.subjectId,
       fromDateStr: pairedAt,
       maxDays: 7,
-      excludeNote: true,
+      forGuardian: true,
     );
     if (mounted) {
       setState(() {

@@ -81,15 +81,16 @@ service cloud.firestore {
           request.auth.uid in resource.data.guardianUids;
       }
       
-      // 응답 문서 (prompts) - 보호 대상자: 읽기/쓰기, 보호자: 읽기만 (상태 공유)
+      // 응답 문서 (prompts) — answeredAt, slot만 저장. 보호자는 "기록 여부"만 확인 가능
       match /prompts/{promptId} {
-        // 보호 대상자 본인: 읽기/쓰기 가능
         allow read, write: if isSubject();
-        // 보호자: 부모 subject 문서의 pairedGuardianUids에 포함된 경우에만 읽기 (서브컬렉션은 resource가 prompt 문서이므로 get()으로 부모 조회)
-        // pairedGuardianUids 필드 없음 시 빈 배열로 처리하여 null 오류 방지
         allow read: if request.auth != null
           && request.auth.uid != subjectUid
           && request.auth.uid in get(/databases/$(database)/documents/subjects/$(subjectUid)).data.get('pairedGuardianUids', []);
+      }
+      // private_prompts — mood, note. 보호대상자 본인만 읽기/쓰기 (진짜 비공개)
+      match /private_prompts/{promptId} {
+        allow read, write: if isSubject();
       }
     }
     

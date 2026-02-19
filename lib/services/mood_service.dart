@@ -2,9 +2,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:timezone/timezone.dart' as tz;
 import '../models/mood_response_model.dart';
+import '../utils/constants.dart';
 
 /// 일일 상태(기분) 응답 저장·조회. PRD §9: subjects/{subjectUid} 문서 ID = 보호대상자 Auth UID.
 ///
+/// **데이터 분리**: prompts = answeredAt, slot (보호자 "기록 여부" 공개). private_prompts = mood, note (본인만).
 /// **"오늘" 기준**: 한국 시간(KST, Asia/Seoul) **00:00 ~ 24:00** (자정을 넘기면 새 날로 리셋).
 class MoodService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -42,13 +44,23 @@ class MoodService {
     );
 
     final subjectRef = _firestore.collection('subjects').doc(subjectId);
-    final promptRef = subjectRef.collection('prompts').doc(docId);
+    final promptRef = subjectRef.collection(AppConstants.promptsCollection).doc(docId);
+    final privateRef = subjectRef.collection(AppConstants.privatePromptsCollection).doc(docId);
 
     await _firestore.runTransaction((transaction) async {
-      transaction.set(promptRef, response.toMap());
+      // prompts: answeredAt, slot만 (보호자 "기록 여부" 공개)
+      transaction.set(promptRef, {
+        'slot': response.slot.value,
+        'answeredAt': Timestamp.fromDate(response.answeredAt),
+      });
+      // private_prompts: mood, note (본인만)
+      transaction.set(privateRef, {
+        'mood': response.mood.value,
+        if (note != null && note!.isNotEmpty) 'note': note!,
+      });
 
       // 어제 기록 여부는 prompts 존재로 확인 (deleteTodayResponse 후에도 정확함)
-      final yesterdayPromptRef = subjectRef.collection('prompts').doc(yesterdayStr);
+      final yesterdayPromptRef = subjectRef.collection(AppConstants.promptsCollection).doc(yesterdayStr);
       final yesterdayDoc = await transaction.get(yesterdayPromptRef);
       final yesterdayRecorded = yesterdayDoc.exists;
 
@@ -97,18 +109,19 @@ class MoodService {
     final doc = await _firestore
         .collection('subjects')
         .doc(subjectId)
-        .collection('prompts')
+        .collection(AppConstants.promptsCollection)
         .doc(dateStr)
         .get();
     return doc.exists;
   }
 
-  /// 오늘 응답을 삭제. prompts 삭제 + subjects의 lastResponseAt/스트릭 롤백.
+  /// 오늘 응답을 삭제. prompts + private_prompts 삭제 + subjects의 lastResponseAt/스트릭 롤백.
   /// lastResponseAt = 오늘 00:00 KST - 1초 → 당일 미기록 만족, 3일 무응답 불만족(즉시 경보 방지).
   Future<void> deleteTodayResponse(String subjectId) async {
     final dateStr = DateFormat('yyyy-MM-dd').format(_nowKorea());
     final subjectRef = _firestore.collection('subjects').doc(subjectId);
-    final promptRef = subjectRef.collection('prompts').doc(dateStr);
+    final promptRef = subjectRef.collection(AppConstants.promptsCollection).doc(dateStr);
+    final privateRef = subjectRef.collection(AppConstants.privatePromptsCollection).doc(dateStr);
 
     // 오늘 00:00 KST - 1초 = 어제 23:59:59 KST (epoch 금지: 3일 무응답 즉시 트리거 방지)
     final k = tz.TZDateTime.now(tz.getLocation('Asia/Seoul'));
@@ -118,6 +131,7 @@ class MoodService {
 
     await _firestore.runTransaction((transaction) async {
       transaction.delete(promptRef);
+      transaction.delete(privateRef);
       transaction.set(subjectRef, {
         'lastResponseAt': Timestamp.fromDate(yesterdayEndKst),
         'lastRecordedDate': FieldValue.delete(),
@@ -132,59 +146,95 @@ class MoodService {
   }
 
   /// 오늘 상태 1건 (하루 1회). 키는 TimeSlot.daily 하나.
-  /// [excludeNote] = true면 note 필드를 제외 (보호자용)
+  /// [forGuardian] = true면 prompts만 읽음 (기록 여부만, mood/note 비공개)
   Future<Map<TimeSlot, MoodResponseModel?>> getTodayResponses(
     String subjectId, {
     bool excludeNote = false,
+    bool forGuardian = false,
   }) async {
     final dateStr = DateFormat('yyyy-MM-dd').format(_nowKorea());
     final result = <TimeSlot, MoodResponseModel?>{};
-    final doc = await _firestore
+    final promptDoc = await _firestore
         .collection('subjects')
         .doc(subjectId)
-        .collection('prompts')
+        .collection(AppConstants.promptsCollection)
         .doc(dateStr)
         .get();
 
-    if (doc.exists && doc.data() != null) {
-      result[TimeSlot.daily] = MoodResponseModel.fromMap(
-        doc.data() as Map<String, dynamic>,
-        dateStr,
-        subjectUid: subjectId,
-        excludeNote: excludeNote,
-      );
-    } else {
+    if (!promptDoc.exists || promptDoc.data() == null) {
       result[TimeSlot.daily] = null;
+      return result;
     }
+
+    if (forGuardian) {
+      // 보호자: answeredAt만 사용, mood는 placeholder (UI에서 "기록 있음"만 표시)
+      final data = promptDoc.data()!;
+      result[TimeSlot.daily] = MoodResponseModel(
+        subjectId: subjectId,
+        dateSlot: dateStr,
+        slot: TimeSlot.daily,
+        answeredAt: (data['answeredAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+        mood: Mood.normal,
+        note: null,
+      );
+      return result;
+    }
+
+    // 본인: private_prompts에서 mood, note 가져와 병합
+    final privateDoc = await _firestore
+        .collection('subjects')
+        .doc(subjectId)
+        .collection(AppConstants.privatePromptsCollection)
+        .doc(dateStr)
+        .get();
+
+    final promptData = promptDoc.data() as Map<String, dynamic>;
+    final privateData = privateDoc.exists && privateDoc.data() != null
+        ? (privateDoc.data() as Map<String, dynamic>)
+        : null;
+
+    // legacy: prompts에 mood/note 있으면 사용 (마이그레이션 전)
+    final merged = <String, dynamic>{
+      ...promptData,
+      if (privateData != null) ...privateData,
+    };
+    result[TimeSlot.daily] = MoodResponseModel.fromMap(
+      merged,
+      dateStr,
+      subjectUid: subjectId,
+      excludeNote: excludeNote,
+    );
     return result;
   }
 
   /// 최근 7일 이력. 날짜별로 1건씩, 키는 TimeSlot.daily.
-  /// [excludeNote] = true면 note 필드를 제외 (보호자용)
+  /// [forGuardian] = true면 prompts만 (기록 여부만), mood는 placeholder
   Future<Map<String, Map<TimeSlot, MoodResponseModel?>>> getLast7DaysResponses(
     String subjectId, {
     bool excludeNote = false,
+    bool forGuardian = false,
   }) async {
-    return _getLastNDaysResponses(subjectId, 7, excludeNote: excludeNote);
+    return _getLastNDaysResponses(subjectId, 7, excludeNote: excludeNote, forGuardian: forGuardian);
   }
 
   /// [fromDateStr] 이후 ~ 오늘까지 이력 (최대 7일). 보호자 연결일 이후만 표시할 때 사용.
-  /// [fromDateStr] = yyyy-MM-dd. null이면 getLast7DaysResponses와 동일.
+  /// [forGuardian] = true면 prompts만 (기록 여부만), mood는 placeholder
   Future<Map<String, Map<TimeSlot, MoodResponseModel?>>> getResponsesFromDate(
     String subjectId, {
     String? fromDateStr,
     int maxDays = 7,
     bool excludeNote = false,
+    bool forGuardian = false,
   }) async {
     if (fromDateStr == null || fromDateStr.isEmpty) {
-      return _getLastNDaysResponses(subjectId, maxDays, excludeNote: excludeNote);
+      return _getLastNDaysResponses(subjectId, maxDays, excludeNote: excludeNote, forGuardian: forGuardian);
     }
     final now = _nowKorea();
     DateTime fromDate;
     try {
       fromDate = DateFormat('yyyy-MM-dd').parse(fromDateStr);
     } catch (_) {
-      return _getLastNDaysResponses(subjectId, maxDays, excludeNote: excludeNote);
+      return _getLastNDaysResponses(subjectId, maxDays, excludeNote: excludeNote, forGuardian: forGuardian);
     }
     final result = <String, Map<TimeSlot, MoodResponseModel?>>{};
     var current = DateTime(now.year, now.month, now.day);
@@ -193,24 +243,7 @@ class MoodService {
     while (current.isAfter(from) || current.isAtSameMomentAs(from)) {
       if (count >= maxDays) break;
       final dateStr = DateFormat('yyyy-MM-dd').format(current);
-      final dayResponses = <TimeSlot, MoodResponseModel?>{};
-      final doc = await _firestore
-          .collection('subjects')
-          .doc(subjectId)
-          .collection('prompts')
-          .doc(dateStr)
-          .get();
-
-      if (doc.exists && doc.data() != null) {
-        dayResponses[TimeSlot.daily] = MoodResponseModel.fromMap(
-          doc.data() as Map<String, dynamic>,
-          dateStr,
-          subjectUid: subjectId,
-          excludeNote: excludeNote,
-        );
-      } else {
-        dayResponses[TimeSlot.daily] = null;
-      }
+      final dayResponses = await _getSingleDayResponse(subjectId, dateStr, excludeNote: excludeNote, forGuardian: forGuardian);
       result[dateStr] = dayResponses;
       count++;
       current = current.subtract(const Duration(days: 1));
@@ -236,7 +269,7 @@ class MoodService {
       final doc = await _firestore
           .collection('subjects')
           .doc(subjectId)
-          .collection('prompts')
+          .collection(AppConstants.promptsCollection)
           .doc(dateStr)
           .get();
       if (doc.exists) recordedDays++;
@@ -244,12 +277,71 @@ class MoodService {
     return daysInMonth > 0 ? (recordedDays / daysInMonth) * 100 : 0;
   }
 
+  /// 단일 날짜 응답 조회 (내부 헬퍼)
+  Future<Map<TimeSlot, MoodResponseModel?>> _getSingleDayResponse(
+    String subjectId,
+    String dateStr, {
+    bool excludeNote = false,
+    bool forGuardian = false,
+  }) async {
+    final dayResponses = <TimeSlot, MoodResponseModel?>{};
+    final promptDoc = await _firestore
+        .collection('subjects')
+        .doc(subjectId)
+        .collection(AppConstants.promptsCollection)
+        .doc(dateStr)
+        .get();
+
+    if (!promptDoc.exists || promptDoc.data() == null) {
+      dayResponses[TimeSlot.daily] = null;
+      return dayResponses;
+    }
+
+    if (forGuardian) {
+      final data = promptDoc.data()!;
+      dayResponses[TimeSlot.daily] = MoodResponseModel(
+        subjectId: subjectId,
+        dateSlot: dateStr,
+        slot: TimeSlot.daily,
+        answeredAt: (data['answeredAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+        mood: Mood.normal,
+        note: null,
+      );
+      return dayResponses;
+    }
+
+    final privateDoc = await _firestore
+        .collection('subjects')
+        .doc(subjectId)
+        .collection(AppConstants.privatePromptsCollection)
+        .doc(dateStr)
+        .get();
+
+    final promptData = promptDoc.data() as Map<String, dynamic>;
+    final privateData = privateDoc.exists && privateDoc.data() != null
+        ? (privateDoc.data() as Map<String, dynamic>)
+        : null;
+
+    final merged = <String, dynamic>{
+      ...promptData,
+      if (privateData != null) ...privateData,
+    };
+    dayResponses[TimeSlot.daily] = MoodResponseModel.fromMap(
+      merged,
+      dateStr,
+      subjectUid: subjectId,
+      excludeNote: excludeNote,
+    );
+    return dayResponses;
+  }
+
   /// 최근 N일 이력 조회 (내부 헬퍼 메서드)
-  /// [excludeNote] = true면 note 필드를 제외 (보호자용)
+  /// [forGuardian] = true면 prompts만 (기록 여부만), mood는 placeholder
   Future<Map<String, Map<TimeSlot, MoodResponseModel?>>> _getLastNDaysResponses(
     String subjectId,
     int days, {
     bool excludeNote = false,
+    bool forGuardian = false,
   }) async {
     final now = _nowKorea();
     final result = <String, Map<TimeSlot, MoodResponseModel?>>{};
@@ -257,25 +349,7 @@ class MoodService {
     for (var d = 0; d < days; d++) {
       final date = DateTime(now.year, now.month, now.day).subtract(Duration(days: d));
       final dateStr = DateFormat('yyyy-MM-dd').format(date);
-      final dayResponses = <TimeSlot, MoodResponseModel?>{};
-      final doc = await _firestore
-          .collection('subjects')
-          .doc(subjectId)
-          .collection('prompts')
-          .doc(dateStr)
-          .get();
-
-      if (doc.exists && doc.data() != null) {
-        dayResponses[TimeSlot.daily] = MoodResponseModel.fromMap(
-          doc.data() as Map<String, dynamic>,
-          dateStr,
-          subjectUid: subjectId,
-          excludeNote: excludeNote,
-        );
-      } else {
-        dayResponses[TimeSlot.daily] = null;
-      }
-      result[dateStr] = dayResponses;
+      result[dateStr] = await _getSingleDayResponse(subjectId, dateStr, excludeNote: excludeNote, forGuardian: forGuardian);
     }
     return result;
   }

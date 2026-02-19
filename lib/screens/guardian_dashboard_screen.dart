@@ -108,8 +108,8 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
   Future<List<_SubjectCheckStatus>> _loadAndSortCheckSubjects(List<String> subjectIds) async {
     if (subjectIds.isEmpty) return [];
     final statuses = await Future.wait(subjectIds.map((id) async {
-      final today = await _moodService.getTodayResponses(id, excludeNote: true);
-      final last7 = await _moodService.getLast7DaysResponses(id, excludeNote: true);
+      final today = await _moodService.getTodayResponses(id, forGuardian: true);
+      final last7 = await _moodService.getLast7DaysResponses(id, forGuardian: true);
       final streak = await _moodService.getStreak(id);
       DateTime? latest;
       for (final dayMap in last7.values) {
@@ -1626,9 +1626,9 @@ class _SubjectListItemState extends State<_SubjectListItem> {
       }
       return;
     }
-    // 보호자용: note 필드 제외
-    final today = await widget.moodService.getTodayResponses(widget.subjectId, excludeNote: true);
-    final last7 = await widget.moodService.getLast7DaysResponses(widget.subjectId, excludeNote: true);
+    // 보호자용: prompts만 (기록 여부만, mood/note 비공개)
+    final today = await widget.moodService.getTodayResponses(widget.subjectId, forGuardian: true);
+    final last7 = await widget.moodService.getLast7DaysResponses(widget.subjectId, forGuardian: true);
     final streak = await widget.moodService.getStreak(widget.subjectId);
     DateTime? latest;
     for (final dayMap in last7.values) {
@@ -1801,46 +1801,83 @@ class _GuardianSettingsScreenState extends State<GuardianSettingsScreen> {
   }
 
   Future<void> _showDeleteAccountDialog(BuildContext context) async {
-    final confirmed = await showDialog<bool>(
+    // 1단계: 탈퇴 안내
+    final firstChoice = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('회원 탈퇴'),
         content: const Text(
-          '계정과 모든 데이터가 영구적으로 삭제됩니다.\n\n'
+          '탈퇴하면 데이터는 삭제됩니다.\n\n'
           '• 사용자 정보 삭제\n'
           '• 보호대상자/보호자 연결 해제\n'
           '• 기록 데이터 삭제\n\n'
-          '이 작업은 취소할 수 없습니다. 계속하시겠습니까?',
+          '연 결제(12,000원)는 스토어에서 자동 갱신됩니다. '
+          '탈퇴만 하면 결제는 멈추지 않습니다. 과금 멈추려면 스토어에서 직접 취소하세요.',
         ),
         actions: [
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () => Navigator.of(ctx).pop(false),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.grey.shade300,
-                    foregroundColor: Colors.grey.shade800,
-                  ),
-                  child: const Text('취소'),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () => Navigator.of(ctx).pop(true),
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                  child: const Text('탈퇴'),
-                ),
-              ),
-            ],
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop('cancel'),
+            child: Text('취소', style: TextStyle(color: Colors.grey.shade700)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop('store'),
+            child: const Text('과금 멈추러 가기'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop('continue'),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('탈퇴 계속'),
           ),
         ],
       ),
     );
-    if (confirmed != true || !context.mounted) return;
+    if (firstChoice == null || firstChoice == 'cancel' || !context.mounted) return;
 
+    if (firstChoice == 'store') {
+      await _openSubscriptionManagement();
+      return;
+    }
+
+    // 2단계: 유료 결제 중이면 한 번 더 확인
     final authService = Provider.of<AuthService>(context, listen: false);
+    final accountInfo = await authService.getAccountInfo();
+    final isSubscriptionActive = accountInfo.subscriptionStatus == '활성' ||
+        accountInfo.subscriptionStatus == '만료 예정';
+
+    if (isSubscriptionActive && context.mounted) {
+      final secondChoice = await showDialog<String>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('연 결제가 진행 중입니다'),
+          content: const Text(
+            '탈퇴해도 결제는 멈추지 않습니다. 계속하시겠습니까?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop('cancel'),
+              child: Text('취소', style: TextStyle(color: Colors.grey.shade700)),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop('store'),
+              child: const Text('과금 멈추러 가기'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(ctx).pop('delete'),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              child: const Text('탈퇴'),
+            ),
+          ],
+        ),
+      );
+      if (secondChoice == null || secondChoice == 'cancel' || !context.mounted) return;
+      if (secondChoice == 'store') {
+        await _openSubscriptionManagement();
+        return;
+      }
+    }
+
+    if (!context.mounted) return;
+
     var error = await authService.deleteAccount();
     if (!context.mounted) return;
 
@@ -1982,13 +2019,13 @@ class _GuardianSettingsScreenState extends State<GuardianSettingsScreen> {
                 _buildSettingsSectionHeader('계정 정보'),
                 _buildAccountInfoCard(),
                 const SizedBox(height: 24),
-                // [ 구독 관리 ]
-                _buildSettingsSectionHeader('구독 관리'),
+                // [ 결제 ]
+                _buildSettingsSectionHeader('결제'),
                 Card(
                   child: ListTile(
                     leading: const Icon(Icons.credit_card_outlined),
-                    title: const Text('구독 관리하기'),
-                    subtitle: const Text('구독 변경·해지는 앱스토어에서 관리합니다'),
+                    title: const Text('스토어에서 결제 취소'),
+                    subtitle: const Text('연 12,000원 자동 갱신. 취소는 스토어에서 직접'),
                     trailing: const Icon(Icons.open_in_new),
                     onTap: () => _openSubscriptionManagement(),
                   ),
@@ -2103,13 +2140,13 @@ class _GuardianSettingsScreenState extends State<GuardianSettingsScreen> {
             const Divider(height: 24),
             _buildAccountInfoRow(
               Icons.credit_card_outlined,
-              '구독 상태',
+              '결제 상태',
               info.subscriptionStatus,
             ),
             const Divider(height: 24),
             _buildAccountInfoRow(
               Icons.event_outlined,
-              '구독 만료일',
+              '다음 결제일',
               info.subscriptionExpiry != null ? dateFormat.format(info.subscriptionExpiry!) : '-',
             ),
           ],
