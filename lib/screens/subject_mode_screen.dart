@@ -25,7 +25,7 @@ class SubjectModeScreen extends StatefulWidget {
   State<SubjectModeScreen> createState() => _SubjectModeScreenState();
 }
 
-class _SubjectModeScreenState extends State<SubjectModeScreen> {
+class _SubjectModeScreenState extends State<SubjectModeScreen> with WidgetsBindingObserver {
   final MoodService _moodService = MoodService();
   bool _hasShownWelcomeDialog = false;
   bool? _notificationPermissionGranted;
@@ -33,6 +33,7 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       // 환영 다이얼로그와 알림 권한 요청을 순차적으로 처리
       final shouldShowWelcome = await _checkAndShowWelcomeDialog();
@@ -49,6 +50,21 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> {
         await ModeService.setSubjectEnabled(true);
       }
     });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && Platform.isAndroid) {
+      PermissionHelper.isNotificationPermissionGranted().then((granted) {
+        if (mounted) setState(() => _notificationPermissionGranted = granted);
+      });
+    }
   }
 
   Future<void> _requestNotificationPermission() async {

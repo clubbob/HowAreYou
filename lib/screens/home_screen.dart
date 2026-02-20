@@ -5,6 +5,7 @@ import '../services/auth_service.dart';
 import '../services/mode_service.dart';
 import '../services/guardian_service.dart';
 import '../services/notification_service.dart';
+import '../services/fcm_service.dart';
 import '../utils/button_styles.dart';
 import '../utils/permission_helper.dart';
 import '../main.dart';
@@ -274,64 +275,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               const SizedBox(height: 32),
-              // 테스트 알림 버튼 (디버그용)
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.orange.shade50,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.orange.shade300, width: 1),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.bug_report, color: Colors.orange.shade700, size: 20),
-                        const SizedBox(width: 8),
-                        Text(
-                          '테스트 알림',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.orange.shade900,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () => _sendTestSubjectNotification(),
-                            icon: const Icon(Icons.person, size: 18),
-                            label: const Text('보호대상자 알림'),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.orange.shade800,
-                              side: BorderSide(color: Colors.orange.shade400),
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () => _sendTestGuardianNotification(),
-                            icon: const Icon(Icons.visibility, size: 18),
-                            label: const Text('보호자 알림'),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.orange.shade800,
-                              side: BorderSide(color: Colors.orange.shade400),
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
+              // 테스트 알림 (실제 서비스 알림 종류별)
+              _buildTestNotificationSection(),
             ],
           ),
         ),
@@ -339,14 +284,107 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// 테스트용: 보호대상자 19시 리마인드 (로컬) 발송
-  Future<void> _sendTestSubjectNotification() async {
+  Widget _buildTestNotificationSection() {
+    final btnStyle = OutlinedButton.styleFrom(
+      foregroundColor: Colors.orange.shade800,
+      side: BorderSide(color: Colors.orange.shade400),
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      alignment: Alignment.center,
+    );
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.orange.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.orange.shade300, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.settings, color: Colors.orange.shade700, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                '테스트 알림',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.orange.shade900,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // 보호대상자 알림
+          Text(
+            '보호대상자 알림',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Colors.orange.shade800,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              OutlinedButton.icon(
+                onPressed: () => _sendTestDailyReminder(),
+                icon: const Icon(Icons.person, size: 18),
+                label: const Text('컨디션 미등록 리마인드 (19시)'),
+                style: btnStyle,
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // 보호자 알림
+          Text(
+            '보호자 알림',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Colors.orange.shade800,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              OutlinedButton.icon(
+                onPressed: () => _sendTestGuardianReminder(),
+                icon: const Icon(Icons.schedule, size: 18),
+                label: const Text('보호자 기록 미등록 리마인드 (20시)'),
+                style: btnStyle,
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: () => _sendTestResponseReceived(),
+                icon: const Icon(Icons.thumb_up, size: 18),
+                label: const Text('보호자 기록 응답'),
+                style: btnStyle,
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: () => _sendTestEscalation(),
+                icon: const Icon(Icons.warning_amber, size: 18),
+                label: const Text('보호자 3일 기록 미응답'),
+                style: btnStyle,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _sendTestDailyReminder() async {
     try {
       await NotificationService.instance.sendTestSubjectNotification();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('보호대상자 리마인드(19시) 테스트 알림이 발송되었습니다.'),
+            content: Text('컨디션 미등록 리마인드(19시) 테스트 알림이 발송되었습니다.'),
             duration: Duration(seconds: 2),
           ),
         );
@@ -354,23 +392,19 @@ class _HomeScreenState extends State<HomeScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('알림 발송 실패: $e'),
-            duration: const Duration(seconds: 3),
-          ),
+          SnackBar(content: Text('알림 발송 실패: $e'), duration: const Duration(seconds: 3)),
         );
       }
     }
   }
 
-  /// 테스트용: 보호자 20시 리마인드 (로컬) 발송
-  Future<void> _sendTestGuardianNotification() async {
+  Future<void> _sendTestGuardianReminder() async {
     try {
       await NotificationService.instance.sendTestGuardianNotification();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('보호자 리마인드(20시) 테스트 알림이 발송되었습니다.'),
+            content: Text('보호자 기록 미등록 리마인드(20시) 테스트 알림이 발송되었습니다.'),
             duration: Duration(seconds: 2),
           ),
         );
@@ -378,10 +412,47 @@ class _HomeScreenState extends State<HomeScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('알림 발송 실패: $e'),
-            duration: const Duration(seconds: 3),
+          SnackBar(content: Text('알림 발송 실패: $e'), duration: const Duration(seconds: 3)),
+        );
+      }
+    }
+  }
+
+  Future<void> _sendTestResponseReceived() async {
+    try {
+      await FCMService.instance.sendTestGuardianNotification();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('보호자 기록 응답 테스트 알림이 발송되었습니다.'),
+            duration: Duration(seconds: 2),
           ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('알림 발송 실패: $e'), duration: const Duration(seconds: 3)),
+        );
+      }
+    }
+  }
+
+  Future<void> _sendTestEscalation() async {
+    try {
+      await FCMService.instance.sendTestEscalationNotification();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('보호자 3일 기록 미응답 테스트 알림이 발송되었습니다.'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('알림 발송 실패: $e'), duration: const Duration(seconds: 3)),
         );
       }
     }

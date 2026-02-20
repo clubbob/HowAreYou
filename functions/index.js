@@ -388,7 +388,7 @@ exports.sendSubjectReminder = functions.pubsub
       for (const doc of toSend) {
         const subjectId = doc.id;
         const r = await sendToUser(subjectId, {
-          notification: { title: '', body: '오늘 상태를 남겨주세요.' },
+          notification: { title: '', body: '오늘 하루는 어떠셨나요?' },
           data: { type: 'DAILY_REMINDER', click_action: 'FLUTTER_NOTIFICATION_CLICK' },
           android: { priority: 'high', notification: { sound: 'default', channelId: 'daily_mood_check' } },
           apns: { payload: { aps: { sound: 'default', badge: 1 } } },
@@ -432,8 +432,8 @@ exports.sendGuardianReminder = functions.pubsub
 
       for (const [guardianId, count] of guardianCounts) {
         const body = count > 1
-          ? `오늘 아직 신호가 없는 분이 ${count}명 있습니다.`
-          : '오늘 아직 신호가 없습니다.';
+          ? `오늘 아직 ${count}명의 안부가 도착하지 않았습니다.`
+          : '오늘 아직 1명의 안부가 도착하지 않았습니다.';
         await sendToGuardian(guardianId, {
           notification: { title: '안부 확인', body },
           data: { type: 'GUARDIAN_REMINDER', click_action: 'FLUTTER_NOTIFICATION_CLICK' },
@@ -482,7 +482,7 @@ exports.sendThreeDayNoResponseAlert = functions.pubsub
         const displayName = doc.data().displayName || '보호 대상';
         for (const guardianId of guardians) {
           await sendToGuardian(guardianId, {
-            notification: { title: '안부 확인 필요', body: '3일간 신호가 없습니다. 확인이 필요합니다.' },
+            notification: { title: '안부 확인 필요', body: '3일째 1명의 안부가 확인되지 않았습니다.' },
             data: { type: 'ESCALATION_3DAYS', subjectId: String(subjectId), subjectDisplayName: String(displayName), click_action: 'FLUTTER_NOTIFICATION_CLICK' },
             android: { priority: 'high', notification: { sound: 'default', channelId: 'guardian_notifications' } },
             apns: { payload: { aps: { sound: 'default', badge: 1 } } },

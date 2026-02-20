@@ -10,8 +10,10 @@ import 'package:intl/intl.dart';
 import '../services/auth_service.dart';
 import '../services/guardian_service.dart';
 import '../services/mood_service.dart';
+import '../services/subscription_service.dart';
 import '../services/fcm_service.dart';
 import '../utils/permission_helper.dart';
+import '../utils/in_app_review_helper.dart';
 import 'dart:io' show Platform;
 import '../models/mood_response_model.dart';
 import '../utils/button_styles.dart';
@@ -38,6 +40,7 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
   final GuardianService _guardianService = GuardianService();
   final MoodService _moodService = MoodService();
   Future<List<String>>? _subjectIdsFuture;
+  Future<SubscriptionState>? _subscriptionStateFuture;
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
   bool _isAdding = false;
@@ -190,6 +193,7 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('보호 대상이 추가되었습니다.')),
         );
+        InAppReviewHelper.maybeRequestReviewAfterGuardianAdd();
       }
     } catch (e, stack) {
       if (mounted) {
@@ -422,6 +426,15 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
             onTimeout: () => <String>[],
           );
     }
+    if (_subscriptionStateFuture == null) {
+      _subscriptionStateFuture = authService.getAccountInfo().then(
+            (info) => SubscriptionState.evaluate(
+              subscriptionStatus: info.subscriptionStatus,
+              createdAt: info.createdAt,
+              subscriptionExpiry: info.subscriptionExpiry,
+            ),
+          );
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -528,37 +541,140 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
         ],
       ),
       body: SafeArea(
-        child: FutureBuilder<List<String>>(
-          future: _subjectIdsFuture,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
+        child: FutureBuilder<SubscriptionState>(
+          future: _subscriptionStateFuture,
+          builder: (context, subSnapshot) {
+            if (subSnapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
             }
-            if (snapshot.hasError || !snapshot.hasData) {
-              return Center(
-                child: Text(
-                  snapshot.hasError
-                      ? '오류: ${snapshot.error}'
-                      : '보호 대상 목록을 불러올 수 없습니다.',
-                ),
-              );
+            final subState = subSnapshot.data ?? SubscriptionState.evaluate(
+              subscriptionStatus: '무료 체험 중',
+              createdAt: null,
+              subscriptionExpiry: null,
+            );
+            if (subState.isRestricted) {
+              return _buildUpgradeOverlay(context);
             }
-            final subjectIds = snapshot.data!;
-            return widget.initialTabIndex == 0
-                ? FutureBuilder<List<_SubjectCheckStatus>>(
-                    future: _loadAndSortCheckSubjects(subjectIds),
-                    builder: (context, statusSnapshot) {
-                      if (statusSnapshot.connectionState == ConnectionState.waiting) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (subState.isGracePeriod) _buildGraceBanner(context, subState),
+                Expanded(
+                  child: FutureBuilder<List<String>>(
+                    future: _subjectIdsFuture,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
                         return const Center(child: CircularProgressIndicator());
                       }
-                      final sorted = statusSnapshot.data ??
-                          subjectIds.map((id) => _SubjectCheckStatus(id, null, null, 0)).toList();
-                      return _buildCheckTab(context, sorted, userId!);
+                      if (snapshot.hasError || !snapshot.hasData) {
+                        return Center(
+                          child: Text(
+                            snapshot.hasError
+                                ? '오류: ${snapshot.error}'
+                                : '보호 대상 목록을 불러올 수 없습니다.',
+                          ),
+                        );
+                      }
+                      final subjectIds = snapshot.data!;
+                      return widget.initialTabIndex == 0
+                          ? FutureBuilder<List<_SubjectCheckStatus>>(
+                              future: _loadAndSortCheckSubjects(subjectIds),
+                              builder: (context, statusSnapshot) {
+                                if (statusSnapshot.connectionState == ConnectionState.waiting) {
+                                  return const Center(child: CircularProgressIndicator());
+                                }
+                                final sorted = statusSnapshot.data ??
+                                    subjectIds.map((id) => _SubjectCheckStatus(id, null, null, 0)).toList();
+                                return _buildCheckTab(context, sorted, userId!);
+                              },
+                            )
+                          : _buildManageTab(context, subjectIds, userId!);
                     },
-                  )
-                : _buildManageTab(context, subjectIds, userId!);
+                  ),
+                ),
+              ],
+            );
           },
         ),
+      ),
+    );
+  }
+
+  Widget _buildUpgradeOverlay(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.card_membership, size: 64, color: Colors.teal.shade700),
+          const SizedBox(height: 16),
+          Text(
+            '알림·기록 열람이 제한되었습니다',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey.shade800),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '1개월 무료 체험이 종료되었습니다.\n연 결제를 진행하시면 다시 이용하실 수 있습니다.',
+            style: TextStyle(fontSize: 15, color: Colors.grey.shade600, height: 1.5),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton.icon(
+            onPressed: () async {
+              final uri = Uri.parse(AppConstants.upgradeUrl);
+              if (await canLaunchUrl(uri)) {
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+              }
+            },
+            icon: const Icon(Icons.arrow_forward),
+            label: const Text('연 결제하기 (연 12,000원)'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.teal.shade700,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+              textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (_) => const GuardianModeScreen()),
+              );
+            },
+            child: const Text('뒤로'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGraceBanner(BuildContext context, SubscriptionState state) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      color: Colors.orange.shade50,
+      child: Row(
+        children: [
+          Icon(Icons.info_outline, size: 22, color: Colors.orange.shade800),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              state.message,
+              style: TextStyle(fontSize: 14, color: Colors.orange.shade900),
+            ),
+          ),
+          TextButton(
+            onPressed: () async {
+              final uri = Uri.parse(AppConstants.upgradeUrl);
+              if (await canLaunchUrl(uri)) {
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+              }
+            },
+            child: Text('결제하기', style: TextStyle(fontWeight: FontWeight.w600, color: Colors.orange.shade800)),
+          ),
+        ],
       ),
     );
   }

@@ -3,8 +3,10 @@ import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show MethodChannel;
 import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode;
+import 'dart:ui' show PlatformDispatcher;
 import 'package:flutter/rendering.dart' show debugPaintSizeEnabled;
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -82,6 +84,17 @@ void main() async {
         options: DefaultFirebaseOptions.currentPlatform,
       );
       FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+
+      // Crashlytics: 프로덕션에서만 수집 (디버그 시 대시보드 오염 방지)
+      await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(!kDebugMode);
+      FlutterError.onError = (details) {
+        FlutterError.presentError(details);
+        FirebaseCrashlytics.instance.recordFlutterFatalError(details);
+      };
+      PlatformDispatcher.instance.onError = (error, stack) {
+        FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+        return true;
+      };
     } catch (e) {
       debugPrint('Firebase 초기화 오류: $e');
       MyApp.firebaseInitFailed = true;
@@ -137,7 +150,13 @@ void main() async {
     } catch (_) {}
   }
 
-  runApp(const MyApp());
+  runZonedGuarded(() {
+    runApp(const MyApp());
+  }, (error, stack) {
+    if (!kIsWeb && (Platform.isAndroid || Platform.isIOS) && !MyApp.firebaseInitFailed) {
+      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+    }
+  });
 }
 
 /// Play Install Referrer 문자열에서 inviterId 추출 (예: inviterId=uid 또는 inviterId%3Duid)

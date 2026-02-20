@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../services/auth_service.dart';
 import '../services/guardian_service.dart';
 import '../services/mood_service.dart';
+import '../services/subscription_service.dart';
 import '../models/mood_response_model.dart';
 import '../utils/constants.dart';
 import '../widgets/status_display_widgets.dart';
@@ -165,17 +169,34 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
           ),
         ],
       ),
-      body: StreamBuilder<String>(
-        stream: _nameStream,
-        initialData: _fallbackName,
-        builder: (context, nameSnapshot) {
-          final subjectName = nameSnapshot.data ?? _fallbackName;
-          
-          if (_responses == null) {
+      body: FutureBuilder<SubscriptionState>(
+        future: Provider.of<AuthService>(context, listen: false).getAccountInfo().then(
+          (info) => SubscriptionState.evaluate(
+            subscriptionStatus: info.subscriptionStatus,
+            createdAt: info.createdAt,
+            subscriptionExpiry: info.subscriptionExpiry,
+          ),
+        ),
+        builder: (context, subSnapshot) {
+          if (subSnapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
+          final subState = subSnapshot.data ??
+              SubscriptionState.evaluate(subscriptionStatus: '무료 체험 중', createdAt: null, subscriptionExpiry: null);
+          if (subState.isRestricted) {
+            return _buildUpgradeBlock(context);
+          }
+          return StreamBuilder<String>(
+            stream: _nameStream,
+            initialData: _fallbackName,
+            builder: (context, nameSnapshot) {
+              final subjectName = nameSnapshot.data ?? _fallbackName;
 
-          return SingleChildScrollView(
+              if (_responses == null) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              return SingleChildScrollView(
             padding: const EdgeInsets.all(24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -237,7 +258,54 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
               ],
             ),
           );
+            },
+          );
         },
+      ),
+    );
+  }
+
+  Widget _buildUpgradeBlock(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.card_membership, size: 64, color: Colors.teal.shade700),
+          const SizedBox(height: 16),
+          Text(
+            '기록 열람이 제한되었습니다',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey.shade800),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '연 결제를 진행하시면 보호 대상의 안부 기록을 다시 확인하실 수 있습니다.',
+            style: TextStyle(fontSize: 15, color: Colors.grey.shade600, height: 1.5),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton.icon(
+            onPressed: () async {
+              final uri = Uri.parse(AppConstants.upgradeUrl);
+              if (await canLaunchUrl(uri)) {
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+              }
+            },
+            icon: const Icon(Icons.arrow_forward),
+            label: const Text('연 결제하기'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.teal.shade700,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('뒤로'),
+          ),
+        ],
       ),
     );
   }

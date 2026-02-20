@@ -22,7 +22,7 @@ class GuardianModeScreen extends StatefulWidget {
   State<GuardianModeScreen> createState() => _GuardianModeScreenState();
 }
 
-class _GuardianModeScreenState extends State<GuardianModeScreen> {
+class _GuardianModeScreenState extends State<GuardianModeScreen> with WidgetsBindingObserver {
   bool? _notificationPermissionGranted;
   final GuardianService _guardianService = GuardianService();
   final MoodService _moodService = MoodService();
@@ -46,12 +46,28 @@ class _GuardianModeScreenState extends State<GuardianModeScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     // 보호자 역할 활성 플래그 설정 (스케줄은 Splash/포그라운드 복귀에서만)
     ModeService.setGuardianEnabled(true);
     // 보호자 모드 진입 시 FCM 초기화 (알림 수신을 위해)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeFCM();
     });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && Platform.isAndroid) {
+      PermissionHelper.isNotificationPermissionGranted().then((granted) {
+        if (mounted) setState(() => _notificationPermissionGranted = granted);
+      });
+    }
   }
 
   Future<void> _initializeFCM() async {

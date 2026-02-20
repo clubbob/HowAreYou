@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'dart:io' show Platform;
 
 /// 알림 권한 요청 헬퍼 클래스
@@ -127,7 +128,7 @@ class PermissionHelper {
     ) ?? false;
   }
   
-  /// 권한이 영구적으로 거부된 경우 설정으로 이동 안내 다이얼로그
+  /// 권한이 거부된 경우 설정으로 이동 안내 다이얼로그
   static Future<void> _showPermissionDeniedDialog(BuildContext context) async {
     return await showDialog<void>(
       context: context,
@@ -136,36 +137,27 @@ class PermissionHelper {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          title: const Text(
-            '알림 권한 필요',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
           content: const Text(
-            '알림을 받으려면 설정에서 알림 권한을 허용해주세요.',
+            '안부 알림을 받으려면 알림 권한이 필요해요.',
             style: TextStyle(
               fontSize: 16,
               height: 1.5,
             ),
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('취소'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                // 설정 앱으로 이동 (permission_handler 없이)
-                // 사용자가 수동으로 설정에서 권한을 허용해야 함
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.primary,
-                foregroundColor: Colors.white,
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  openAppSettings();
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('설정으로 이동'),
               ),
-              child: const Text('확인'),
             ),
           ],
         );

@@ -428,7 +428,7 @@ class FCMService {
       }
       
       const notificationId = 9998;
-      final title = '';
+      const title = '기록 알림';
       final body = '$subjectName님이 오늘 안부를 남겼어요.';
       
       // 테스트용: 첫 번째 보호 대상자의 ID를 payload에 포함
@@ -521,8 +521,8 @@ class FCMService {
       }
 
       const notificationId = 9997;
-      const title = '지금 어때?';
-      final body = '$subjectName님이 3일째 안부를 남기지 않았습니다. 확인이 필요합니다.';
+      const title = '안부 확인 필요';
+      const body = '3일째 1명의 안부가 확인되지 않았습니다.';
 
       final payload = testSubjectId != null && testSubjectId.isNotEmpty
           ? 'ESCALATION_3DAYS|$testSubjectId'

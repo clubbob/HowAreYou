@@ -58,6 +58,9 @@ functions/.runtimeconfig.json
 android/local.properties
 android/.gradle/
 android/app/google-services.json
+# ⚠️ Release 서명 키 — 절대 커밋 금지
+android/upload-keystore.jks
+android/key.properties
 
 # iOS
 ios/Pods/

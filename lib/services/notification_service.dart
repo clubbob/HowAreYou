@@ -152,7 +152,7 @@ class NotificationService {
       await _notifications.zonedSchedule(
         subjectReminderNotificationId,
         '',
-        '오늘도 잘 지내고 계신가요?',
+        '오늘 하루는 어떠셨나요?',
         _nextTimeInKST(19, 0),
         _dailyReminderDetails(),
         payload: 'SUBJECT_REMINDER',
@@ -174,7 +174,7 @@ class NotificationService {
       await _notifications.zonedSchedule(
         guardianReminderNotificationId,
         '',
-        '오늘 안부 확인하기',
+        '오늘 아직 1명의 안부가 도착하지 않았습니다.',
         _nextTimeInKST(20, 0),
         _dailyReminderDetails(color: const Color(0xFF5C6BC0)),
         payload: 'GUARDIAN_REMINDER',
@@ -376,7 +376,7 @@ class NotificationService {
       await _notifications.show(
         notificationId,
         '',
-        '오늘도 잘 지내고 계신가요?',
+        '오늘 하루는 어떠셨나요?',
         NotificationDetails(
           android: AndroidNotificationDetails(
             'daily_mood_check',
@@ -415,20 +415,20 @@ class NotificationService {
     }
   }
 
-  /// 테스트용: 보호자 20시 리마인드 즉시 발송 (로컬 알림)
+  /// 테스트용: 보호자 20시 리마인드 즉시 발송 (로컬 알림, 실제 FCM과 동일)
   Future<void> sendTestGuardianNotification() async {
     try {
       debugPrint('[테스트 알림] 보호자 리마인드 발송 시작');
       const notificationId = 9998;
       await _notifications.show(
         notificationId,
-        '',
-        '오늘 안부 확인하기',
+        '안부 확인',
+        '오늘 아직 1명의 안부가 도착하지 않았습니다.',
         NotificationDetails(
           android: AndroidNotificationDetails(
-            'daily_mood_check',
-            '일일 컨디션 확인',
-            channelDescription: '하루 한 번 컨디션을 기록하도록 알림',
+            'guardian_notifications',
+            '보호자 알림',
+            channelDescription: '보호 대상의 상태 확인 및 미회신 알림',
             importance: Importance.max,
             priority: Priority.max,
             playSound: true,
