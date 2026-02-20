@@ -563,14 +563,19 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
     );
   }
 
-  /// 이번 달 전체 기록률 (보호 대상별 평균). 0~100.
-  Future<double> _loadMonthRecordRate(List<_SubjectCheckStatus> statuses) async {
-    if (statuses.isEmpty) return 0;
-    final now = DateTime.now();
-    final rates = await Future.wait(
-      statuses.map((s) => _moodService.getMonthRecordRate(s.subjectId, now.year, now.month)),
+  /// 오늘 기록한 보호대상자 이름 목록 로드 후 문구 생성
+  Future<String> _loadRecordedSubjectsMessage(
+    List<_SubjectCheckStatus> statuses,
+    String guardianUid,
+  ) async {
+    final recorded = statuses.where((s) => s.hasRespondedToday == true).toList();
+    if (recorded.isEmpty) return '오늘 아직 안부가 없습니다.\n간단히 확인해보세요.';
+
+    final names = await Future.wait(
+      recorded.map((s) => _guardianService.getSubjectDisplayNameForGuardian(s.subjectId, guardianUid)),
     );
-    return rates.reduce((a, b) => a + b) / rates.length;
+    final quoted = names.map((n) => '"$n"').join(', ');
+    return '오늘 ${quoted}분이 기록을 남겼습니다.';
   }
 
   /// 오늘 확인 완료 시 감성 강화 문구 (압박 없이 안심 유도)
@@ -645,125 +650,71 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
         24 + MediaQuery.of(context).padding.bottom + 24,
       ),
       children: [
-        // 월간 요약 카드 (이번 달 기록률)
-        FutureBuilder<double>(
-          future: _loadMonthRecordRate(statuses),
-          builder: (context, rateSnapshot) {
-            final rate = rateSnapshot.data ?? 0;
-            if (rateSnapshot.connectionState == ConnectionState.waiting && rate == 0) {
-              return const SizedBox.shrink();
-            }
-            final rateInt = rate.round();
-            final message = rateInt >= 80
-                ? '가족이 잘 연결되어 있습니다.'
-                : rateInt >= 50
-                    ? '꾸준히 기록하고 계세요.'
-                    : rateInt > 0
-                        ? '이번 달은 조금 여유로우셨나 봐요.'
-                        : null;
-            if (message == null) return const SizedBox.shrink();
+        // 오늘 확인 완료 배지 + 기록한 보호대상자 이름 메시지
+        FutureBuilder<String>(
+          future: _loadRecordedSubjectsMessage(statuses, userId),
+          builder: (context, msgSnapshot) {
+            final message = msgSnapshot.data ?? '오늘 안부를 확인해 보세요.';
             return Container(
-              padding: const EdgeInsets.all(16),
-              margin: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.all(20),
+              margin: const EdgeInsets.only(bottom: 20),
               decoration: BoxDecoration(
-                color: Colors.blue.shade50,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.blue.shade200),
+                color: allRecorded ? Colors.green.shade50 : Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: allRecorded ? Colors.green.shade200 : Colors.grey.shade200,
+                ),
               ),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.calendar_month, color: Colors.blue.shade700, size: 28),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                  if (allRecorded) ...[
+                    Row(
                       children: [
+                        Icon(Icons.check_circle, color: Colors.green.shade700, size: 24),
+                        const SizedBox(width: 8),
                         Text(
-                          '이번 달 기록률 ${rateInt}%',
+                          '오늘 확인 완료',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: Colors.blue.shade900,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          message,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.blue.shade800,
+                            color: Colors.green.shade800,
                           ),
                         ),
                       ],
                     ),
-                  ),
+                    const SizedBox(height: 8),
+                    Text(
+                      message,
+                      style: TextStyle(
+                        fontSize: 15,
+                        color: Colors.green.shade900,
+                        height: 1.5,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _getEmotionalFeedbackPhrase(),
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.green.shade700,
+                        fontStyle: FontStyle.italic,
+                        height: 1.4,
+                      ),
+                    ),
+                  ] else
+                    Text(
+                      message,
+                      style: TextStyle(
+                        fontSize: 15,
+                        color: Colors.grey.shade800,
+                        height: 1.5,
+                      ),
+                    ),
                 ],
               ),
             );
           },
-        ),
-        // 오늘 확인 완료 배지 + 심리적 안도감 메시지
-        Container(
-          padding: const EdgeInsets.all(20),
-          margin: const EdgeInsets.only(bottom: 20),
-          decoration: BoxDecoration(
-            color: allRecorded ? Colors.green.shade50 : Colors.grey.shade50,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: allRecorded ? Colors.green.shade200 : Colors.grey.shade200,
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (allRecorded) ...[
-                Row(
-                  children: [
-                    Icon(Icons.check_circle, color: Colors.green.shade700, size: 24),
-                    const SizedBox(width: 8),
-                    Text(
-                      '오늘 확인 완료',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.green.shade800,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  '오늘 부모님은 괜찮다고 남기셨습니다.\n이제 마음 놓으셔도 됩니다.',
-                  style: TextStyle(
-                    fontSize: 15,
-                    color: Colors.green.shade900,
-                    height: 1.5,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  _getEmotionalFeedbackPhrase(),
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.green.shade700,
-                    fontStyle: FontStyle.italic,
-                    height: 1.4,
-                  ),
-                ),
-              ] else ...[
-                Text(
-                  noneRecorded
-                      ? '오늘 아직 안부가 없습니다.\n간단히 확인해보세요.'
-                      : '오늘 일부 확인되었습니다.\n남은 분도 확인해보세요.',
-                  style: TextStyle(
-                    fontSize: 15,
-                    color: Colors.grey.shade800,
-                    height: 1.5,
-                  ),
-                ),
-              ],
-            ],
-          ),
         ),
         Text(
           '보호 대상 (${statuses.length}명)',

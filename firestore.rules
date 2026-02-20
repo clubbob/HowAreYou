@@ -86,6 +86,7 @@ service cloud.firestore {
         allow read, write: if isSubject();
         allow read: if request.auth != null
           && request.auth.uid != subjectUid
+          && exists(/databases/$(database)/documents/subjects/$(subjectUid))
           && request.auth.uid in get(/databases/$(database)/documents/subjects/$(subjectUid)).data.get('pairedGuardianUids', []);
       }
       // private_prompts — mood, note. 보호대상자 본인만 읽기/쓰기 (진짜 비공개)

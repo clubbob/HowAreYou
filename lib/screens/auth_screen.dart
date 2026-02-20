@@ -533,33 +533,38 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
             ],
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text(
-                '취소',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey,
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.grey.shade700,
+                      side: BorderSide(color: Colors.grey.shade400),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    child: const Text('취소', style: TextStyle(fontSize: 16)),
+                  ),
                 ),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.primary,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.of(context).pop(true),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Theme.of(context).colorScheme.primary,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    child: const Text('계속', style: TextStyle(fontSize: 16)),
+                  ),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              ),
-              child: const Text(
-                '계속',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+              ],
             ),
           ],
         ),

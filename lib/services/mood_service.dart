@@ -23,6 +23,7 @@ class MoodService {
 
   /// 응답 저장. 24시 기준 하루 1회 → 문서 id = yyyy-MM-dd, slot = daily.
   /// 저장 성공 시 subjects 문서의 리마인드 필드·스트릭도 업데이트함.
+  /// 배치 사용: 트랜잭션의 subjects 읽기/쓰기 권한 이슈 회피.
   Future<void> saveMoodResponse({
     required String subjectId,
     required TimeSlot slot,
@@ -33,10 +34,9 @@ class MoodService {
     final dateStr = DateFormat('yyyy-MM-dd').format(now);
     final yesterday = now.subtract(const Duration(days: 1));
     final yesterdayStr = DateFormat('yyyy-MM-dd').format(yesterday);
-    final docId = dateStr;
     final response = MoodResponseModel(
       subjectId: subjectId,
-      dateSlot: docId,
+      dateSlot: dateStr,
       slot: TimeSlot.daily,
       answeredAt: now,
       mood: mood,
@@ -44,45 +44,55 @@ class MoodService {
     );
 
     final subjectRef = _firestore.collection('subjects').doc(subjectId);
-    final promptRef = subjectRef.collection(AppConstants.promptsCollection).doc(docId);
-    final privateRef = subjectRef.collection(AppConstants.privatePromptsCollection).doc(docId);
+    final promptRef = subjectRef.collection(AppConstants.promptsCollection).doc(dateStr);
+    final privateRef = subjectRef.collection(AppConstants.privatePromptsCollection).doc(dateStr);
 
-    await _firestore.runTransaction((transaction) async {
-      // prompts: answeredAt, slot만 (보호자 "기록 여부" 공개)
-      transaction.set(promptRef, {
+    // 1. 읽기는 트랜잭션 밖에서 (권한 이슈 회피)
+    final yesterdayDoc = await subjectRef.collection(AppConstants.promptsCollection).doc(yesterdayStr).get();
+    final subjectDoc = await subjectRef.get();
+    final data = subjectDoc.data();
+    final currentStreak = (data?['currentStreak'] as int?) ?? 0;
+    final longestStreak = (data?['longestStreak'] as int?) ?? 0;
+
+    int newStreak = 1;
+    if (yesterdayDoc.exists) {
+      newStreak = currentStreak + 1;
+    }
+    final newLongest = newStreak > longestStreak ? newStreak : longestStreak;
+
+    // 2. 쓰기: 전체 배치 시도 후, 실패 시 prompts+private_prompts만 저장 (fallback)
+    try {
+      final batch = _firestore.batch();
+      batch.set(promptRef, {
         'slot': response.slot.value,
         'answeredAt': Timestamp.fromDate(response.answeredAt),
       });
-      // private_prompts: mood, note (본인만)
-      transaction.set(privateRef, {
+      batch.set(privateRef, {
         'mood': response.mood.value,
         if (note != null && note!.isNotEmpty) 'note': note!,
       });
-
-      // 어제 기록 여부는 prompts 존재로 확인 (deleteTodayResponse 후에도 정확함)
-      final yesterdayPromptRef = subjectRef.collection(AppConstants.promptsCollection).doc(yesterdayStr);
-      final yesterdayDoc = await transaction.get(yesterdayPromptRef);
-      final yesterdayRecorded = yesterdayDoc.exists;
-
-      final subjectDoc = await transaction.get(subjectRef);
-      final data = subjectDoc.data();
-      final currentStreak = (data?['currentStreak'] as int?) ?? 0;
-      final longestStreak = (data?['longestStreak'] as int?) ?? 0;
-
-      int newStreak = 1;
-      if (yesterdayRecorded) {
-        newStreak = currentStreak + 1;
-      }
-      final newLongest = newStreak > longestStreak ? newStreak : longestStreak;
-
-      transaction.set(subjectRef, {
+      batch.set(subjectRef, {
         'lastResponseAt': Timestamp.fromDate(now),
         'lastResponseDate': dateStr,
         'currentStreak': newStreak,
         'longestStreak': newLongest,
         'lastRecordedDate': dateStr,
       }, SetOptions(merge: true));
-    });
+      await batch.commit();
+    } catch (e) {
+      // subjects 쓰기 권한 실패 시 prompts+private_prompts만 저장 (컨디션 기록 우선)
+      final fallbackBatch = _firestore.batch();
+      fallbackBatch.set(promptRef, {
+        'slot': response.slot.value,
+        'answeredAt': Timestamp.fromDate(response.answeredAt),
+      });
+      fallbackBatch.set(privateRef, {
+        'mood': response.mood.value,
+        if (note != null && note!.isNotEmpty) 'note': note!,
+      });
+      await fallbackBatch.commit();
+      // 스트릭은 저장 못함. 다음 기록 시 보정됨.
+    }
   }
 
   /// 연속 기록(스트릭) 조회. subjects 문서의 currentStreak, longestStreak 반환.

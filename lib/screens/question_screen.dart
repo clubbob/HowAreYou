@@ -1,4 +1,6 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../services/mood_service.dart';
@@ -349,6 +351,14 @@ class _QuestionScreenState extends State<QuestionScreen> {
       final authService = Provider.of<AuthService>(context, listen: false);
       final userId = authService.user?.uid;
       if (userId == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('로그인 세션이 만료되었습니다. 다시 로그인해 주세요.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
         return;
       }
 
@@ -387,11 +397,21 @@ class _QuestionScreenState extends State<QuestionScreen> {
           content: Text('잘했어요. 오늘 기록은 끝이에요.'),
         ),
       );
-    } catch (e) {
+    } catch (e, stack) {
+      debugPrint('[컨디션 저장] 오류: $e\n$stack');
       if (!mounted) return;
+      String message = '기록을 저장하는 데 실패했습니다. 잠시 후 다시 시도해 주세요.';
+      if (e is FirebaseException) {
+        if (e.code == 'permission-denied') {
+          message = '저장 권한이 없습니다. Firestore 규칙을 확인해 주세요.';
+        } else if (e.code == 'unavailable') {
+          message = '네트워크 연결을 확인해 주세요.';
+        }
+      }
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('기록을 저장하는 데 실패했습니다. 잠시 후 다시 시도해 주세요.'),
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.red,
         ),
       );
     } finally {
