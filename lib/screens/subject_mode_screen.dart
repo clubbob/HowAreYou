@@ -258,6 +258,7 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> {
                 builder: (context, snapshot) {
                   final streak = snapshot.data?.currentStreak ?? 0;
                   if (streak < 1) return const SizedBox.shrink();
+                  final message = streak == 1 ? '오늘 기록했어요' : '$streak일 연속 기록 중';
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 16),
                     child: Container(
@@ -273,7 +274,7 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> {
                           Text('🔥', style: const TextStyle(fontSize: 18)),
                           const SizedBox(width: 6),
                           Text(
-                            '$streak일 연속 기록 중',
+                            message,
                             style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w600,
@@ -286,15 +287,19 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> {
                   );
                 },
               ),
-              Text(
-                '오늘도 잘 지내고 계신가요?',
-                style: theme.textTheme.headlineLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 36,
-                  letterSpacing: -0.5,
-                  color: Colors.black87,
+              Center(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    '오늘도 잘 지내고 계신가요?',
+                    style: theme.textTheme.headlineLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 36,
+                      letterSpacing: -0.5,
+                      color: Colors.black87,
+                    ),
+                  ),
                 ),
-                textAlign: TextAlign.center,
               ),
               const SizedBox(height: 12),
               Text(
@@ -415,27 +420,32 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> {
                     Icon(Icons.favorite_outline, color: Colors.blue.shade700, size: 20),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: Text(
-                        '하루 한 번, 버튼만 누르면 안부가 전달돼요.',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.blue.shade900,
-                          height: 1.4,
-                        ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '하루 한 번, 버튼만 누르면 안부가 전달돼요.',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.blue.shade900,
+                              height: 1.4,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            '보호자에게 기록 내용은 공유되지 않으며, 안부가 전달되었는지만 표시됩니다.',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.blue.shade800,
+                              height: 1.4,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                '보호자에게 기록 내용은 공유되지 않으며, 안부가 전달되었는지만 표시됩니다.',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[600],
-                ),
-                textAlign: TextAlign.center,
               ),
             ],
           ),

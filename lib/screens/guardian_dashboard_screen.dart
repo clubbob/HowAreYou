@@ -578,16 +578,6 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
     return '오늘 ${quoted}분이 기록을 남겼습니다.';
   }
 
-  /// 오늘 확인 완료 시 감성 강화 문구 (압박 없이 안심 유도)
-  static String _getEmotionalFeedbackPhrase() {
-    const phrases = [
-      '오늘도 가족이 연결되어 있습니다.',
-      '걱정하지 않으셔도 됩니다.',
-      '잘 지내고 계시네요.',
-    ];
-    return phrases[DateTime.now().day % phrases.length];
-  }
-
   Widget _buildCheckTab(BuildContext context, List<_SubjectCheckStatus> statuses, String userId) {
     if (statuses.isEmpty) {
       return SingleChildScrollView(
@@ -665,52 +655,17 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
                   color: allRecorded ? Colors.green.shade200 : Colors.grey.shade200,
                 ),
               ),
-              child: Column(
+                  child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (allRecorded) ...[
-                    Row(
-                      children: [
-                        Icon(Icons.check_circle, color: Colors.green.shade700, size: 24),
-                        const SizedBox(width: 8),
-                        Text(
-                          '오늘 확인 완료',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.green.shade800,
-                          ),
-                        ),
-                      ],
+                  Text(
+                    message,
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: allRecorded ? Colors.green.shade900 : Colors.grey.shade800,
+                      height: 1.5,
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      message,
-                      style: TextStyle(
-                        fontSize: 15,
-                        color: Colors.green.shade900,
-                        height: 1.5,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      _getEmotionalFeedbackPhrase(),
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.green.shade700,
-                        fontStyle: FontStyle.italic,
-                        height: 1.4,
-                      ),
-                    ),
-                  ] else
-                    Text(
-                      message,
-                      style: TextStyle(
-                        fontSize: 15,
-                        color: Colors.grey.shade800,
-                        height: 1.5,
-                      ),
-                    ),
+                  ),
                 ],
               ),
             );
@@ -1199,6 +1154,47 @@ class _SubjectCheckStatus {
   _SubjectCheckStatus(this.subjectId, this.hasRespondedToday, this.latestAnsweredAt, [this.currentStreak = 0]);
 }
 
+/// 보호대상자 연결 상태 배지 - 아이콘 + 텍스트
+class _SubjectStatusBadge extends StatelessWidget {
+  final bool isStillPaired;
+
+  const _SubjectStatusBadge({required this.isStillPaired});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: isStillPaired ? Colors.green.shade50 : Colors.orange.shade50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isStillPaired ? Colors.green.shade200 : Colors.orange.shade200,
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isStillPaired ? Icons.check_circle : Icons.cancel,
+            size: 18,
+            color: isStillPaired ? Colors.green.shade700 : Colors.orange.shade700,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            isStillPaired ? '연결' : '비연결',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: isStillPaired ? Colors.green.shade800 : Colors.orange.shade800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// 보호 대상 관리 탭용 아이템 - 이름 + 수정 + 삭제만 (기록 미표시)
 class _SubjectManagementItem extends StatefulWidget {
   final String subjectId;
@@ -1221,12 +1217,17 @@ class _SubjectManagementItemState extends State<_SubjectManagementItem> {
   String _displayName = '…';
   String _subjectPhone = '';
   late final Stream<String> _nameStream;
+  late final Future<bool> _isStillPairedFuture;
 
   @override
   void initState() {
     super.initState();
     _loadName();
     _loadPhone();
+    _isStillPairedFuture = widget.guardianService.isGuardianStillPairedBySubject(
+      widget.subjectId,
+      widget.guardianUid,
+    );
     _nameStream = FirebaseFirestore.instance
         .collection(AppConstants.usersCollection)
         .doc(widget.guardianUid)
@@ -1381,40 +1382,61 @@ class _SubjectManagementItemState extends State<_SubjectManagementItem> {
       initialData: _displayName,
       builder: (context, snapshot) {
         final name = snapshot.data ?? _displayName;
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          child: ListTile(
-            title: Row(
-              children: [
-                Text(
-                  name,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+        return FutureBuilder<bool>(
+          future: _isStillPairedFuture,
+          builder: (context, pairedSnapshot) {
+            final isStillPaired = pairedSnapshot.data ?? true;
+            return Card(
+              margin: const EdgeInsets.only(bottom: 12),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                child: Row(
+                  children: [
+                    _SubjectStatusBadge(isStillPaired: isStillPaired),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            name,
+                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
+                          if (_subjectPhone.isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              _subjectPhone,
+                              style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: Icon(Icons.edit_outlined, size: 22, color: Colors.grey[600]),
+                          tooltip: '이름 수정',
+                          onPressed: () => _showEditDialog(context),
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.delete_outline, size: 22, color: Colors.grey[600]),
+                          tooltip: '삭제',
+                          onPressed: () => _showRemoveDialog(context, name),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-                if (_subjectPhone.isNotEmpty) ...[
-                  const SizedBox(width: 12),
-                  Text(
-                    _subjectPhone,
-                    style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-                  ),
-                ],
-              ],
-            ),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  icon: Icon(Icons.edit_outlined, size: 22, color: Colors.grey[600]),
-                  tooltip: '이름 수정',
-                  onPressed: () => _showEditDialog(context),
-                ),
-                IconButton(
-                  icon: Icon(Icons.delete_outline, size: 22, color: Colors.grey[600]),
-                  tooltip: '삭제',
-                  onPressed: () => _showRemoveDialog(context, name),
-                ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       },
     );
@@ -1454,6 +1476,7 @@ class _SubjectListItemState extends State<_SubjectListItem> {
   int _currentStreak = 0;
   String _fallbackName = '이름 없음';
   late final Stream<String> _nameStream;
+  late final Future<bool> _isStillPairedFuture;
 
   @override
   void initState() {
@@ -1461,6 +1484,10 @@ class _SubjectListItemState extends State<_SubjectListItem> {
     _loadName();
     _loadPhone();
     _loadResponses();
+    _isStillPairedFuture = widget.guardianService.isGuardianStillPairedBySubject(
+      widget.subjectId,
+      widget.guardianUid,
+    );
     _nameStream = _firestore
         .collection(AppConstants.usersCollection)
         .doc(widget.guardianUid)
@@ -1622,94 +1649,103 @@ class _SubjectListItemState extends State<_SubjectListItem> {
             ? Colors.green.shade700
             : Colors.grey.shade700;
 
-        // 마지막 기록: n일 전 / 오늘 / 없음
+        // 최근 기록: 년월일 시간 / 없음
         final String dateText;
         if (_latestAnsweredAt == null) {
-          dateText = '마지막 기록: 없음';
+          dateText = '최근 기록: 없음';
         } else {
-          final now = DateTime.now();
-          final last = _latestAnsweredAt!;
-          final lastDate = DateTime(last.year, last.month, last.day);
-          final today = DateTime(now.year, now.month, now.day);
-          final diff = today.difference(lastDate).inDays;
-          if (diff == 0) {
-            dateText = '마지막 기록: 오늘';
-          } else if (diff == 1) {
-            dateText = '마지막 기록: 1일 전';
-          } else if (diff < 7) {
-            dateText = '마지막 기록: ${diff}일 전';
-          } else {
-            dateText = '마지막 기록: ${DateFormat('M/d', 'ko_KR').format(last)}';
-          }
+          dateText = '최근 기록: ${DateFormat('yyyy년 M월 d일 HH:mm', 'ko_KR').format(_latestAnsweredAt!)}';
         }
 
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          child: ListTile(
-            title: Row(
-              children: [
-                Text(
-                  subjectName,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                if (_subjectPhone.isNotEmpty) ...[
-                  const SizedBox(width: 12),
-                  Text(
-                    _subjectPhone,
-                    style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-                  ),
-                ],
-              ],
-            ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (_currentStreak >= 1) ...[
-                  Text(
-                    '$_currentStreak일 연속 기록 중',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.orange.shade700,
+        return FutureBuilder<bool>(
+          future: _isStillPairedFuture,
+          builder: (context, pairedSnapshot) {
+            final isStillPaired = pairedSnapshot.data ?? true;
+            return Card(
+              margin: const EdgeInsets.only(bottom: 12),
+              child: InkWell(
+                onTap: widget.onTap,
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _SubjectStatusBadge(isStillPaired: isStillPaired),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            subjectName,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
+                          if (_subjectPhone.isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              _subjectPhone,
+                              style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
+                          ],
+                          const SizedBox(height: 6),
+                          if (_currentStreak >= 1) ...[
+                            Text(
+                              _currentStreak == 1 ? '오늘 기록했어요' : '$_currentStreak일 연속 기록 중',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.orange.shade700,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                          ],
+                          if (!hasRespondedToday) ...[
+                            Text(
+                              statusText,
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: statusColor,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                          ],
+                          Text(
+                            dateText,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 2),
-                ],
-                Text(
-                  statusText,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: statusColor,
-                  ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (widget.onRemove != null)
+                          IconButton(
+                            icon: Icon(Icons.delete_outline, size: 22, color: Colors.grey[600]),
+                            tooltip: '보호 대상 삭제',
+                            onPressed: () => _showRemoveDialog(context, subjectName),
+                          ),
+                        const Icon(Icons.chevron_right, size: 32),
+                      ],
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  dateText,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade700,
-                  ),
-                ),
-              ],
+              ),
             ),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (widget.onRemove != null)
-                  IconButton(
-                    icon: Icon(Icons.delete_outline, size: 22, color: Colors.grey[600]),
-                    tooltip: '보호 대상 삭제',
-                    onPressed: () => _showRemoveDialog(context, subjectName),
-                  ),
-                const Icon(Icons.chevron_right, size: 32),
-              ],
-            ),
-            onTap: widget.onTap,
-          ),
+            );
+          },
         );
       },
     );

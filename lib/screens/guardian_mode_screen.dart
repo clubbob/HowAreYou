@@ -4,7 +4,9 @@ import 'package:provider/provider.dart';
 import 'dart:io' show Platform;
 import '../services/auth_service.dart';
 import '../services/fcm_service.dart';
+import '../services/guardian_service.dart';
 import '../services/mode_service.dart';
+import '../services/mood_service.dart';
 import '../utils/permission_helper.dart';
 import '../utils/button_styles.dart';
 import '../main.dart';
@@ -22,6 +24,24 @@ class GuardianModeScreen extends StatefulWidget {
 
 class _GuardianModeScreenState extends State<GuardianModeScreen> {
   bool? _notificationPermissionGranted;
+  final GuardianService _guardianService = GuardianService();
+  final MoodService _moodService = MoodService();
+
+  /// 보호대상자 목록 + 오늘 기록 여부 로드
+  Future<({List<String> subjectIds, bool hasTodayRecord})> _loadGuardianStatus(String? guardianUid) async {
+    if (guardianUid == null) return (subjectIds: <String>[], hasTodayRecord: false);
+    final ids = await _guardianService.getSubjectIdsForGuardian(guardianUid);
+    if (ids.isEmpty) return (subjectIds: <String>[], hasTodayRecord: false);
+    var hasToday = false;
+    for (final id in ids) {
+      final today = await _moodService.getTodayResponses(id, forGuardian: true);
+      if (today.values.any((r) => r != null)) {
+        hasToday = true;
+        break;
+      }
+    }
+    return (subjectIds: ids, hasTodayRecord: hasToday);
+  }
 
   @override
   void initState() {
@@ -176,7 +196,7 @@ class _GuardianModeScreenState extends State<GuardianModeScreen> {
         ],
       ),
       body: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -206,6 +226,63 @@ class _GuardianModeScreenState extends State<GuardianModeScreen> {
                   ),
                 ),
               ],
+              const SizedBox(height: 24),
+              // 보호대상자 오늘 기록 여부 상태 배지
+              FutureBuilder<({List<String> subjectIds, bool hasTodayRecord})>(
+                future: _loadGuardianStatus(authService.user?.uid),
+                builder: (context, snapshot) {
+                  final data = snapshot.data;
+                  if (snapshot.connectionState == ConnectionState.waiting && data == null) {
+                    return const SizedBox.shrink();
+                  }
+                  final count = data?.subjectIds.length ?? 0;
+                  final hasToday = data?.hasTodayRecord ?? false;
+                  String message;
+                  IconData icon;
+                  if (count == 0) {
+                    message = '보호 대상을 추가해 보세요';
+                    icon = Icons.people_outline;
+                  } else if (hasToday) {
+                    message = '오늘 기록이 있어요';
+                    icon = Icons.check_circle_outline;
+                  } else {
+                    message = '오늘 기록이 없어요';
+                    icon = Icons.schedule_outlined;
+                  }
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: hasToday ? Colors.green.shade50 : Colors.blue.shade50,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: hasToday ? Colors.green.shade200 : Colors.blue.shade200,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            icon,
+                            color: hasToday ? Colors.green.shade700 : Colors.blue.shade700,
+                            size: 18,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            message,
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: hasToday ? Colors.green.shade800 : Colors.blue.shade800,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
               const Text(
                 '보호자 모드',
                 style: TextStyle(
@@ -256,10 +333,9 @@ class _GuardianModeScreenState extends State<GuardianModeScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
-                height: 88,
                 child: OutlinedButton.icon(
                   onPressed: () {
                     Navigator.of(context).push(
@@ -268,23 +344,65 @@ class _GuardianModeScreenState extends State<GuardianModeScreen> {
                       ),
                     );
                   },
-                  icon: const Icon(Icons.people_outline, size: 40),
+                  icon: const Icon(Icons.people_outline, size: 22),
                   label: const Text('보호 대상 관리'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: primaryColor,
-                    side: BorderSide(color: primaryColor, width: 2),
-                    padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 32),
+                    side: BorderSide(color: primaryColor, width: 1.5),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(12),
                     ),
                     textStyle: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
               ),
+              const SizedBox(height: 32),
+              // 안내 문구 (보호대상자 화면과 동일 스타일)
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.blue.shade200, width: 1),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.blue.shade700, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '보호대상자의 안부를 확인할 수 있어요.',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.blue.shade900,
+                              height: 1.4,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            '기록 내용(기분, 메모)은 공유되지 않으며, 안부가 전달되었는지만 표시됩니다.',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.blue.shade800,
+                              height: 1.4,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
             ],
           ),
         ),

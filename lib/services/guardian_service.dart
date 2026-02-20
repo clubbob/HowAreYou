@@ -413,6 +413,24 @@ class GuardianService {
     }
   }
 
+  /// 보호대상자가 보호자를 아직 유지하는지 (subjects/{subjectId}.pairedGuardianUids에 guardianUid 포함)
+  Future<bool> isGuardianStillPairedBySubject(String subjectId, String guardianUid) async {
+    try {
+      final doc = await _firestore.collection(AppConstants.subjectsCollection).doc(subjectId).get();
+      if (!doc.exists) return false;
+      final paired = List<String>.from(doc.data()?['pairedGuardianUids'] ?? []);
+      return paired.contains(guardianUid);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// 보호자가 보호대상자를 아직 목록에 가지고 있는지
+  Future<bool> isGuardianStillHasSubject(String guardianUid, String subjectId) async {
+    final ids = await getSubjectIdsForGuardian(guardianUid);
+    return ids.contains(subjectId);
+  }
+
   /// 이 보호자 UID가 등록된 대상자(subject) ID 목록
   Future<List<String>> getSubjectIdsForGuardian(String guardianUid) async {
     final snapshot = await _firestore
@@ -421,6 +439,17 @@ class GuardianService {
         .get();
 
     return snapshot.docs.map((d) => d.id).toList();
+  }
+
+  /// 보호자 구독 상태 (users/{guardianUid}). 'active'=유료, 그 외=무료
+  Future<String> getGuardianSubscriptionStatusRaw(String guardianUid) async {
+    try {
+      final doc = await _firestore.collection(AppConstants.usersCollection).doc(guardianUid).get();
+      final raw = doc.data()?['subscriptionStatus'] as String?;
+      return raw ?? 'trial';
+    } catch (_) {
+      return 'trial';
+    }
   }
 
   /// 보호자 표시 이름 (users 문서 displayName, 없으면 '보호자')

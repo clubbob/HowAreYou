@@ -593,118 +593,83 @@ class _GuardianScreenState extends State<GuardianScreen> {
                           if (displayText == uid) {
                             displayText = '이름 없음';
                           }
-                          return Card(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            child: ListTile(
-                              title: Row(
-                                children: [
-                                  Text(
-                                    displayText,
-                                    style: const TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w600,
-                                    ),
+                          return _GuardianListCard(
+                            subjectId: userId!,
+                            guardianUid: uid,
+                            displayText: displayText,
+                            phone: hasName && hasPhone ? phone : null,
+                            guardianInfos: guardianInfos,
+                            firestore: _firestore,
+                            guardianService: _guardianService,
+                            onSetName: () => _showSetNameDialog(
+                              context,
+                              userId,
+                              uid,
+                              guardianInfos,
+                            ),
+                            onDelete: () async {
+                              final confirm = await showDialog<bool>(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                  title: const Text('보호자 삭제'),
+                                  content: Text(
+                                    guardianUids.length <= 1
+                                        ? '$displayText를 삭제하면 안부를 전달할 보호자가 없어집니다. 삭제하시겠습니까?'
+                                        : '$displayText를 삭제하시겠습니까?',
                                   ),
-                                  if (hasName && hasPhone) ...[
-                                    const SizedBox(width: 12),
-                                    Text(
-                                      phone!,
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: Colors.grey.shade600,
-                                      ),
+                                  actions: [
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: ElevatedButton(
+                                            onPressed: () => Navigator.pop(ctx, false),
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Colors.grey.shade300,
+                                              foregroundColor: Colors.grey.shade800,
+                                            ),
+                                            child: const Text('취소'),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: ElevatedButton(
+                                            onPressed: () => Navigator.pop(ctx, true),
+                                            style: AppButtonStyles.primaryElevated,
+                                            child: const Text('삭제'),
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ],
-                                ],
-                              ),
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  IconButton(
-                                    icon: Icon(Icons.edit_outlined, size: 22, color: Colors.grey[600]),
-                                    tooltip: '이름 수정',
-                                    onPressed: () => _showSetNameDialog(
-                                      context,
-                                      userId!,
-                                      uid,
-                                      guardianInfos,
+                                ),
+                              );
+                              if (confirm != true) return;
+                              try {
+                                await _firestore
+                                    .collection(AppConstants.subjectsCollection)
+                                    .doc(userId)
+                                    .update({
+                                  'pairedGuardianUids': FieldValue.arrayRemove([uid]),
+                                  'guardianInfos.$uid': FieldValue.delete(),
+                                });
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('보호자가 삭제되었습니다.'),
+                                      duration: Duration(seconds: 2),
                                     ),
-                                  ),
-                                  IconButton(
-                                    icon: Icon(Icons.delete_outline, size: 22, color: Colors.grey[600]),
-                                    tooltip: '삭제',
-                                    onPressed: () async {
-                                            // 삭제 확인 다이얼로그
-                                            final confirm = await showDialog<bool>(
-                                              context: context,
-                                              builder: (ctx) => AlertDialog(
-                                                title: const Text('보호자 삭제'),
-                                                content: Text(
-                                                  guardianUids.length <= 1
-                                                      ? '$displayText를 삭제하면 안부를 전달할 보호자가 없어집니다. 삭제하시겠습니까?'
-                                                      : '$displayText를 삭제하시겠습니까?',
-                                                ),
-                                                actions: [
-                                                  Row(
-                                                    children: [
-                                                      Expanded(
-                                                        child: ElevatedButton(
-                                                          onPressed: () => Navigator.pop(ctx, false),
-                                                          style: ElevatedButton.styleFrom(
-                                                            backgroundColor: Colors.grey.shade300,
-                                                            foregroundColor: Colors.grey.shade800,
-                                                          ),
-                                                          child: const Text('취소'),
-                                                        ),
-                                                      ),
-                                                      const SizedBox(width: 8),
-                                                      Expanded(
-                                                        child: ElevatedButton(
-                                                          onPressed: () => Navigator.pop(ctx, true),
-                                                          style: AppButtonStyles.primaryElevated,
-                                                          child: const Text('삭제'),
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ],
-                                              ),
-                                            );
-                                            
-                                            if (confirm != true) return;
-                                            
-                                            try {
-                                              await _firestore
-                                                  .collection(AppConstants.subjectsCollection)
-                                                  .doc(userId)
-                                                  .update({
-                                                'pairedGuardianUids':
-                                                    FieldValue.arrayRemove([uid]),
-                                                'guardianInfos.$uid': FieldValue.delete(),
-                                              });
-                                              
-                                              if (mounted) {
-                                                ScaffoldMessenger.of(context).showSnackBar(
-                                                  const SnackBar(
-                                                    content: Text('보호자가 삭제되었습니다.'),
-                                                    duration: Duration(seconds: 2),
-                                                  ),
-                                                );
-                                              }
-                                            } catch (e) {
-                                              if (mounted) {
-                                                ScaffoldMessenger.of(context).showSnackBar(
-                                                  SnackBar(
-                                                    content: const Text('삭제에 실패했습니다. 잠시 후 다시 시도해 주세요.'),
-                                                  ),
-                                                );
-                                              }
-                                            }
-                                          },
-                                  ),
-                                ],
-                              ),
-                            ),
+                                  );
+                                }
+                              } catch (e) {
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('삭제에 실패했습니다. 잠시 후 다시 시도해 주세요.'),
+                                    ),
+                                  );
+                                }
+                              }
+                            },
                           );
                         }),
                       ],
@@ -904,6 +869,180 @@ class _GuardianScreenState extends State<GuardianScreen> {
                 );
               },
             ),
+    );
+  }
+}
+
+/// 상태 배지 - 아이콘 + 텍스트
+class _StatusChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final MaterialColor color;
+
+  const _StatusChip({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.shade50,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.shade200, width: 1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color.shade700),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: color.shade800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 보호자 목록 카드 - 연결/비연결, 유료/무료 상태 아이콘+텍스트 표시
+class _GuardianListCard extends StatefulWidget {
+  final String subjectId;
+  final String guardianUid;
+  final String displayText;
+  final String? phone;
+  final Map<String, dynamic> guardianInfos;
+  final FirebaseFirestore firestore;
+  final GuardianService guardianService;
+  final VoidCallback onSetName;
+  final Future<void> Function() onDelete;
+
+  const _GuardianListCard({
+    required this.subjectId,
+    required this.guardianUid,
+    required this.displayText,
+    this.phone,
+    required this.guardianInfos,
+    required this.firestore,
+    required this.guardianService,
+    required this.onSetName,
+    required this.onDelete,
+  });
+
+  @override
+  State<_GuardianListCard> createState() => _GuardianListCardState();
+}
+
+class _GuardianListCardState extends State<_GuardianListCard> {
+  late final Future<bool> _isStillConnectedFuture;
+  late final Future<String> _subscriptionStatusFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _isStillConnectedFuture = widget.guardianService.isGuardianStillHasSubject(
+      widget.guardianUid,
+      widget.subjectId,
+    );
+    _subscriptionStatusFuture = widget.guardianService.getGuardianSubscriptionStatusRaw(
+      widget.guardianUid,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder(
+      future: Future.wait([_isStillConnectedFuture, _subscriptionStatusFuture]),
+      builder: (context, snapshot) {
+        final isConnected = snapshot.data != null ? (snapshot.data! as List)[0] as bool : true;
+        final subRaw = snapshot.data != null ? (snapshot.data! as List)[1] as String : 'trial';
+        final isPaid = subRaw == 'active';
+
+        return Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              children: [
+                // 상태 배지 (연결/비연결, 유료/무료) - 아이콘+텍스트
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _StatusChip(
+                      icon: isConnected ? Icons.check_circle : Icons.cancel,
+                      label: isConnected ? '연결' : '비연결',
+                      color: isConnected ? Colors.green : Colors.orange,
+                    ),
+                    const SizedBox(height: 4),
+                    _StatusChip(
+                      icon: isPaid ? Icons.workspace_premium : Icons.card_giftcard,
+                      label: isPaid ? '유료' : '무료',
+                      color: isPaid ? Colors.blue : Colors.grey,
+                    ),
+                  ],
+                ),
+                const SizedBox(width: 12),
+                // 이름, 전화번호 (overflow 방지)
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.displayText,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                      if (widget.phone != null) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          widget.phone!,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey.shade600,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: Icon(Icons.edit_outlined, size: 22, color: Colors.grey[600]),
+                      tooltip: '이름 수정',
+                      onPressed: widget.onSetName,
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.delete_outline, size: 22, color: Colors.grey[600]),
+                      tooltip: '삭제',
+                      onPressed: () async {
+                        await widget.onDelete();
+                      },
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
