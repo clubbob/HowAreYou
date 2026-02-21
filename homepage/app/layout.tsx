@@ -10,10 +10,10 @@ const siteUrl =
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
-  title: '여기 어때? 소중한 사람과 안부를 나누는 앱',
-  description: '여기 어때? 소중한 사람과 안부를 나누는 앱',
+  title: '여기 어때?',
+  description: '',
   openGraph: {
-    title: '여기 어때? 소중한 사람과 안부를 나누는 앱',
+    title: '여기 어때?',
     description: '',
     url: siteUrl,
     siteName: '지금 어때',
@@ -22,7 +22,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: '여기 어때? 소중한 사람과 안부를 나누는 앱',
+    title: '여기 어때?',
     description: '',
   },
   robots: {
