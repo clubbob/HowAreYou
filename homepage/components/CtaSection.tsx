@@ -13,7 +13,7 @@ export function CtaSection() {
           지금 어때 시작하기
         </h2>
         <p className="mb-8 text-center text-[17px] text-navy-600">
-          정식 출시 후 1개월 무료 체험 · 지금 베타 참여 시 1년 무료
+          선착순 100명 · 출시 최우선 안내 · 1년 무료 이용
         </p>
         <button
           type="button"
