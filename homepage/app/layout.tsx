@@ -11,10 +11,10 @@ const siteUrl =
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: '여기 어때?',
-  description: '',
+  description: '소중한 사람과 안부를 나누는 앱',
   openGraph: {
     title: '여기 어때?',
-    description: '',
+    description: '소중한 사람과 안부를 나누는 앱',
     url: siteUrl,
     siteName: '지금 어때',
     images: [
@@ -31,7 +31,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: '여기 어때?',
-    description: '',
+    description: '소중한 사람과 안부를 나누는 앱',
     images: [`${siteUrl}/logo.png`],
   },
   robots: {
@@ -58,11 +58,12 @@ export default function RootLayout({
         <meta property="og:image:width" content="512" />
         <meta property="og:image:height" content="512" />
         <meta property="og:title" content="여기 어때?" />
-        <meta property="og:description" content="" />
+        <meta property="og:description" content="소중한 사람과 안부를 나누는 앱" />
         <meta property="og:url" content={siteUrl} />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:image" content={ogImageUrl} />
         <meta name="twitter:title" content="여기 어때?" />
+        <meta name="twitter:description" content="소중한 사람과 안부를 나누는 앱" />
       </head>
       <body className="min-h-screen overflow-x-hidden bg-[#F7F8FA] text-navy-900 antialiased">{children}</body>
     </html>
