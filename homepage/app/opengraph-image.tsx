@@ -26,8 +26,8 @@ export default async function Image() {
         <img
           src={`${siteUrl}/logo.png`}
           alt="지금 어때"
-          width={358}
-          height={358}
+          width={250}
+          height={250}
           style={{ objectFit: 'contain' }}
         />
       </div>
