@@ -352,13 +352,6 @@ class _HomeScreenState extends State<HomeScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               OutlinedButton.icon(
-                onPressed: () => _sendTestGuardianReminder(),
-                icon: const Icon(Icons.schedule, size: 18),
-                label: const Text('보호자 기록 미등록 리마인드 (20시)'),
-                style: btnStyle,
-              ),
-              const SizedBox(height: 8),
-              OutlinedButton.icon(
                 onPressed: () => _sendTestResponseReceived(),
                 icon: const Icon(Icons.thumb_up, size: 18),
                 label: const Text('보호자 기록 응답'),
@@ -385,26 +378,6 @@ class _HomeScreenState extends State<HomeScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('컨디션 미등록 리마인드(19시) 테스트 알림이 발송되었습니다.'),
-            duration: Duration(seconds: 2),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('알림 발송 실패: $e'), duration: const Duration(seconds: 3)),
-        );
-      }
-    }
-  }
-
-  Future<void> _sendTestGuardianReminder() async {
-    try {
-      await NotificationService.instance.sendTestGuardianNotification();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('보호자 기록 미등록 리마인드(20시) 테스트 알림이 발송되었습니다.'),
             duration: Duration(seconds: 2),
           ),
         );

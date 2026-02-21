@@ -82,8 +82,6 @@ class NotificationService {
 
   /// 보호대상자 리마인드 알림 ID
   static const int subjectReminderNotificationId = 1;
-  /// 보호자 리마인드 알림 ID
-  static const int guardianReminderNotificationId = 2;
 
   /// 다음 실행 시각 계산 (KST, 과거면 내일)
   tz.TZDateTime _nextTimeInKST(int hour, int minute) {
@@ -131,18 +129,12 @@ class NotificationService {
     );
   }
 
-  // ─── 매일 반복 로컬 알림 (보호대상자 19:00, 보호자 20:00) ─────────────────────────
+  // ─── 매일 반복 로컬 알림 (보호대상자 19:00) ────────────────────────────────────
 
   /// 보호대상자 리마인드 취소
   Future<void> cancelSubjectReminder() async {
     await _notifications.cancel(subjectReminderNotificationId);
     debugPrint('[알림] 보호대상자 리마인드 취소');
-  }
-
-  /// 보호자 리마인드 취소
-  Future<void> cancelGuardianReminder() async {
-    await _notifications.cancel(guardianReminderNotificationId);
-    debugPrint('[알림] 보호자 리마인드 취소');
   }
 
   /// 보호대상자 매일 19:00 반복 (id=1). subjectEnabled 시 등록.
@@ -167,30 +159,8 @@ class NotificationService {
     }
   }
 
-  /// 보호자 매일 20:00 반복 (id=2). guardianEnabled 시 등록.
-  Future<void> scheduleGuardianDailyReminder() async {
-    try {
-      await _notifications.cancel(guardianReminderNotificationId);
-      await _notifications.zonedSchedule(
-        guardianReminderNotificationId,
-        '',
-        '오늘 아직 1명의 안부가 도착하지 않았습니다.',
-        _nextTimeInKST(20, 0),
-        _dailyReminderDetails(color: const Color(0xFF5C6BC0)),
-        payload: 'GUARDIAN_REMINDER',
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        uiLocalNotificationDateInterpretation:
-            UILocalNotificationDateInterpretation.absoluteTime,
-        matchDateTimeComponents: DateTimeComponents.time,
-      );
-      debugPrint('[알림] 보호자 20시 리마인드 예약 완료 (매일 반복)');
-    } catch (e) {
-      debugPrint('[알림] 보호자 리마인드 예약 오류: $e');
-    }
-  }
-
-  /// OS Push(FCM)로 전환됨. 로컬 19/20시 스케줄 비활성화.
-  /// Cloud Scheduler가 매일 19:00/20:00/20:05에 FCM 발송.
+  /// OS Push(FCM)로 전환됨. 로컬 19시 스케줄 비활성화.
+  /// Cloud Scheduler가 매일 19:00/20:05에 FCM 발송.
   Future<void> scheduleDailyRemindersByRole() async {
     // no-op: FCM 기반 푸시로 대체됨
   }
@@ -248,13 +218,6 @@ class NotificationService {
         debugPrint('[알림] ✅ 보호대상자 리마인드 알림 탭 - 질문 화면으로 이동');
         if (response.id != null) await _notifications.cancel(response.id!);
         _navigateToQuestionScreen();
-        return;
-      }
-      // 보호자 20시 리마인드 (로컬 / FCM GUARDIAN_REMINDER)
-      if (payload == 'GUARDIAN_REMINDER' || response.id == guardianReminderNotificationId) {
-        debugPrint('[알림] ✅ 보호자 리마인드 알림 탭 - 대시보드로 이동');
-        if (response.id != null) await _notifications.cancel(response.id!);
-        _navigateToGuardianDashboard(null);
         return;
       }
       // FCM 보호자 알림 (RESPONSE_RECEIVED 등)
@@ -409,53 +372,6 @@ class NotificationService {
         debugPrint('[테스트 알림] 보호대상자 리마인드 자동 취소 (10초 후)');
       });
       debugPrint('[테스트 알림] 보호대상자 리마인드 발송 완료 (ID: $notificationId)');
-    } catch (e) {
-      debugPrint('[테스트 알림] 오류: $e');
-      rethrow;
-    }
-  }
-
-  /// 테스트용: 보호자 20시 리마인드 즉시 발송 (로컬 알림, 실제 FCM과 동일)
-  Future<void> sendTestGuardianNotification() async {
-    try {
-      debugPrint('[테스트 알림] 보호자 리마인드 발송 시작');
-      const notificationId = 9998;
-      await _notifications.show(
-        notificationId,
-        '안부 확인',
-        '오늘 아직 1명의 안부가 도착하지 않았습니다.',
-        NotificationDetails(
-          android: AndroidNotificationDetails(
-            'guardian_notifications',
-            '보호자 알림',
-            channelDescription: '보호 대상의 상태 확인 및 미회신 알림',
-            importance: Importance.max,
-            priority: Priority.max,
-            playSound: true,
-            enableVibration: true,
-            vibrationPattern: Int64List.fromList([0, 500, 200, 500]),
-            category: AndroidNotificationCategory.alarm,
-            styleInformation: const BigTextStyleInformation(''),
-            autoCancel: true,
-            ongoing: false,
-            showWhen: true,
-            enableLights: true,
-            color: const Color(0xFF5C6BC0),
-            visibility: NotificationVisibility.public,
-          ),
-          iOS: const DarwinNotificationDetails(
-            presentAlert: true,
-            presentBadge: true,
-            presentSound: true,
-          ),
-        ),
-        payload: 'GUARDIAN_REMINDER',
-      );
-      Future.delayed(const Duration(seconds: 10), () {
-        _notifications.cancel(notificationId);
-        debugPrint('[테스트 알림] 보호자 리마인드 자동 취소 (10초 후)');
-      });
-      debugPrint('[테스트 알림] 보호자 리마인드 발송 완료 (ID: $notificationId)');
     } catch (e) {
       debugPrint('[테스트 알림] 오류: $e');
       rethrow;

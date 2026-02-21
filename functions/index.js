@@ -403,52 +403,6 @@ exports.sendSubjectReminder = functions.pubsub
   });
 
 /**
- * 20:00 보호자 푸시 (당일 보호대상자 기록 없으면 발송)
- * - lastResponseAt < 오늘 00:00 인 subjects → pairedGuardianUids 수집
- * - **보호자당 1회만** 발송 (푸시 폭탄 방지). 미기록 인원이 여러 명이면 문구에 반영
- */
-exports.sendGuardianReminder = functions.pubsub
-  .schedule('0 20 * * *')
-  .timeZone('Asia/Seoul')
-  .onRun(async () => {
-    const todayStr = todayKoreaStr();
-    const todayStart = todayMidnightKSTTimestamp();
-    console.log(`[20:00 보호자] ${todayStr} 실행`);
-
-    try {
-      const snapshot = await db.collection('subjects')
-        .where('lastResponseAt', '<', todayStart)
-        .get();
-
-      // guardianId -> 미기록 subject 수
-      const guardianCounts = new Map();
-      for (const doc of snapshot.docs) {
-        const uids = doc.data().pairedGuardianUids || [];
-        for (const uid of uids) {
-          guardianCounts.set(uid, (guardianCounts.get(uid) || 0) + 1);
-        }
-      }
-      console.log(`[20:00 보호자] 발송 대상: ${guardianCounts.size}명`);
-
-      for (const [guardianId, count] of guardianCounts) {
-        const body = count > 1
-          ? `오늘 아직 ${count}명의 안부가 도착하지 않았습니다.`
-          : '오늘 아직 1명의 안부가 도착하지 않았습니다.';
-        await sendToGuardian(guardianId, {
-          notification: { title: '안부 확인', body },
-          data: { type: 'GUARDIAN_REMINDER', click_action: 'FLUTTER_NOTIFICATION_CLICK' },
-          android: { priority: 'high', notification: { sound: 'default', channelId: 'guardian_notifications' } },
-          apns: { payload: { aps: { sound: 'default', badge: 1 } } },
-        });
-      }
-      return null;
-    } catch (e) {
-      console.error('[20:00 보호자] 오류:', e);
-      return null;
-    }
-  });
-
-/**
  * 20:05 3일 무응답 보호자 강한 알림
  * - lastResponseAt < now - 72h 인 subjects
  * - createdAt < now - 72h (가입 72h 미만이면 스킵, 신규 epoch 과경보 방지)
