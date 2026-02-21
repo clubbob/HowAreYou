@@ -11,7 +11,7 @@ const FOOTER_INFO = {
 
 export function Footer() {
   return (
-    <footer className="border-t border-navy-200 bg-navy-100 px-6 py-10">
+    <footer className="border-t border-navy-200 bg-navy-100 px-4 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-8 sm:px-6 sm:pt-10 sm:pb-[calc(2.5rem+env(safe-area-inset-bottom))]">
       <div className="mx-auto max-w-3xl space-y-5 text-center">
         <nav className="flex flex-wrap items-center justify-center gap-4">
           <Link

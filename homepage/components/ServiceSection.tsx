@@ -7,7 +7,7 @@ const STEPS = [
   {
     title: '필요한 순간에만 안내합니다',
     subtitle:
-      '기록을 하면 보호자에게 알림이 전달됩니다. 기록이 없을 때는 당일 저녁 7시(보호대상자 기록 요청), 8시(보호자 안내)에만 발송됩니다. 불필요한 알림은 보내지 않습니다.',
+      '기록을 하면 보호자에게 알림이 전달됩니다. 기록이 없을 때는 당일 저녁 7시(보호대상자 기록 요청)에만 발송됩니다. 불필요한 알림은 보내지 않습니다.',
   },
   {
     title: '3일 이상 신호가 없을 때',
@@ -72,12 +72,11 @@ export function ServiceSection() {
   return (
     <section
       ref={ref}
-      className="bg-primary-50 px-6 py-20 md:py-24"
-      style={{ paddingTop: '5rem', paddingBottom: '5rem' }}
+      className="bg-primary-50 px-4 py-14 sm:px-6 sm:py-16 md:py-24"
     >
       <div className="mx-auto max-w-3xl">
         <h2
-          className="mb-12 text-center text-[1.75rem] font-bold leading-[1.4] text-navy-900"
+          className="mb-10 text-center text-[1.375rem] font-bold leading-[1.4] text-navy-900 sm:mb-12 sm:text-[1.75rem]"
           style={{
             opacity: animate ? 1 : 0,
             transform: reduceMotion ? 'none' : animate ? 'translateY(0)' : 'translateY(12px)',
@@ -101,7 +100,7 @@ export function ServiceSection() {
             >
               <div
                 data-mobile-service-card
-                className="group flex cursor-default items-center gap-6 rounded-[1rem] border border-primary-100 bg-white p-6 shadow-[0_2px_12px_rgba(0,0,0,0.04)] transition-all duration-300 ease-out hover:-translate-y-1 hover:border-primary-300/60 hover:shadow-[0_8px_28px_rgba(74,144,226,0.14)] active:translate-y-0 active:scale-[0.99]"
+                className="group flex cursor-default flex-col gap-4 rounded-[1rem] border border-primary-100 bg-white p-5 shadow-[0_2px_12px_rgba(0,0,0,0.04)] transition-all duration-300 ease-out sm:flex-row sm:items-center sm:gap-6 sm:p-6 hover:-translate-y-1 hover:border-primary-300/60 hover:shadow-[0_8px_28px_rgba(74,144,226,0.14)] active:translate-y-0 active:scale-[0.99]"
               >
                 <span
                   className="inline-flex"

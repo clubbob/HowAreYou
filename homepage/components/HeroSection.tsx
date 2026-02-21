@@ -19,11 +19,11 @@ export function HeroSection() {
   const goNext = () => setSlideIndex((i) => (i >= HERO_IMAGES.length - 1 ? 0 : i + 1));
 
   return (
-    <section className="relative overflow-hidden bg-[#F7F8FA] px-6 py-12 md:py-16">
-      <div className="mx-auto grid max-w-5xl items-center gap-8 md:grid-cols-2 md:gap-12">
+    <section className="relative overflow-hidden bg-[#F7F8FA] px-4 py-10 sm:px-6 sm:py-12 md:py-16">
+      <div className="mx-auto grid max-w-5xl items-center gap-6 sm:gap-8 md:grid-cols-2 md:gap-12">
         {/* 좌측: 텍스트 */}
-        <div>
-          <div className="mb-6 flex items-center gap-4">
+        <div className="order-2 md:order-1">
+          <div className="mb-4 flex items-center gap-3 sm:mb-6 sm:gap-4">
             <Image
               src="/logo.png"
               alt="지금 어때"
@@ -31,17 +31,16 @@ export function HeroSection() {
               height={72}
               priority
               unoptimized
-              className="h-[4.5rem] w-[4.5rem] shrink-0"
+              className="h-12 w-12 shrink-0 sm:h-[4.5rem] sm:w-[4.5rem]"
             />
-            <span className="text-2xl font-bold text-navy-900 md:text-3xl">여기 어때?</span>
+            <span className="text-xl font-bold text-navy-900 sm:text-2xl md:text-3xl">여기 어때?</span>
           </div>
-          <h1 className="mb-4 text-[1.125rem] font-bold leading-[1.3] tracking-tight text-navy-900 sm:text-[1.5rem] md:text-[2rem] lg:text-[2.25rem]">
-            안부로 안심을 전하는 가족 앱
+          <h1 className="mb-3 text-[1.25rem] font-bold leading-[1.35] tracking-tight text-navy-900 sm:mb-4 sm:text-[1.5rem] md:text-[2rem] lg:text-[2.25rem]">
+            소중한 사람과 안부를 나누는 앱
           </h1>
-          <p className="mb-3 text-lg font-medium text-primary-400 md:text-xl">
-            매일 전화하지 않아도, 안부는 전해집니다.
-            <br />
-            작은 기록 하나로 서로의 안심을 확인하세요.
+          <p className="mb-3 text-base font-medium leading-[1.6] text-primary-400 sm:text-lg md:text-xl">
+            <span className="block sm:inline">매일 전화하지 않아도, 안부는 전해집니다.</span>
+            <span className="block sm:inline">작은 기록 하나로 서로의 안심을 확인하세요.</span>
           </p>
           <div>
             <button
@@ -57,20 +56,20 @@ export function HeroSection() {
           </div>
         </div>
 
-        {/* 우측: 앱 화면 캐러셀 */}
-        <div className="flex flex-col items-center gap-3">
-          <div className="flex items-center justify-center gap-2">
+        {/* 우측: 앱 화면 캐러셀 (모바일에서 상단에 배치) */}
+        <div className="order-1 flex flex-col items-center gap-2 sm:order-2 sm:gap-3 md:order-2">
+          <div className="flex items-center justify-center gap-1 sm:gap-2">
             <button
-            type="button"
-            onClick={goPrev}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-navy-200 bg-white text-navy-600 shadow-sm transition-colors hover:bg-navy-50 hover:text-navy-900"
-            aria-label="이전"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M15 18l-6-6 6-6" />
-            </svg>
-          </button>
-          <div className="flex h-[280px] w-[160px] flex-col overflow-hidden rounded-[1.5rem] border border-navy-200/60 bg-white shadow-[0_4px_20px_rgba(31,42,68,0.08)] md:h-[360px] md:w-[200px]" style={{ boxShadow: '0 4px 24px rgba(31,42,68,0.06)' }}>
+              type="button"
+              onClick={goPrev}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-navy-200 bg-white text-navy-600 shadow-sm transition-colors hover:bg-navy-50 hover:text-navy-900 sm:h-10 sm:w-10"
+              aria-label="이전"
+            >
+              <svg className="h-5 w-5 sm:h-[20px] sm:w-[20px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
+            </button>
+            <div className="flex h-[260px] w-[150px] flex-col overflow-hidden rounded-[1.25rem] border border-navy-200/60 bg-white shadow-[0_4px_20px_rgba(31,42,68,0.08)] sm:h-[280px] sm:w-[160px] md:h-[360px] md:w-[200px]" style={{ boxShadow: '0 4px 24px rgba(31,42,68,0.06)' }}>
             <div className="flex h-6 shrink-0 items-center justify-center border-b border-navy-100 bg-navy-50">
               <div className="h-1.5 w-1.5 rounded-full bg-navy-300" />
             </div>
@@ -90,19 +89,19 @@ export function HeroSection() {
                 }}
               />
             </div>
+            </div>
+            <button
+              type="button"
+              onClick={goNext}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-navy-200 bg-white text-navy-600 shadow-sm transition-colors hover:bg-navy-50 hover:text-navy-900 sm:h-10 sm:w-10"
+              aria-label="다음"
+            >
+              <svg className="h-5 w-5 sm:h-[20px] sm:w-[20px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M9 18l6-6-6-6" />
+              </svg>
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={goNext}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-navy-200 bg-white text-navy-600 shadow-sm transition-colors hover:bg-navy-50 hover:text-navy-900"
-            aria-label="다음"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M9 18l6-6-6-6" />
-            </svg>
-          </button>
-          </div>
-          <div className="flex gap-2" aria-hidden="true">
+          <div className="flex gap-1.5 sm:gap-2" aria-hidden="true">
             {HERO_IMAGES.map((_, i) => (
               <button
                 key={i}

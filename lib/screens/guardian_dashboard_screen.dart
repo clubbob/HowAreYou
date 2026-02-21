@@ -685,7 +685,7 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
     String guardianUid,
   ) async {
     final recorded = statuses.where((s) => s.hasRespondedToday == true).toList();
-    if (recorded.isEmpty) return '오늘 아직 안부가 없습니다.\n간단히 확인해보세요.';
+    if (recorded.isEmpty) return '오늘 아직 안부가 없습니다.';
 
     final names = await Future.wait(
       recorded.map((s) => _guardianService.getSubjectDisplayNameForGuardian(s.subjectId, guardianUid)),
@@ -1761,18 +1761,6 @@ class _SubjectListItemState extends State<_SubjectListItem> {
           statusText = '오늘은 아직 기록이 없습니다.';
         }
 
-        final statusColor = hasRespondedToday
-            ? Colors.green.shade700
-            : Colors.grey.shade700;
-
-        // 최근 기록: 년월일 시간 / 없음
-        final String dateText;
-        if (_latestAnsweredAt == null) {
-          dateText = '최근 기록: 없음';
-        } else {
-          dateText = '최근 기록: ${DateFormat('yyyy년 M월 d일 HH:mm', 'ko_KR').format(_latestAnsweredAt!)}';
-        }
-
         return FutureBuilder<bool>(
           future: _isStillPairedFuture,
           builder: (context, pairedSnapshot) {
@@ -1792,54 +1780,59 @@ class _SubjectListItemState extends State<_SubjectListItem> {
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
                         children: [
+                          // 1행: 이름 + 전화번호 (이름 우측에 바로 붙여 표시)
+                          Row(
+                            children: [
+                              Text(
+                                subjectName,
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
+                              ),
+                              if (_subjectPhone.isNotEmpty) ...[
+                                const SizedBox(width: 6),
+                                Flexible(
+                                  child: Text(
+                                    _subjectPhone,
+                                    style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 1,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          // 2행: 오늘 기록 상태
                           Text(
-                            subjectName,
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
+                            hasRespondedToday
+                                ? (_currentStreak >= 1
+                                    ? (_currentStreak == 1 ? '오늘 기록했어요' : '$_currentStreak일 연속 기록 중')
+                                    : '오늘 기록 완료')
+                                : '오늘 기록 없습니다.',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: hasRespondedToday ? Colors.orange.shade700 : Colors.grey.shade700,
                             ),
                             overflow: TextOverflow.ellipsis,
                             maxLines: 1,
                           ),
-                          if (_subjectPhone.isNotEmpty) ...[
-                            const SizedBox(height: 2),
-                            Text(
-                              _subjectPhone,
-                              style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 1,
-                            ),
-                          ],
-                          const SizedBox(height: 6),
-                          if (_currentStreak >= 1) ...[
-                            Text(
-                              _currentStreak == 1 ? '오늘 기록했어요' : '$_currentStreak일 연속 기록 중',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.orange.shade700,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                          ],
-                          if (!hasRespondedToday) ...[
-                            Text(
-                              statusText,
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                color: statusColor,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                          ],
+                          const SizedBox(height: 2),
+                          // 3행: 최근기록: 년월일
                           Text(
-                            dateText,
+                            '최근기록: ${_latestAnsweredAt != null ? DateFormat('yyyy년 M월 d일 HH:mm', 'ko_KR').format(_latestAnsweredAt!) : '없음'}',
                             style: TextStyle(
                               fontSize: 12,
-                              color: Colors.grey.shade700,
+                              color: Colors.grey.shade600,
                             ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
                           ),
                         ],
                       ),
@@ -1909,27 +1902,43 @@ class _GuardianSettingsScreenState extends State<GuardianSettingsScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('회원 탈퇴'),
-        content: const Text(
-          '탈퇴하면 데이터는 삭제됩니다.\n\n'
-          '• 사용자 정보 삭제\n'
-          '• 보호대상자/보호자 연결 해제\n'
-          '• 기록 데이터 삭제\n\n'
-          '연 결제(12,000원)는 스토어에서 자동 갱신됩니다. '
-          '탈퇴만 하면 결제는 멈추지 않습니다. 과금 멈추려면 스토어에서 직접 취소하세요.',
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              '탈퇴하면 데이터는 삭제됩니다.\n\n'
+              '• 사용자 정보 삭제\n'
+              '• 보호대상자/보호자 연결 해제\n'
+              '• 기록 데이터 삭제\n\n'
+              '연 결제(12,000원)는 스토어에서 자동 갱신됩니다. '
+              '탈퇴만 하면 결제는 멈추지 않습니다. 과금 멈추려면 스토어에서 직접 취소하세요.',
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.of(ctx).pop('store'),
+                    child: const Text('과금 멈추기'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.of(ctx).pop('continue'),
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                    child: const Text('탈퇴'),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop('cancel'),
             child: Text('취소', style: TextStyle(color: Colors.grey.shade700)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop('store'),
-            child: const Text('과금 멈추러 가기'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(ctx).pop('continue'),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('탈퇴 계속'),
           ),
         ],
       ),
@@ -1952,22 +1961,36 @@ class _GuardianSettingsScreenState extends State<GuardianSettingsScreen> {
         context: context,
         builder: (ctx) => AlertDialog(
           title: const Text('연 결제가 진행 중입니다'),
-          content: const Text(
-            '탈퇴해도 결제는 멈추지 않습니다. 계속하시겠습니까?',
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text('탈퇴해도 결제는 멈추지 않습니다. 계속하시겠습니까?'),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.of(ctx).pop('store'),
+                      child: const Text('과금 멈추기'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.of(ctx).pop('delete'),
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                      child: const Text('탈퇴'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop('cancel'),
               child: Text('취소', style: TextStyle(color: Colors.grey.shade700)),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop('store'),
-              child: const Text('과금 멈추러 가기'),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.of(ctx).pop('delete'),
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-              child: const Text('탈퇴'),
             ),
           ],
         ),
@@ -1980,6 +2003,43 @@ class _GuardianSettingsScreenState extends State<GuardianSettingsScreen> {
     }
 
     if (!context.mounted) return;
+
+    // 최종 확인: 정말 탈퇴하시겠습니까?
+    final confirmDelete = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('최종 확인'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              '정말 탈퇴하시겠습니까?\n계정과 데이터가 영구적으로 삭제되며 되돌릴 수 없습니다.',
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.of(ctx).pop(false),
+                    child: const Text('취소'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.of(ctx).pop(true),
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                    child: const Text('탈퇴'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+    if (confirmDelete != true || !context.mounted) return;
 
     var error = await authService.deleteAccount();
     if (!context.mounted) return;
@@ -2019,27 +2079,41 @@ class _GuardianSettingsScreenState extends State<GuardianSettingsScreen> {
           final controller = TextEditingController();
           return AlertDialog(
             title: const Text('본인 인증'),
-            content: TextField(
-              controller: controller,
-              keyboardType: TextInputType.number,
-              maxLength: 6,
-              autofocus: true,
-              decoration: const InputDecoration(
-                hintText: '인증번호 6자리',
-                counterText: '',
-              ),
-              onSubmitted: (v) => Navigator.of(ctx).pop(v),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                TextField(
+                  controller: controller,
+                  keyboardType: TextInputType.number,
+                  maxLength: 6,
+                  autofocus: true,
+                  decoration: const InputDecoration(
+                    hintText: '인증번호 6자리',
+                    counterText: '',
+                  ),
+                  onSubmitted: (v) => Navigator.of(ctx).pop(v),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.of(ctx).pop(),
+                        child: const Text('취소'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.of(ctx).pop(controller.text),
+                        child: const Text('확인'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(),
-                child: const Text('취소'),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.of(ctx).pop(controller.text),
-                child: const Text('확인'),
-              ),
-            ],
           );
         },
       );
@@ -2213,7 +2287,7 @@ class _GuardianSettingsScreenState extends State<GuardianSettingsScreen> {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    subtitle: const Text('계정 및 모든 데이터가 영구적으로 삭제됩니다'),
+                    subtitle: const Text('계정과 데이터가 영구적으로 삭제됩니다.'),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => _showDeleteAccountDialog(context),
                   ),
@@ -2296,26 +2370,61 @@ class _GuardianSettingsScreenState extends State<GuardianSettingsScreen> {
   }
 
   Future<void> _openSubscriptionManagement() async {
-    String url;
-    try {
-      if (Platform.isIOS) {
-        url = 'https://apps.apple.com/account/subscriptions';
-      } else if (Platform.isAndroid) {
-        url = 'https://play.google.com/store/account/subscriptions';
-      } else {
-        url = 'https://play.google.com/store/account/subscriptions';
-      }
-    } catch (_) {
-      url = 'https://play.google.com/store/account/subscriptions';
-    }
+    if (!mounted) return;
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '구독 관리로 이동',
+                style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                leading: const Icon(Icons.apple),
+                title: const Text('App Store'),
+                subtitle: const Text('iOS 구독 관리'),
+                onTap: () => Navigator.of(ctx).pop('apple'),
+              ),
+              ListTile(
+                leading: const Icon(Icons.android),
+                title: const Text('Google Play'),
+                subtitle: const Text('Android 구독 관리'),
+                onTap: () => Navigator.of(ctx).pop('play'),
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('취소'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (choice == null || !mounted) return;
+    final url = choice == 'apple'
+        ? 'https://apps.apple.com/account/subscriptions'
+        : 'https://play.google.com/store/account/subscriptions';
     await _launchSettingsUrl(url);
   }
 
   Future<void> _launchSettingsUrl(String url) async {
     final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } else {
+    try {
+      final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!launched && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('링크를 열 수 없습니다.')),
+        );
+      }
+    } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('링크를 열 수 없습니다.')),

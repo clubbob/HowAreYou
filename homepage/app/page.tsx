@@ -12,7 +12,7 @@ import { FadeInSection } from '@/components/FadeInSection';
 
 export default function HomePage() {
   return (
-    <main className="min-h-screen bg-[#F7F8FA]">
+    <main className="min-h-screen overflow-x-hidden bg-[#F7F8FA]">
       <HeroSection />
       <FadeInSection>
         <ProblemSection />

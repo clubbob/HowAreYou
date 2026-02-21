@@ -53,7 +53,7 @@ export function BetaModal({ open, onClose }: Props) {
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md rounded-[1rem] border border-navy-100 bg-white p-6 shadow-[0_8px_32px_rgba(0,0,0,0.12)]"
+        className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-[1rem] border border-navy-100 bg-white p-5 shadow-[0_8px_32px_rgba(0,0,0,0.12)] sm:p-6"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-5 flex items-center justify-between">

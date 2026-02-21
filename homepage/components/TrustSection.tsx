@@ -32,9 +32,9 @@ const ITEMS = [
 
 export function TrustSection() {
   return (
-    <section className="bg-navy-50 px-6 py-20 md:py-24" style={{ paddingTop: '5rem', paddingBottom: '5rem' }}>
+    <section className="bg-navy-50 px-4 py-14 sm:px-6 sm:py-16 md:py-24">
       <div className="mx-auto max-w-4xl">
-        <h2 className="mb-4 text-center text-[1.75rem] font-bold leading-[1.4] text-navy-900">
+        <h2 className="mb-4 text-center text-[1.375rem] font-bold leading-[1.4] text-navy-900 sm:text-[1.75rem]">
           우리가 하지 않는 것
         </h2>
         <p className="mb-12 text-center text-[17px] text-navy-600">

@@ -41,7 +41,7 @@ export default function RootLayout({
       <head>
         <link rel="icon" href="/logo.png" type="image/png" sizes="512x512" />
       </head>
-      <body className="min-h-screen bg-[#F7F8FA] text-navy-900 antialiased">{children}</body>
+      <body className="min-h-screen overflow-x-hidden bg-[#F7F8FA] text-navy-900 antialiased">{children}</body>
     </html>
   );
 }

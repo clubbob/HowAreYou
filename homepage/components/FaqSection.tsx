@@ -20,7 +20,7 @@ const FAQ_ITEMS = [
   },
   {
     q: '알림은 어떻게 발송되나요?',
-    a: '보호대상자에게는 당일 기록이 없을 때만 매일 저녁 7시에 기록 안내 알림이 발송됩니다. 보호자에게는 보호대상자가 기록했을 때 실시간으로 알림이 전달되고, 당일 기록이 없을 때는 저녁 8시에 한 번, 3일 연속 기록이 없을 때는 추가로 1회 안내됩니다.',
+    a: '보호대상자에게는 당일 기록이 없을 때만 매일 저녁 7시에 기록 안내 알림이 발송됩니다. 보호자에게는 보호대상자가 기록했을 때 실시간으로 알림이 전달되고, 3일 연속 기록이 없을 때 추가로 1회 안내됩니다.',
   },
   {
     q: '보호자는 어떤 기록을 볼 수 있나요?',
@@ -36,7 +36,7 @@ export function FaqSection() {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   return (
-    <section className="bg-navy-50 px-6 py-20 md:py-24" style={{ paddingTop: '5rem', paddingBottom: '5rem' }}>
+    <section className="bg-navy-50 px-4 py-14 sm:px-6 sm:py-16 md:py-24">
       <div className="mx-auto max-w-3xl">
         <h2 className="mb-12 text-center text-[1.75rem] font-bold leading-[1.4] text-navy-900">
           자주 묻는 질문
@@ -51,9 +51,9 @@ export function FaqSection() {
             >
               <button
                 onClick={() => setOpenIndex(openIndex === i ? null : i)}
-                className="flex w-full cursor-pointer items-center justify-between px-6 py-5 text-left transition-colors hover:bg-navy-50/50 active:bg-navy-100/60"
+                className="flex w-full cursor-pointer items-center justify-between gap-3 px-4 py-4 text-left transition-colors hover:bg-navy-50/50 active:bg-navy-100/60 sm:px-6 sm:py-5"
               >
-                <span className="text-[17px] font-semibold text-navy-900 transition-colors duration-300 group-hover:text-primary-600">
+                <span className="min-w-0 flex-1 text-[15px] font-semibold leading-[1.4] text-navy-900 transition-colors duration-300 group-hover:text-primary-600 sm:text-[17px]">
                   Q. {item.q}
                 </span>
                 <span
@@ -69,8 +69,8 @@ export function FaqSection() {
                   openIndex === i ? 'max-h-96' : 'max-h-0'
                 }`}
               >
-                <div className="border-t border-navy-100 px-6 py-5">
-                  <p className="text-[17px] leading-[1.6] text-navy-700">A. {item.a}</p>
+                <div className="border-t border-navy-100 px-4 py-4 sm:px-6 sm:py-5">
+                  <p className="text-[15px] leading-[1.6] text-navy-700 sm:text-[17px]">A. {item.a}</p>
                 </div>
               </div>
             </div>

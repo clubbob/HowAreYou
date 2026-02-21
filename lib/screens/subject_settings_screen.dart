@@ -1,4 +1,3 @@
-import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -119,9 +118,14 @@ class _SubjectSettingsScreenState extends State<SubjectSettingsScreen> {
 
   Future<void> _launchUrl(String url) async {
     final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } else {
+    try {
+      final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!launched && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('링크를 열 수 없습니다.')),
+        );
+      }
+    } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('링크를 열 수 없습니다.')),
@@ -131,18 +135,48 @@ class _SubjectSettingsScreenState extends State<SubjectSettingsScreen> {
   }
 
   Future<void> _openSubscriptionManagement() async {
-    String url;
-    try {
-      if (Platform.isIOS) {
-        url = 'https://apps.apple.com/account/subscriptions';
-      } else if (Platform.isAndroid) {
-        url = 'https://play.google.com/store/account/subscriptions';
-      } else {
-        url = 'https://play.google.com/store/account/subscriptions';
-      }
-    } catch (_) {
-      url = 'https://play.google.com/store/account/subscriptions';
-    }
+    if (!mounted) return;
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '구독 관리로 이동',
+                style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                leading: const Icon(Icons.apple),
+                title: const Text('App Store'),
+                subtitle: const Text('iOS 구독 관리'),
+                onTap: () => Navigator.of(ctx).pop('apple'),
+              ),
+              ListTile(
+                leading: const Icon(Icons.android),
+                title: const Text('Google Play'),
+                subtitle: const Text('Android 구독 관리'),
+                onTap: () => Navigator.of(ctx).pop('play'),
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('취소'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (choice == null || !mounted) return;
+    final url = choice == 'apple'
+        ? 'https://apps.apple.com/account/subscriptions'
+        : 'https://play.google.com/store/account/subscriptions';
     await _launchUrl(url);
   }
 
@@ -152,27 +186,43 @@ class _SubjectSettingsScreenState extends State<SubjectSettingsScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('회원 탈퇴'),
-        content: const Text(
-          '탈퇴하면 데이터는 삭제됩니다.\n\n'
-          '• 사용자 정보 삭제\n'
-          '• 보호대상자/보호자 연결 해제\n'
-          '• 기록 데이터 삭제\n\n'
-          '연 결제(12,000원)는 스토어에서 자동 갱신됩니다. '
-          '탈퇴만 하면 결제는 멈추지 않습니다. 과금 멈추려면 스토어에서 직접 취소하세요.',
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              '탈퇴하면 데이터는 삭제됩니다.\n\n'
+              '• 사용자 정보 삭제\n'
+              '• 보호대상자/보호자 연결 해제\n'
+              '• 기록 데이터 삭제\n\n'
+              '연 결제(12,000원)는 스토어에서 자동 갱신됩니다. '
+              '탈퇴만 하면 결제는 멈추지 않습니다. 과금 멈추려면 스토어에서 직접 취소하세요.',
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.of(ctx).pop('store'),
+                    child: const Text('과금 멈추기'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.of(ctx).pop('continue'),
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                    child: const Text('탈퇴'),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop('cancel'),
             child: Text('취소', style: TextStyle(color: Colors.grey.shade700)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop('store'),
-            child: const Text('과금 멈추러 가기'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(ctx).pop('continue'),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('탈퇴 계속'),
           ),
         ],
       ),
@@ -195,22 +245,36 @@ class _SubjectSettingsScreenState extends State<SubjectSettingsScreen> {
         context: context,
         builder: (ctx) => AlertDialog(
           title: const Text('연 결제가 진행 중입니다'),
-          content: const Text(
-            '탈퇴해도 결제는 멈추지 않습니다. 계속하시겠습니까?',
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text('탈퇴해도 결제는 멈추지 않습니다. 계속하시겠습니까?'),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.of(ctx).pop('store'),
+                      child: const Text('과금 멈추기'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.of(ctx).pop('delete'),
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                      child: const Text('탈퇴'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop('cancel'),
               child: Text('취소', style: TextStyle(color: Colors.grey.shade700)),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop('store'),
-              child: const Text('과금 멈추러 가기'),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.of(ctx).pop('delete'),
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-              child: const Text('탈퇴'),
             ),
           ],
         ),
@@ -223,6 +287,43 @@ class _SubjectSettingsScreenState extends State<SubjectSettingsScreen> {
     }
 
     if (!context.mounted) return;
+
+    // 최종 확인: 정말 탈퇴하시겠습니까?
+    final confirmDelete = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('최종 확인'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              '정말 탈퇴하시겠습니까?\n계정과 데이터가 영구적으로 삭제되며 되돌릴 수 없습니다.',
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.of(ctx).pop(false),
+                    child: const Text('취소'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.of(ctx).pop(true),
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                    child: const Text('탈퇴'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+    if (confirmDelete != true || !context.mounted) return;
 
     var error = await authService.deleteAccount();
     if (!context.mounted) return;
@@ -422,7 +523,7 @@ class _SubjectSettingsScreenState extends State<SubjectSettingsScreen> {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    subtitle: const Text('계정 및 모든 데이터가 영구적으로 삭제됩니다'),
+                    subtitle: const Text('계정과 데이터가 영구적으로 삭제됩니다.'),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => _showDeleteAccountDialog(context),
                   ),
