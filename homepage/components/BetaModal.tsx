@@ -10,7 +10,6 @@ type Props = {
 };
 
 export function BetaModal({ open, onClose }: Props) {
-  const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'already_registered' | 'full' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
@@ -26,20 +25,30 @@ export function BetaModal({ open, onClose }: Props) {
     }
   }, [open]);
 
+  const normalizePhone = (v: string) => v.replace(/\D/g, '');
+  const isValidPhone = (v: string) => {
+    const digits = normalizePhone(v);
+    return digits.length >= 10 && digits.length <= 11;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim() || submittingRef.current) return;
+    const trimmed = phone.trim();
+    if (!trimmed || submittingRef.current) return;
+    if (!isValidPhone(trimmed)) {
+      setErrorMsg('올바른 휴대폰 번호를 입력해 주세요. (10~11자리)');
+      return;
+    }
     submittingRef.current = true;
     setStatus('loading');
     setErrorMsg('');
     try {
-      const result = await addToWaitlist(email.trim(), phone.trim() || undefined);
-      setEmail('');
+      const result = await addToWaitlist(normalizePhone(trimmed));
       setPhone('');
       setStatus(result.status === 'already_registered' ? 'already_registered' : result.status === 'full' ? 'full' : 'success');
     } catch (err) {
       setStatus('error');
-      setErrorMsg(err instanceof Error ? err.message : '등록에 실패했습니다. 다시 시도해 주세요.');
+      setErrorMsg(err instanceof Error ? err.message : '등록에 실패했습니다. 잠시 후 다시 시도해 주세요.');
     } finally {
       submittingRef.current = false;
     }
@@ -111,7 +120,7 @@ export function BetaModal({ open, onClose }: Props) {
               </svg>
             </div>
             <p className="text-lg font-semibold text-navy-900">이미 신청하셨습니다.</p>
-            <p className="mt-1 text-[17px] text-navy-600">등록된 이메일로 출시 시 안내드리겠습니다.</p>
+            <p className="mt-1 text-[17px] text-navy-600">등록된 번호로 출시 시 설치 링크를 문자로 보내드립니다.</p>
             <button
               onClick={onClose}
               className="mx-auto mt-6 flex h-[52px] items-center justify-center rounded-[14px] bg-navy-200 px-8 text-[17px] font-medium text-navy-800 transition-colors hover:bg-navy-300 active:bg-navy-400"
@@ -122,37 +131,38 @@ export function BetaModal({ open, onClose }: Props) {
         ) : (
           <form onSubmit={handleSubmit}>
             <div className="mb-4 rounded-xl bg-primary-50 px-4 py-3">
-              <p className="mb-2 text-sm font-semibold text-primary-700">베타 참여 혜택 (선착순 {BETA.limit}명)</p>
-              <p className="text-[15px] text-navy-700">출시 시 최우선 안내 · 1년 무료 이용</p>
+              <p className="text-[15px] font-semibold text-primary-700">선착순 {BETA.limit}명 · 1년 무료 이용</p>
             </div>
             <p className="mb-4 text-[17px] leading-[1.6] text-navy-700">
-              이메일과 연락처를 입력해 주세요. 출시 시 안내 및 코드 전달에 사용됩니다.
+              출시 시 설치 링크를 문자로 보내드립니다.
             </p>
             <div className="space-y-3">
-              <input
-                type="email"
-                inputMode="email"
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="이메일 (example@email.com)"
-                required
-                disabled={status === 'loading'}
-                className="w-full rounded-[14px] border border-navy-200 px-4 py-4 text-[17px] text-navy-900 placeholder:text-navy-400 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-400/20 disabled:bg-navy-50 disabled:opacity-70"
-              />
+              <label className="block text-[15px] font-medium text-navy-700">휴대폰 번호 (필수)</label>
               <input
                 type="tel"
                 inputMode="tel"
                 autoComplete="tel"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="연락처 (010-1234-5678) - 코드 전달용"
+                onChange={(e) => {
+                setPhone(e.target.value);
+                if (errorMsg) setErrorMsg('');
+              }}
+                placeholder="010-1234-5678"
                 required
                 disabled={status === 'loading'}
                 className="w-full rounded-[14px] border border-navy-200 px-4 py-4 text-[17px] text-navy-900 placeholder:text-navy-400 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-400/20 disabled:bg-navy-50 disabled:opacity-70"
               />
+              <p className="text-[14px] text-navy-500">하이픈(-) 없이 번호만 입력하세요</p>
             </div>
-            {errorMsg && <p className="mt-2 text-sm font-medium text-red-600">{errorMsg}</p>}
+            {errorMsg && (
+              <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3" role="alert">
+                <p className="text-sm font-medium text-red-700">{errorMsg}</p>
+                <p className="mt-1 text-[13px] text-red-600/90">번호를 확인한 후 다시 시도해 주세요. 계속되면 잠시 후 시도해 주세요.</p>
+              </div>
+            )}
+            <p className="mt-4 text-[15px] leading-[1.5] text-navy-500">
+              입력하신 번호는 베타 안내 외 다른 용도로 사용되지 않습니다.
+            </p>
             <div className="mt-6 flex gap-3">
               <button
                 type="button"
@@ -166,9 +176,12 @@ export function BetaModal({ open, onClose }: Props) {
                 disabled={status === 'loading'}
                 className="flex flex-1 items-center justify-center rounded-[14px] bg-primary-400 py-4 text-[17px] font-medium text-white transition-colors hover:bg-primary-500 active:bg-primary-600 disabled:opacity-60"
               >
-                {status === 'loading' ? '등록 중...' : '참여 신청'}
+                {status === 'loading' ? '등록 중...' : '베타 참여하기'}
               </button>
             </div>
+            {status === 'loading' && (
+              <p className="mt-3 text-center text-[13px] text-navy-500">처음 요청 시 최대 10초 걸릴 수 있습니다</p>
+            )}
           </form>
         )}
       </div>

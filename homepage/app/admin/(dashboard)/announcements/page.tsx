@@ -22,6 +22,7 @@ export default function AdminAnnouncementsPage() {
   const [pinned, setPinned] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [previewAnnouncement, setPreviewAnnouncement] = useState<Announcement | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'date' | 'updated'>('date');
 
   function load() {
@@ -221,32 +222,39 @@ export default function AdminAnnouncementsPage() {
         </form>
       )}
       <div className="space-y-4">
-        {sortedList.map((a) => (
-          <div key={a.id} className="p-6 bg-white rounded-xl shadow border border-slate-200">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <h2 className="font-semibold text-slate-800">{a.title}</h2>
-                  <button
-                    type="button"
-                    onClick={() => setPreviewAnnouncement(a)}
-                    className="text-sm text-slate-500 hover:text-blue-600"
-                  >
-                    미리보기
-                  </button>
-                </div>
-                <p className="text-sm text-slate-500 mt-1">
-                  등록 {new Date(a.createdAt).toLocaleString('ko-KR')}
-                  {a.updatedAt && (
-                    <span className="ml-2">· 수정 {new Date(a.updatedAt).toLocaleString('ko-KR')}</span>
-                  )}
-                  {a.pinned && (
-                    <span className="ml-2 inline-flex px-2 py-0.5 rounded bg-amber-100 text-amber-700 text-xs">
-                      상단고정
-                    </span>
-                  )}
-                </p>
-                <p className="mt-3 text-slate-700 whitespace-pre-wrap">{a.content}</p>
+        {sortedList.map((a, idx) => (
+          <div key={a.id} className="flex gap-4 p-6 bg-white rounded-xl shadow border border-slate-200">
+            <div className="w-12 shrink-0 pt-0.5 text-center text-sm font-medium text-slate-500">
+              {sortedList.length - idx}
+            </div>
+            <div className="flex flex-1 items-start justify-between gap-4 min-w-0">
+              <div className="flex-1 min-w-0">
+                <button
+                  type="button"
+                  onClick={() => setExpandedId(expandedId === a.id ? null : a.id)}
+                  className="w-full text-left group"
+                >
+                  <div className="flex items-center gap-2">
+                    <h2 className="font-semibold text-slate-800 truncate group-hover:text-blue-600">{a.title}</h2>
+                    <span className={`shrink-0 text-slate-400 transition-transform ${expandedId === a.id ? 'rotate-180' : ''}`}>▼</span>
+                  </div>
+                  <p className="text-sm text-slate-500 mt-1">
+                    등록 {new Date(a.createdAt).toLocaleString('ko-KR')}
+                    {a.updatedAt && (
+                      <span className="ml-2">· 수정 {new Date(a.updatedAt).toLocaleString('ko-KR')}</span>
+                    )}
+                    {a.pinned && (
+                      <span className="ml-2 inline-flex px-2 py-0.5 rounded bg-amber-100 text-amber-700 text-xs">
+                        상단고정
+                      </span>
+                    )}
+                  </p>
+                </button>
+                {expandedId === a.id && (
+                  <div className="mt-3 pt-3 border-t border-slate-100">
+                    <p className="text-slate-700 whitespace-pre-wrap">{a.content}</p>
+                  </div>
+                )}
               </div>
               <div className="flex shrink-0 gap-2">
                 <button

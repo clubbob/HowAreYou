@@ -9,6 +9,7 @@ import { AnnouncementsSection } from '@/components/AnnouncementsSection';
 import { CtaSection } from '@/components/CtaSection';
 import { Footer } from '@/components/Footer';
 import { FadeInSection } from '@/components/FadeInSection';
+import { ScrollToTopButton } from '@/components/ScrollToTopButton';
 
 export default function HomePage() {
   return (
@@ -37,6 +38,7 @@ export default function HomePage() {
         <CtaSection />
       </FadeInSection>
       <Footer />
+      <ScrollToTopButton />
     </main>
   );
 }

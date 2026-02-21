@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 
-type WaitlistItem = { id: string; email: string; phone: string; createdAt: string };
+type WaitlistItem = { id: string; phone: string; createdAt: string };
 
 export default function AdminWaitlistPage() {
   const [list, setList] = useState<WaitlistItem[]>([]);
@@ -32,54 +32,27 @@ export default function AdminWaitlistPage() {
 
   const filtered = search.trim()
     ? list.filter((i) => {
-        const q = search.trim().toLowerCase();
-        return (
-          i.email.toLowerCase().includes(q) ||
-          (i.phone && i.phone.replace(/\s/g, '').includes(q.replace(/\s/g, '')))
-        );
+        const q = search.trim().replace(/\s/g, '');
+        return (i.phone ?? '').replace(/\s/g, '').includes(q);
       })
     : list;
 
-  function handleExport() {
-    const headers = ['이메일', '연락처', '신청일시'];
-    const rows = filtered.map((i) => [
-      i.email,
-      i.phone || '-',
-      new Date(i.createdAt).toLocaleString('ko-KR'),
-    ]);
-    const csv = [headers.join(','), ...rows.map((r) => r.map((c) => `"${c}"`).join(','))].join('\n');
-    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `베타대기_${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-
-  async function handleCopyEmails() {
-    const emails = filtered.map((i) => i.email).filter(Boolean);
-    const text = emails.join('\n');
+  async function handleCopyPhones() {
+    const phones = filtered.map((i) => i.phone).filter(Boolean);
+    const text = phones.join('\n');
     if (!text) {
-      alert('복사할 이메일이 없습니다.');
+      alert('복사할 휴대폰 번호가 없습니다.');
       return;
     }
     try {
       await navigator.clipboard.writeText(text);
-      alert(`${emails.length}개 이메일이 클립보드에 복사되었습니다.`);
+      alert(`${phones.length}개 휴대폰 번호가 클립보드에 복사되었습니다.`);
     } catch {
       alert('복사에 실패했습니다.');
     }
   }
 
   const allFilteredSelected = filtered.length > 0 && filtered.every((i) => selectedIds.has(i.id));
-  const selectedInFiltered = selectedIds.size > 0 && filtered.some((i) => selectedIds.has(i.id));
-  const selectAllRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    const el = selectAllRef.current;
-    if (el) el.indeterminate = selectedInFiltered && !allFilteredSelected;
-  }, [selectedInFiltered, allFilteredSelected]);
 
   function toggleSelectAll() {
     if (allFilteredSelected) {
@@ -109,7 +82,7 @@ export default function AdminWaitlistPage() {
   async function handleSavePhone(id: string) {
     const phone = editPhone.trim().replace(/\s/g, '');
     if (!phone) {
-      alert('연락처를 입력해 주세요.');
+      alert('휴대폰 번호를 입력해 주세요.');
       return;
     }
     try {
@@ -123,7 +96,7 @@ export default function AdminWaitlistPage() {
       setEditPhone('');
       load();
     } catch (e) {
-      alert('연락처 수정에 실패했습니다.');
+      alert('휴대폰 번호 수정에 실패했습니다.');
     }
   }
 
@@ -168,22 +141,16 @@ export default function AdminWaitlistPage() {
         <div className="flex gap-2">
           <input
             type="text"
-            placeholder="이메일 검색"
+            placeholder="휴대폰 번호 검색"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="px-4 py-2 border border-slate-300 rounded-lg w-64"
           />
           <button
-            onClick={handleCopyEmails}
+            onClick={handleCopyPhones}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
-            이메일 일괄 복사
-          </button>
-          <button
-            onClick={handleExport}
-            className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200"
-          >
-            CSV 내보내기
+            휴대폰 번호 복사
           </button>
           <button
             onClick={handleDeleteSelected}
@@ -213,15 +180,13 @@ export default function AdminWaitlistPage() {
               <th className="w-12 py-3 px-4">
                 <input
                   type="checkbox"
-                  ref={selectAllRef}
                   checked={filtered.length > 0 && allFilteredSelected}
                   onChange={toggleSelectAll}
                   className="rounded border-slate-300"
                 />
               </th>
               <th className="w-16 min-w-[4rem] py-3 px-4 text-left text-sm font-medium text-slate-600 whitespace-nowrap">번호</th>
-              <th className="text-left py-3 px-4 text-sm font-medium text-slate-600">이메일</th>
-              <th className="text-left py-3 px-4 text-sm font-medium text-slate-600">연락처</th>
+              <th className="text-left py-3 px-4 text-sm font-medium text-slate-600">휴대폰 번호</th>
               <th className="text-left py-3 px-4 text-sm font-medium text-slate-600">신청일시</th>
             </tr>
           </thead>
@@ -236,8 +201,7 @@ export default function AdminWaitlistPage() {
                     className="rounded border-slate-300"
                   />
                 </td>
-                <td className="w-16 min-w-[4rem] py-3 px-4 text-sm text-slate-600">{idx + 1}</td>
-                <td className="py-3 px-4">{i.email}</td>
+                <td className="w-16 min-w-[4rem] py-3 px-4 text-sm text-slate-600">{filtered.length - idx}</td>
                 <td className="py-3 px-4 text-sm text-slate-600">
                   {editingId === i.id ? (
                     <div className="flex items-center gap-2">
@@ -266,7 +230,7 @@ export default function AdminWaitlistPage() {
                     <span
                       className={`cursor-pointer ${!i.phone ? 'text-amber-600 hover:underline' : ''}`}
                       onClick={() => startEdit(i)}
-                      title={i.phone ? '클릭하여 수정' : '연락처 없음 - 클릭하여 추가'}
+                      title={i.phone ? '클릭하여 수정' : '휴대폰 번호 없음 - 클릭하여 추가'}
                     >
                       {i.phone || '-'}
                     </span>

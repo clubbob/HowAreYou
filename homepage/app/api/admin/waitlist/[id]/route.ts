@@ -22,7 +22,7 @@ export async function PATCH(
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
-  const phone = body.phone != null ? String(body.phone).trim().replace(/\s/g, '') : '';
+  const phone = body.phone != null ? String(body.phone).trim().replace(/[\s-]/g, '') : '';
 
   const db = getAdminFirestore();
   if (!db) {

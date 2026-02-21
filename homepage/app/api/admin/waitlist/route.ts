@@ -18,11 +18,11 @@ export async function GET() {
       const createdAt = d.createdAt?.toDate?.() ?? new Date();
       return {
         id: doc.id,
-        email: d.email ?? '',
         phone: d.phone ?? '',
         createdAt: createdAt.toISOString(),
       };
     })
+    .filter((item) => item.phone)
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   return NextResponse.json(list);
 }

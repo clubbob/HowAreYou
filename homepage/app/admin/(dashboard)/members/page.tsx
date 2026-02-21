@@ -2,7 +2,15 @@
 
 import { useEffect, useState, useMemo } from 'react';
 
-type User = { id: string; phone: string; displayName: string | null; role: string; createdAt: string | null };
+type User = {
+  id: string;
+  phone: string;
+  displayName: string | null;
+  role: string;
+  createdAt: string | null;
+  guardianPhones: string[];
+  wardPhones: string[];
+};
 
 type SortKey = 'createdAt-desc' | 'createdAt-asc' | 'name-asc' | 'name-desc';
 
@@ -16,29 +24,8 @@ export default function AdminMembersPage() {
   const [page, setPage] = useState(1);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
-  function handleExport() {
-    const headers = ['전화번호', '이름', '역할', '가입일'];
-    const rows = filtered.map((u) => [
-      u.phone,
-      u.displayName ?? '-',
-      u.role === 'guardian' ? '보호자' : u.role === 'subject' ? '보호대상자' : '둘 다',
-      u.createdAt ? new Date(u.createdAt).toLocaleString('ko-KR') : '-',
-    ]);
-    const csv = [headers.join(','), ...rows.map((r) => r.map((c) => `"${c}"`).join(','))].join('\n');
-    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `회원목록_${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-
-  useEffect(() => {
-    setPage(1);
-  }, [search, roleFilter]);
-
-  useEffect(() => {
+  function load() {
+    setLoading(true);
     fetch('/api/admin/users')
       .then((res) => {
         if (!res.ok) throw new Error('조회 실패');
@@ -47,6 +34,14 @@ export default function AdminMembersPage() {
       .then(setList)
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, roleFilter]);
+
+  useEffect(() => {
+    load();
   }, []);
 
   const filtered = useMemo(() => {
@@ -145,10 +140,11 @@ export default function AdminMembersPage() {
           총 {filtered.length}명 / {list.length}명
         </span>
         <button
-          onClick={handleExport}
-          className="ml-auto px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 text-sm"
+          onClick={load}
+          disabled={loading}
+          className="ml-auto px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 disabled:opacity-50 text-sm"
         >
-          CSV 내보내기
+          새로고침
         </button>
       </div>
 
@@ -156,21 +152,26 @@ export default function AdminMembersPage() {
         <table className="w-full">
           <thead className="bg-slate-50">
             <tr>
+              <th className="w-16 min-w-[4rem] text-left py-3 px-4 text-sm font-medium text-slate-600 whitespace-nowrap">번호</th>
               <th className="text-left py-3 px-4 text-sm font-medium text-slate-600">전화번호</th>
-              <th className="text-left py-3 px-4 text-sm font-medium text-slate-600">이름</th>
+              <th className="text-left py-3 px-4 text-sm font-medium text-slate-600">가입일시</th>
               <th className="text-left py-3 px-4 text-sm font-medium text-slate-600">역할</th>
-              <th className="text-left py-3 px-4 text-sm font-medium text-slate-600">가입일</th>
+              <th className="text-left py-3 px-4 text-sm font-medium text-slate-600">연결된 보호자</th>
+              <th className="text-left py-3 px-4 text-sm font-medium text-slate-600">연결된 보호대상자</th>
             </tr>
           </thead>
           <tbody>
-            {paginated.map((u) => (
+            {paginated.map((u, idx) => (
               <tr
                 key={u.id}
                 onClick={() => setSelectedUser(u)}
                 className="border-t border-slate-100 hover:bg-slate-50 cursor-pointer"
               >
+                <td className="w-16 min-w-[4rem] py-3 px-4 text-sm text-slate-600">{filtered.length - (page - 1) * PAGE_SIZE - idx}</td>
                 <td className="py-3 px-4 font-mono text-sm">{u.phone || '-'}</td>
-                <td className="py-3 px-4">{u.displayName ?? '-'}</td>
+                <td className="py-3 px-4 text-sm text-slate-600">
+                  {u.createdAt ? new Date(u.createdAt).toLocaleString('ko-KR') : '-'}
+                </td>
                 <td className="py-3 px-4">
                   <span
                     className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${
@@ -184,8 +185,15 @@ export default function AdminMembersPage() {
                     {u.role === 'guardian' ? '보호자' : u.role === 'subject' ? '보호대상자' : '둘 다'}
                   </span>
                 </td>
-                <td className="py-3 px-4 text-sm text-slate-600">
-                  {u.createdAt ? new Date(u.createdAt).toLocaleString('ko-KR') : '-'}
+                <td className="py-3 px-4 text-sm text-slate-600 font-mono">
+                  {(u.guardianPhones ?? []).length > 0
+                    ? (u.guardianPhones ?? []).join(', ')
+                    : '-'}
+                </td>
+                <td className="py-3 px-4 text-sm text-slate-600 font-mono">
+                  {(u.wardPhones ?? []).length > 0
+                    ? (u.wardPhones ?? []).join(', ')
+                    : '-'}
                 </td>
               </tr>
             ))}
@@ -261,6 +269,22 @@ export default function AdminMembersPage() {
                   >
                     {selectedUser.role === 'guardian' ? '보호자' : selectedUser.role === 'subject' ? '보호대상자' : '둘 다'}
                   </span>
+                </dd>
+              </div>
+              <div>
+                <dt className="text-sm text-slate-500">연결된 보호자</dt>
+                <dd className="text-sm font-mono">
+                  {(selectedUser.guardianPhones ?? []).length > 0
+                    ? (selectedUser.guardianPhones ?? []).join(', ')
+                    : '-'}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-sm text-slate-500">연결된 보호대상자</dt>
+                <dd className="text-sm font-mono">
+                  {(selectedUser.wardPhones ?? []).length > 0
+                    ? (selectedUser.wardPhones ?? []).join(', ')
+                    : '-'}
                 </dd>
               </div>
               <div>
