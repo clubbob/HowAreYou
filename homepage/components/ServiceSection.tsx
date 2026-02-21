@@ -100,7 +100,7 @@ export function ServiceSection() {
             >
               <div
                 data-mobile-service-card
-                className="group flex cursor-default flex-col gap-4 rounded-[1rem] border border-primary-100 bg-white p-5 shadow-[0_2px_12px_rgba(0,0,0,0.04)] transition-all duration-300 ease-out sm:flex-row sm:items-center sm:gap-6 sm:p-6 hover:-translate-y-1 hover:border-primary-300/60 hover:shadow-[0_8px_28px_rgba(74,144,226,0.14)] active:translate-y-0 active:scale-[0.99]"
+                className="group flex cursor-default flex-row items-start gap-4 rounded-[1rem] border border-primary-100 bg-white p-5 shadow-[0_2px_12px_rgba(0,0,0,0.04)] transition-all duration-300 ease-out sm:items-center sm:gap-6 sm:p-6 hover:-translate-y-1 hover:border-primary-300/60 hover:shadow-[0_8px_28px_rgba(74,144,226,0.14)] active:translate-y-0 active:scale-[0.99]"
               >
                 <span
                   className="inline-flex"

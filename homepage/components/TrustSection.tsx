@@ -48,11 +48,11 @@ export function TrustSection() {
               className="group relative overflow-hidden rounded-2xl border border-navy-100 bg-white p-6 shadow-[0_2px_16px_rgba(31,42,68,0.06)] transition-all duration-300 hover:shadow-[0_8px_28px_rgba(31,42,68,0.1)]"
             >
               <div className="absolute right-0 top-0 h-20 w-20 translate-x-4 -translate-y-4 rounded-full bg-navy-100/40 blur-xl" />
-              <div className="relative flex items-start gap-4">
+              <div className="relative flex items-center gap-4">
                 <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-navy-100 text-navy-500 transition-colors group-hover:bg-navy-200/80 group-hover:text-navy-600">
                   {item.icon}
                 </span>
-                <p className="pt-1 text-[17px] font-medium leading-[1.6] text-navy-800">{item.text}</p>
+                <p className="text-[17px] font-medium leading-[1.6] text-navy-800">{item.text}</p>
               </div>
             </div>
           ))}

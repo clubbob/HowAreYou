@@ -21,9 +21,9 @@ export function HeroSection() {
   return (
     <section className="relative overflow-hidden bg-[#F7F8FA] px-4 py-10 sm:px-6 sm:py-12 md:py-16">
       <div className="mx-auto grid max-w-5xl items-center gap-6 sm:gap-8 md:grid-cols-2 md:gap-12">
-        {/* 좌측: 텍스트 */}
-        <div className="order-2 md:order-1">
-          <div className="mb-4 flex items-center gap-3 sm:mb-6 sm:gap-4">
+        {/* 좌측: 텍스트 (모바일에서 먼저 표시, 화면 중앙 정렬) */}
+        <div className="order-1 flex flex-col items-center text-center md:order-1 md:items-start md:text-left">
+          <div className="mb-4 flex items-center justify-center gap-3 sm:mb-6 sm:gap-4 md:justify-start">
             <Image
               src="/logo.png"
               alt="지금 어때"
@@ -42,7 +42,7 @@ export function HeroSection() {
             <span className="block sm:inline">매일 전화하지 않아도, 안부는 전해집니다.</span>
             <span className="block sm:inline">작은 기록 하나로 서로의 안심을 확인하세요.</span>
           </p>
-          <div>
+          <div className="flex w-full justify-center md:justify-start">
             <button
               type="button"
               onClick={() => setShowModal(true)}
@@ -50,14 +50,14 @@ export function HeroSection() {
             >
               베타 참여하기
             </button>
-            <p className="mt-3 text-sm leading-relaxed text-navy-500">
-              선착순 100명 · 출시 최우선 안내 · 1년 무료 이용
-            </p>
           </div>
+          <p className="mt-3 text-center text-sm leading-relaxed text-navy-500 md:text-left">
+            선착순 100명 · 출시 최우선 안내 · 1년 무료 이용
+          </p>
         </div>
 
-        {/* 우측: 앱 화면 캐러셀 (모바일에서 상단에 배치) */}
-        <div className="order-1 flex flex-col items-center gap-2 sm:order-2 sm:gap-3 md:order-2">
+        {/* 우측: 앱 화면 캐러셀 (모바일에서 베타 참여 섹션 다음에 표시) */}
+        <div className="order-2 flex flex-col items-center gap-2 sm:gap-3 md:order-2">
           <div className="flex items-center justify-center gap-1 sm:gap-2">
             <button
               type="button"

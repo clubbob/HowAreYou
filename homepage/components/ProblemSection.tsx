@@ -1,19 +1,19 @@
 export function ProblemSection() {
   const items = [
-    ['혼자 사는 부모님이', '걱정될 때'],
-    ['내가 혼자 사는데', '연락할 보호자가 필요할 때'],
-    ['타지에 있는 가족 또는 지인의', '안부가 궁금할 때'],
+    '혼자 사는 부모님이 걱정될 때',
+    '내가 혼자 사는데 연락할 보호자가 필요할 때',
+    '타지에 있는 가족 또는 지인의 안부가 궁금할 때',
   ];
 
   return (
     <section className="bg-white px-4 py-14 sm:px-6 sm:py-16 md:py-24">
-      <div className="mx-auto max-w-4xl">
+      <div className="mx-auto max-w-5xl">
         <h2 className="mb-10 text-center text-[1.375rem] font-bold leading-[1.4] text-navy-900 sm:mb-14 sm:text-[1.75rem]">
           이런 분들께 필요합니다
         </h2>
 
-        <div className="grid gap-6 sm:grid-cols-3">
-          {items.map((lines, i) => (
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+          {items.map((text, i) => (
             <div
               key={i}
               data-mobile-hover-card
@@ -23,14 +23,12 @@ export function ProblemSection() {
                 data-mobile-hover-blur
                 className="absolute right-0 top-0 h-24 w-24 translate-x-4 -translate-y-4 rounded-full bg-primary-50/50 blur-2xl transition-opacity group-hover:opacity-80"
               />
-              <div className="relative">
-                <span className="mb-4 inline-flex h-9 w-9 items-center justify-center rounded-lg bg-primary-500 text-sm font-bold text-white shadow-sm">
+              <div className="relative flex items-start gap-4">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-500 text-sm font-bold text-white shadow-sm">
                   {i + 1}
                 </span>
-                <p className="text-[17px] font-medium leading-[1.6] text-navy-800">
-                  {lines[0]}
-                  <br />
-                  {lines[1]}
+                <p className="min-w-0 text-[17px] font-medium leading-[1.6] text-navy-800">
+                  {text}
                 </p>
               </div>
             </div>

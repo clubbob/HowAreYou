@@ -11,27 +11,19 @@ const siteUrl =
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: '지금 어때 - 매일 전화 대신 3초로 확인',
-  description:
-    '매일 전화하지 않아도 됩니다. 하루 3초 기록으로 충분해요. 부모님도 부담 없이 사용할 수 있는 마음을 편하게 해주는 관계 습관 앱.',
+  description: '하루 3초 기록으로 가족 안부 확인. 부담 없는 안심 앱',
   openGraph: {
-    title: '지금 어때 - 매일 전화 대신 3초로 확인',
+    title: '지금 어때 - 하루 3초 안부 확인',
     description: '하루 3초 기록으로 가족 안부 확인. 부담 없는 안심 앱',
     url: siteUrl,
     siteName: '지금 어때',
-    images: [
-      {
-        url: `${siteUrl}/logo.png`,
-        width: 512,
-        height: 512,
-        alt: '지금 어때 로고',
-      },
-    ],
+    // app/opengraph-image.png 파일이 있으면 Next.js가 자동 적용
     locale: 'ko_KR',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: '지금 어때 - 매일 전화 대신 3초로 확인',
+    title: '지금 어때 - 하루 3초 안부 확인',
     description: '하루 3초 기록으로 가족 안부 확인. 부담 없는 안심 앱',
   },
   robots: {
