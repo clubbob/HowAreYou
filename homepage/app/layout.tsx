@@ -17,14 +17,6 @@ export const metadata: Metadata = {
     description: '소중한 사람과 안부를 나누는 앱',
     url: siteUrl,
     siteName: '지금 어때',
-    images: [
-      {
-        url: `${siteUrl}/logo.png`,
-        width: 400,
-        height: 400,
-        alt: '지금 어때',
-      },
-    ],
     locale: 'ko_KR',
     type: 'website',
   },
@@ -32,7 +24,6 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: '여기 어때?',
     description: '소중한 사람과 안부를 나누는 앱',
-    images: [`${siteUrl}/logo.png`],
   },
   robots: {
     index: true,
@@ -48,20 +39,15 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const ogImageUrl = `${siteUrl}/logo.png`;
   return (
     <html lang="ko" className="scroll-smooth">
       <head>
         <link rel="icon" href="/logo.png" type="image/png" sizes="512x512" />
-        {/* 링크 미리보기: 카카오톡 등 크롤러용 명시적 메타 태그 */}
-        <meta property="og:image" content={ogImageUrl} />
-        <meta property="og:image:width" content="512" />
-        <meta property="og:image:height" content="512" />
+        {/* 링크 미리보기: opengraph-image.tsx에서 1200x630 생성, 로고 70% 크기 */}
         <meta property="og:title" content="여기 어때?" />
         <meta property="og:description" content="소중한 사람과 안부를 나누는 앱" />
         <meta property="og:url" content={siteUrl} />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:image" content={ogImageUrl} />
         <meta name="twitter:title" content="여기 어때?" />
         <meta name="twitter:description" content="소중한 사람과 안부를 나누는 앱" />
       </head>
