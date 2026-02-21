@@ -25,6 +25,7 @@ import 'subject_detail_screen.dart';
 import 'auth_screen.dart';
 import 'guardian_mode_screen.dart';
 import 'inquiry_screen.dart';
+import 'announcements_screen.dart';
 
 class GuardianDashboardScreen extends StatefulWidget {
   const GuardianDashboardScreen({super.key, this.initialTabIndex = 0});
@@ -2236,6 +2237,19 @@ class _GuardianSettingsScreenState extends State<GuardianSettingsScreen> {
                           Navigator.of(context).push(
                             MaterialPageRoute(
                               builder: (_) => InquiryScreen(userId: uid),
+                            ),
+                          );
+                        },
+                      ),
+                      const Divider(height: 1),
+                      ListTile(
+                        leading: const Icon(Icons.campaign_outlined),
+                        title: const Text('공지사항'),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const AnnouncementsScreen(),
                             ),
                           );
                         },

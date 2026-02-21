@@ -7,6 +7,8 @@ class AppConstants {
   static const String privacyUrl = 'https://how-are-you-nu.vercel.app/privacy';
   /// 1:1 문의 (홈페이지 또는 문의 페이지)
   static const String inquiryUrl = 'https://how-are-you-nu.vercel.app';
+  /// 공지사항 (홈페이지 공지 섹션)
+  static const String announcementsUrl = 'https://how-are-you-nu.vercel.app/#announcements';
 
   // 알림 채널 ID
   static const String dailyMoodCheckChannelId = 'daily_mood_check';

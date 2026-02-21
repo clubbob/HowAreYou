@@ -9,6 +9,7 @@ import '../utils/constants.dart';
 import '../utils/legal_dialog.dart';
 import 'auth_screen.dart';
 import 'inquiry_screen.dart';
+import 'announcements_screen.dart';
 
 /// 보호대상자 설정 화면 (알림 소리, 회원 탈퇴 등)
 class SubjectSettingsScreen extends StatefulWidget {
@@ -472,6 +473,19 @@ class _SubjectSettingsScreenState extends State<SubjectSettingsScreen> {
                           Navigator.of(context).push(
                             MaterialPageRoute(
                               builder: (_) => InquiryScreen(userId: uid),
+                            ),
+                          );
+                        },
+                      ),
+                      const Divider(height: 1),
+                      ListTile(
+                        leading: const Icon(Icons.campaign_outlined),
+                        title: const Text('공지사항'),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const AnnouncementsScreen(),
                             ),
                           );
                         },
