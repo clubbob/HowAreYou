@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     siteName: '지금 어때',
     images: [
       {
-        url: '/logo.png',
+        url: `${siteUrl}/logo.png`,
         width: 512,
         height: 512,
         alt: '지금 어때 로고',
