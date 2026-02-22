@@ -3,8 +3,8 @@ import Link from 'next/link';
 import { TERMS_CONTENT } from '@/lib/legal-content';
 
 export const metadata: Metadata = {
-  title: '이용약관 - 지금 어때',
-  description: '지금 어때 서비스의 이용약관입니다.',
+  title: '이용약관 - 오늘 어때',
+  description: '오늘 어때 서비스의 이용약관입니다.',
 };
 
 export default function TermsPage() {

@@ -116,7 +116,7 @@ export default function ServiceImprovementPage() {
           서비스 개선
         </h1>
         <p className="mb-8 text-[17px] text-navy-600">
-          지금 어때를 더 좋게 만들기 위해 여러분의 의견을 듣고 있습니다.
+          오늘 어때를 더 좋게 만들기 위해 여러분의 의견을 듣고 있습니다.
         </p>
 
         {status === 'error' && (

@@ -1,4 +1,4 @@
-# 지금 어때 - 홈페이지
+# 오늘 어때 - 홈페이지
 
 Next.js 15 + TypeScript + Tailwind CSS 기반 랜딩 페이지.
 

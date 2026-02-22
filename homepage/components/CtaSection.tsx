@@ -19,7 +19,7 @@ export function CtaSection() {
     <section id="cta" className="bg-primary-50 px-4 py-14 sm:px-6 sm:py-16 md:py-24">
       <div className="mx-auto flex max-w-3xl flex-col items-center">
         <h2 className="mb-4 text-center text-[1.375rem] font-bold leading-[1.4] text-navy-900 sm:text-[1.75rem]">
-          지금 어때 시작하기
+          오늘 어때 시작하기
         </h2>
         {isFull ? (
           <div className="flex flex-col items-center gap-4">

@@ -53,7 +53,7 @@ export function Footer() {
         </p>
 
         <p className="pt-2 text-[17px] text-navy-500">
-          Copyright © 2026 지금 어때. All rights reserved.
+          Copyright © 2026 오늘 어때. All rights reserved.
         </p>
       </div>
     </footer>

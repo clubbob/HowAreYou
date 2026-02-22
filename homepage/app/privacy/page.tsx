@@ -3,8 +3,8 @@ import Link from 'next/link';
 import { PRIVACY_CONTENT } from '@/lib/legal-content';
 
 export const metadata: Metadata = {
-  title: '개인정보처리방침 - 지금 어때',
-  description: '지금 어때 서비스의 개인정보처리방침입니다.',
+  title: '개인정보처리방침 - 오늘 어때',
+  description: '오늘 어때 서비스의 개인정보처리방침입니다.',
 };
 
 export default function PrivacyPage() {

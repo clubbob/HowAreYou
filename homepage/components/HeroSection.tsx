@@ -22,14 +22,14 @@ export function HeroSection() {
         <div className="mb-6 flex items-center justify-center gap-4 sm:mb-8">
           <Image
             src="/logo.png"
-            alt="지금 어때"
+            alt="오늘 어때"
             width={80}
             height={80}
             priority
             unoptimized
             className="h-16 w-16 shrink-0 sm:h-20 sm:w-20"
           />
-          <span className="text-2xl font-bold text-navy-900 sm:text-3xl">여기 어때?</span>
+          <span className="text-2xl font-bold text-navy-900 sm:text-3xl">오늘 어때?</span>
         </div>
         <h1 className="mb-4 text-[1.5rem] font-bold leading-[1.3] tracking-tight text-navy-900 sm:mb-5 sm:text-[2rem] md:text-[2.5rem]">
           소중한 사람과 안부를 나누는 앱
