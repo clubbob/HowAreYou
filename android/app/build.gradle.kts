@@ -18,7 +18,7 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace = "com.andy.howareyou"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 36  // Android SDK 36.1.0
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -34,10 +34,9 @@ android {
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.andy.howareyou"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        // Android 8 (API 26) 이상 지원
+        minSdk = 26
+        targetSdk = 36  // Android SDK 36.1.0
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }

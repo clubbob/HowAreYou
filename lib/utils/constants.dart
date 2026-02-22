@@ -45,6 +45,9 @@ class AppConstants {
   /// 1:1 문의 컬렉션
   static const String inquiriesCollection = 'inquiries';
 
+  /// 서비스 개선 피드백 컬렉션
+  static const String serviceFeedbackCollection = 'service_feedback';
+
   /// 업그레이드(연 결제) 안내 페이지
   static const String upgradeUrl = 'https://how-are-you-nu.vercel.app/#pricing';
 }

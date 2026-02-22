@@ -1,0 +1,51 @@
+# Cursor indexing exclude - reduce OOM/memory usage
+
+# Dependencies (large)
+**/node_modules/
+**/.pub-cache/
+**/pubspec.lock
+**/package-lock.json
+**/yarn.lock
+**/pnpm-lock.yaml
+
+# Build output
+**/.next/
+**/build/
+**/out/
+**/dist/
+**/.dart_tool/
+**/android/.gradle/
+**/ios/Pods/
+**/ios/.symlinks/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+
+# Logs/cache
+**/*.log
+**/.eslintcache
+**/.turbo/
+**/.vercel/
+
+# Binaries/assets (large)
+**/*.png
+**/*.jpg
+**/*.jpeg
+**/*.gif
+**/*.ico
+**/*.webp
+**/*.svg
+**/*.ttf
+**/*.otf
+**/*.woff
+**/*.woff2
+
+# Firebase/sensitive
+**/firebase_options.dart
+**/google-services.json
+**/GoogleService-Info.plist
+**/key.properties
+**/*.jks
+
+# Docs extract
+**/docs/privacy_extract/
+**/docs/terms_content/

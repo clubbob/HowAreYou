@@ -129,6 +129,12 @@ service cloud.firestore {
       allow read, update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
     }
 
+    // 서비스 개선 피드백 - 인증 사용자만 생성 가능 (읽기는 관리자/API 전용)
+    match /service_feedback/{feedbackId} {
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow read, update, delete: if false;
+    }
+
     // 알림 요청 컬렉션 (Cloud Functions 전용, 앱에서만 생성)
     match /notification_requests/{requestId} {
       allow create: if request.auth != null;

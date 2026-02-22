@@ -26,6 +26,7 @@ import 'auth_screen.dart';
 import 'guardian_mode_screen.dart';
 import 'inquiry_screen.dart';
 import 'announcements_screen.dart';
+import 'service_improvement_screen.dart';
 
 class GuardianDashboardScreen extends StatefulWidget {
   const GuardianDashboardScreen({super.key, this.initialTabIndex = 0});
@@ -1916,21 +1917,18 @@ class _GuardianSettingsScreenState extends State<GuardianSettingsScreen> {
               '탈퇴만 하면 결제는 멈추지 않습니다. 과금 멈추려면 스토어에서 직접 취소하세요.',
             ),
             const SizedBox(height: 24),
-            Row(
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.of(ctx).pop('store'),
-                    child: const Text('과금 멈추기'),
-                  ),
+                OutlinedButton(
+                  onPressed: () => Navigator.of(ctx).pop('store'),
+                  child: const Text('스토어에서 결제 취소'),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.of(ctx).pop('continue'),
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                    child: const Text('탈퇴'),
-                  ),
+                const SizedBox(height: 12),
+                ElevatedButton(
+                  onPressed: () => Navigator.of(ctx).pop('continue'),
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                  child: const Text('탈퇴'),
                 ),
               ],
             ),
@@ -1968,21 +1966,18 @@ class _GuardianSettingsScreenState extends State<GuardianSettingsScreen> {
             children: [
               const Text('탈퇴해도 결제는 멈추지 않습니다. 계속하시겠습니까?'),
               const SizedBox(height: 24),
-              Row(
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.of(ctx).pop('store'),
-                      child: const Text('과금 멈추기'),
-                    ),
+                  OutlinedButton(
+                    onPressed: () => Navigator.of(ctx).pop('store'),
+                    child: const Text('스토어에서 결제 취소'),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () => Navigator.of(ctx).pop('delete'),
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                      child: const Text('탈퇴'),
-                    ),
+                  const SizedBox(height: 12),
+                  ElevatedButton(
+                    onPressed: () => Navigator.of(ctx).pop('delete'),
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                    child: const Text('탈퇴'),
                   ),
                 ],
               ),
@@ -2191,7 +2186,12 @@ class _GuardianSettingsScreenState extends State<GuardianSettingsScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : ListView(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.only(
+                left: 16,
+                right: 16,
+                top: 16,
+                bottom: 16 + MediaQuery.of(context).padding.bottom,
+              ),
               children: [
                 // [ 계정 정보 ]
                 _buildSettingsSectionHeader('계정 정보'),
@@ -2237,6 +2237,26 @@ class _GuardianSettingsScreenState extends State<GuardianSettingsScreen> {
                           Navigator.of(context).push(
                             MaterialPageRoute(
                               builder: (_) => InquiryScreen(userId: uid),
+                            ),
+                          );
+                        },
+                      ),
+                      const Divider(height: 1),
+                      ListTile(
+                        leading: const Icon(Icons.thumbs_up_down_outlined),
+                        title: const Text('서비스 개선'),
+                        subtitle: Text(
+                          '의견을 남겨주세요',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const ServiceImprovementScreen(),
                             ),
                           );
                         },
