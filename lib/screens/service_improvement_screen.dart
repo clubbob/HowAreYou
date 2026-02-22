@@ -108,7 +108,7 @@ class _ServiceImprovementScreenState extends State<ServiceImprovementScreen> {
             children: [
               // 상단 설명
               Text(
-                '지금 어때?를 더 좋게 만들기 위해\n여러분의 의견을 듣고 있습니다.',
+                '오늘 어때?를 더 좋게 만들기 위해\n여러분의 의견을 듣고 있습니다.',
                 style: TextStyle(
                   fontSize: 16,
                   height: 1.5,

@@ -203,7 +203,7 @@ class MyApp extends StatelessWidget {
         child: MaterialApp(
         debugShowCheckedModeBanner: false,
         navigatorKey: navigatorKey,
-        title: '지금 어때?',
+        title: '오늘 어때?',
         locale: const Locale('ko', 'KR'),
         theme: ThemeData(
           useMaterial3: true,

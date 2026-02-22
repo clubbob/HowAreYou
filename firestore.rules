@@ -1,4 +1,4 @@
-// 지금 어때? (HowAreYou) - Firestore 보안 규칙
+// 오늘 어때? (HowAreYou) - Firestore 보안 규칙
 // PRD §9: users/{uid} = Auth UID, subjects/{subjectUid} = 보호대상자 Auth UID (subjectUid === uid).
 // 구조: users(uid), subjects(보호대상자uid), subjects/{subjectUid}/prompts(일일 응답), notification_requests
 rules_version = '2';

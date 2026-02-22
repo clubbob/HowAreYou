@@ -32,7 +32,7 @@ class InviteLinkHelper {
     final url = buildInviteUrl(guardianUid);
     await Share.share(
       '$suggestedMessage\n\n$url',
-      subject: '지금 어때? 앱 초대',
+      subject: '오늘 어때? 앱 초대',
     );
   }
 
@@ -55,7 +55,7 @@ class InviteLinkHelper {
     // subject는 일부 앱(이메일, 메시지 등)에서 제목으로 사용됩니다.
     await Share.share(
       '$suggestedMessageForGuardian\n\n$url',
-      subject: '지금 어때? 보호자 연결',
+      subject: '오늘 어때? 보호자 연결',
     );
   }
 }

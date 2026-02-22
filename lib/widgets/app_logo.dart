@@ -23,7 +23,7 @@ class AppLogo extends StatelessWidget {
         errorBuilder: (context, error, stackTrace) {
           // 로고 파일이 없으면 텍스트 표시
           return Text(
-            '지금 어때?',
+            '오늘 어때?',
             style: TextStyle(
               fontSize: fontSize,
               fontWeight: fontWeight,
@@ -35,7 +35,7 @@ class AppLogo extends StatelessWidget {
     } catch (_) {
       // 로고 파일이 없으면 텍스트 표시
       return Text(
-        '지금 어때?',
+        '오늘 어때?',
         style: TextStyle(
           fontSize: fontSize,
           fontWeight: fontWeight,

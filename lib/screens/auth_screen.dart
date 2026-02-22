@@ -859,7 +859,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
             children: [
               const SizedBox(height: 40),
               Text(
-                _codeSent ? '인증번호 입력' : '지금 어때?',
+                _codeSent ? '인증번호 입력' : '오늘 어때?',
                 style: const TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.w600,

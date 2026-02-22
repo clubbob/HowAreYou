@@ -205,7 +205,7 @@ class _SplashScreenState extends State<SplashScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const Text(
-                      '지금 어때?',
+                      '오늘 어때?',
                       style: TextStyle(
                         fontSize: 32,
                         fontWeight: FontWeight.bold,

@@ -531,7 +531,7 @@ class _SubjectSettingsScreenState extends State<SubjectSettingsScreen> {
                         trailing: const Icon(Icons.chevron_right),
                         onTap: () => showLicensePage(
                           context: context,
-                          applicationName: '지금 어때',
+                          applicationName: '오늘 어때',
                           applicationVersion: _appVersion,
                         ),
                       ),

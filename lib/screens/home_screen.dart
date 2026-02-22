@@ -98,7 +98,7 @@ class _HomeScreenState extends State<HomeScreen> {
       return Scaffold(
         backgroundColor: surfaceColor,
         appBar: AppBar(
-          title: const Text('지금 어때?'),
+          title: const Text('오늘 어때?'),
           backgroundColor: Colors.white,
           elevation: 0,
           foregroundColor: Colors.black87,
@@ -110,7 +110,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: surfaceColor,
       appBar: AppBar(
-        title: const Text('지금 어때?'),
+        title: const Text('오늘 어때?'),
         backgroundColor: Colors.white,
         elevation: 0,
         foregroundColor: Colors.black87,

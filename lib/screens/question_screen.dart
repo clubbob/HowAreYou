@@ -145,7 +145,7 @@ class _QuestionScreenState extends State<QuestionScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     const Text(
-                      '지금 어때?',
+                      '오늘 어때?',
                       style: TextStyle(
                         fontSize: 32,
                         fontWeight: FontWeight.bold,
