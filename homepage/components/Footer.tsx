@@ -21,6 +21,12 @@ export function Footer() {
             1:1 문의
           </Link>
           <Link
+            href="/service-improvement"
+            className="text-[17px] font-medium text-primary-400 transition-colors hover:text-primary-500 hover:underline active:text-primary-600"
+          >
+            서비스 개선
+          </Link>
+          <Link
             href="/terms"
             className="text-[17px] font-medium text-primary-400 transition-colors hover:text-primary-500 hover:underline active:text-primary-600"
           >

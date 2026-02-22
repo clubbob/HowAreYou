@@ -9,6 +9,7 @@ type Stats = {
   unansweredInquiriesCount: number;
   announcementsCount: number;
   waitlistCount: number;
+  serviceFeedbackCount: number;
   firebaseConfigured?: boolean;
 };
 
@@ -18,6 +19,7 @@ const defaultStats: Stats = {
   unansweredInquiriesCount: 0,
   announcementsCount: 0,
   waitlistCount: 0,
+  serviceFeedbackCount: 0,
 };
 
 export function AdminStats() {
@@ -47,7 +49,7 @@ export function AdminStats() {
 
   if (loading && !stats) {
     return (
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5 mb-6">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6 mb-6">
         {[1, 2, 3, 4, 5].map((i) => (
           <div key={i} className="p-4 bg-white rounded-xl border border-slate-200 animate-pulse">
             <div className="h-4 bg-slate-200 rounded w-20 mb-2" />
@@ -83,9 +85,14 @@ export function AdminStats() {
       href: '/admin/announcements',
     },
     {
-      label: '베타 대기',
+      label: '베타 1기 대기',
       value: displayStats.waitlistCount,
       href: '/admin/waitlist',
+    },
+    {
+      label: '서비스 개선',
+      value: displayStats.serviceFeedbackCount,
+      href: '/admin/service-feedback',
     },
   ];
 
@@ -113,7 +120,7 @@ export function AdminStats() {
           </button>
         </div>
       )}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
         {cards.map((c) => (
           <Link
             key={c.label}

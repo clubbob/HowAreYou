@@ -19,6 +19,7 @@ export async function GET() {
       return {
         id: doc.id,
         phone: d.phone ?? '',
+        cohort: d.cohort ?? '1',
         createdAt: createdAt.toISOString(),
       };
     })

@@ -14,16 +14,19 @@ export async function GET() {
       unansweredInquiriesCount: 0,
       announcementsCount: 0,
       waitlistCount: 0,
+      serviceFeedbackCount: 0,
       firebaseConfigured: false,
     });
   }
 
-  const [usersSnap, inquiriesSnap, announcementsSnap, waitlistSnap] = await Promise.all([
-    db.collection('users').get(),
-    db.collection('inquiries').limit(300).get(),
-    db.collection('announcements').get(),
-    db.collection('waitlist').get(),
-  ]);
+  const [usersSnap, inquiriesSnap, announcementsSnap, waitlistSnap, serviceFeedbackSnap] =
+    await Promise.all([
+      db.collection('users').get(),
+      db.collection('inquiries').limit(300).get(),
+      db.collection('announcements').get(),
+      db.collection('waitlist').get(),
+      db.collection('service_feedback').limit(500).get(),
+    ]);
 
   const inquiries = inquiriesSnap.docs.map((d) => d.data());
   const unansweredCount = inquiries.filter((i) => !(i.replies && i.replies.length > 0)).length;
@@ -34,6 +37,7 @@ export async function GET() {
     unansweredInquiriesCount: unansweredCount,
     announcementsCount: announcementsSnap.size,
     waitlistCount: waitlistSnap.size,
+    serviceFeedbackCount: serviceFeedbackSnap.size,
     firebaseConfigured: true,
   });
 }

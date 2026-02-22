@@ -34,7 +34,7 @@ export function PricingSection() {
             <span className="text-[2rem] font-bold text-primary-600 md:text-[2.5rem]">
               연 {formatPrice(PRICING.yearly)}
             </span>
-            <span className="mt-1 text-[15px] text-navy-500">(하루 약 33원)</span>
+            <span className="mt-1 text-[15px] text-navy-500">(한달 1,000원)</span>
           </div>
 
           <ul className="mb-6 space-y-2.5 sm:space-y-3">

@@ -1,17 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminFirestore } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { BETA } from '@/lib/config/beta';
 
-const BETA_LIMIT = 100;
+/** 해당 기수(1기, 2기 등) 대기 인원 수 */
+async function getWaitlistCount(
+  db: FirebaseFirestore.Firestore,
+  cohort: string
+): Promise<number> {
+  const snap = await db.collection('waitlist').limit(500).get();
+  return snap.docs.filter((doc) => {
+    const c = doc.data().cohort;
+    return !c || c === cohort;
+  }).length;
+}
 
-async function getWaitlistCount(db: FirebaseFirestore.Firestore): Promise<number> {
+/** 베타 모집 마감 여부 조회 (공개) */
+export async function GET() {
   try {
-    const countSnap = await db.collection('waitlist').count().get();
-    return countSnap.data().count ?? 0;
+    const db = getAdminFirestore();
+    if (!db) {
+      return NextResponse.json({ full: false });
+    }
+    const count = await getWaitlistCount(db, BETA.cohort);
+    return NextResponse.json({ full: count >= BETA.limit });
   } catch {
-    // count() 미지원 시 get().size로 폴백
-    const snap = await db.collection('waitlist').limit(BETA_LIMIT + 1).get();
-    return snap.size;
+    return NextResponse.json({ full: false });
   }
 }
 
@@ -38,14 +52,19 @@ export async function POST(request: NextRequest) {
     }
 
     const [count, existingSnap] = await Promise.all([
-      getWaitlistCount(db),
-      db.collection('waitlist').where('phone', '==', phoneNormalized).limit(1).get(),
+      getWaitlistCount(db, BETA.cohort),
+      db.collection('waitlist').where('phone', '==', phoneNormalized).get(),
     ]);
-    if (count >= BETA_LIMIT) return NextResponse.json({ status: 'full' });
-    if (!existingSnap.empty) return NextResponse.json({ status: 'already_registered' });
+    if (count >= BETA.limit) return NextResponse.json({ status: 'full' });
+    const alreadyInCohort = existingSnap.docs.some((doc) => {
+      const c = doc.data().cohort;
+      return !c || c === BETA.cohort;
+    });
+    if (alreadyInCohort) return NextResponse.json({ status: 'already_registered' });
 
     await db.collection('waitlist').add({
       phone: phoneNormalized,
+      cohort: BETA.cohort,
       createdAt: FieldValue.serverTimestamp(),
     });
     return NextResponse.json({ status: 'success' });

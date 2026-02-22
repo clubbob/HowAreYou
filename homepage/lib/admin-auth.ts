@@ -2,7 +2,7 @@ import { cookies } from 'next/headers';
 import { createHmac, timingSafeEqual } from 'crypto';
 
 const COOKIE_NAME = 'admin_session';
-const SESSION_TTL_MS = 24 * 60 * 60 * 1000; // 24시간
+const SESSION_TTL_MS = 8 * 60 * 60 * 1000; // 8시간 (보안용, 실제로는 세션 쿠키로 브라우저 종료 시 삭제)
 
 function sign(payload: string, secret: string): string {
   return createHmac('sha256', secret).update(payload).digest('hex');
@@ -43,7 +43,8 @@ export async function verifyAdminSession(): Promise<boolean> {
   }
 }
 
+/// 세션 쿠키: Max-Age 미설정 시 브라우저 종료 시 삭제되어 매번 로그인 필요
 export function getAdminSessionCookie(name: string, value: string) {
-  return `${name}=${value}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${SESSION_TTL_MS / 1000}`;
+  return `${name}=${value}; Path=/; HttpOnly; SameSite=Strict`;
 }
 

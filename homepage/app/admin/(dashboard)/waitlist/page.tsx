@@ -137,7 +137,7 @@ export default function AdminWaitlistPage() {
   return (
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold text-slate-800">베타 대기</h1>
+        <h1 className="text-2xl font-bold text-slate-800">베타 1기 대기</h1>
         <div className="flex gap-2">
           <input
             type="text"
@@ -170,7 +170,7 @@ export default function AdminWaitlistPage() {
       </div>
 
       <p className="mb-4 text-sm text-slate-500">
-        총 {filtered.length}명 / {list.length}명 (선착순 100명 한정)
+        총 {filtered.length}명 / {list.length}명 (베타 1기 선착순 100명 한정)
       </p>
 
       <div className="bg-white rounded-xl shadow border border-slate-200 overflow-hidden">

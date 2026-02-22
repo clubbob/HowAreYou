@@ -66,7 +66,7 @@ export function BetaModal({ open, onClose }: Props) {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-5 flex items-center justify-between">
-          <h2 className="text-xl font-bold text-navy-900">베타 참여하기</h2>
+          <h2 className="text-xl font-bold text-navy-900">{BETA.cohortName} 참여하기</h2>
           <button
             ref={closeBtnRef}
             type="button"
@@ -104,7 +104,7 @@ export function BetaModal({ open, onClose }: Props) {
               </svg>
             </div>
             <p className="text-lg font-semibold text-navy-900">마감되었습니다</p>
-            <p className="mt-1 text-[17px] text-navy-600">선착순 {BETA.limit}명이 마감되었습니다. 관심 가져 주셔서 감사합니다.</p>
+            <p className="mt-1 text-[17px] text-navy-600">{BETA.cohortName} 선착순 {BETA.limit}명이 마감되었습니다. 관심 가져 주셔서 감사합니다.</p>
             <button
               onClick={onClose}
               className="mx-auto mt-6 flex h-[52px] items-center justify-center rounded-[14px] bg-navy-200 px-8 text-[17px] font-medium text-navy-800 transition-colors hover:bg-navy-300 active:bg-navy-400"
@@ -131,7 +131,7 @@ export function BetaModal({ open, onClose }: Props) {
         ) : (
           <form onSubmit={handleSubmit}>
             <div className="mb-4 rounded-xl bg-primary-50 px-4 py-3">
-              <p className="text-[15px] font-semibold text-primary-700">선착순 {BETA.limit}명 · 1년 무료 이용</p>
+              <p className="text-[15px] font-semibold text-primary-700">{BETA.cohortName} 선착순 {BETA.limit}명 · 1년 무료 이용</p>
             </div>
             <p className="mb-4 text-[17px] leading-[1.6] text-navy-700">
               출시 시 설치 링크를 문자로 보내드립니다.
@@ -161,7 +161,7 @@ export function BetaModal({ open, onClose }: Props) {
               </div>
             )}
             <p className="mt-4 text-[15px] leading-[1.5] text-navy-500">
-              입력하신 번호는 베타 안내 외 다른 용도로 사용되지 않습니다.
+              입력하신 번호는 {BETA.cohortName} 안내 외 다른 용도로 사용되지 않습니다.
             </p>
             <div className="mt-6 flex gap-3">
               <button
@@ -176,7 +176,7 @@ export function BetaModal({ open, onClose }: Props) {
                 disabled={status === 'loading'}
                 className="flex flex-1 items-center justify-center rounded-[14px] bg-primary-400 py-4 text-[17px] font-medium text-white transition-colors hover:bg-primary-500 active:bg-primary-600 disabled:opacity-60"
               >
-                {status === 'loading' ? '등록 중...' : '베타 참여하기'}
+                {status === 'loading' ? '등록 중...' : `${BETA.cohortName} 참여하기`}
               </button>
             </div>
             {status === 'loading' && (
