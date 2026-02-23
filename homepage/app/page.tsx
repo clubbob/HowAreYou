@@ -1,4 +1,5 @@
 import { HeroSection } from '@/components/HeroSection';
+import { StatsSection } from '@/components/StatsSection';
 import { ProblemSection } from '@/components/ProblemSection';
 import { ServiceSection } from '@/components/ServiceSection';
 import { PricingSection } from '@/components/PricingSection';
@@ -15,6 +16,9 @@ export default function HomePage() {
   return (
     <main className="min-h-screen overflow-x-hidden bg-[#F7F8FA]">
       <HeroSection />
+      <FadeInSection>
+        <StatsSection />
+      </FadeInSection>
       <FadeInSection>
         <ProblemSection />
       </FadeInSection>
