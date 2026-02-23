@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     for (const uid of uniqueIds) {
       const userDoc = await db.collection('users').doc(uid).get();
       if (!userDoc.exists) continue;
-      const tokens = (userDoc.data()?.fcmTokens ?? []).filter((t): t is string => Boolean(t));
+      const tokens = (userDoc.data()?.fcmTokens ?? []).filter((t: unknown): t is string => typeof t === 'string' && Boolean(t));
       if (tokens.length > 0) {
         usersWithTokens.add(uid);
         allTokens.push(...tokens);
