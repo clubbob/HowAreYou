@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
       if (!userPhone) continue;
       const userNormalized = normalizePhone(userPhone);
       if (normalizedPhones.includes(userNormalized)) {
-        const tokens = (data.fcmTokens ?? []).filter((t): t is string => Boolean(t));
+        const tokens = (data.fcmTokens ?? []).filter((t: unknown): t is string => typeof t === 'string' && Boolean(t));
         if (tokens.length > 0) {
           phonesWithTokens.add(userNormalized);
           userIdsSentTo.add(doc.id);
