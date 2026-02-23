@@ -3,9 +3,9 @@
 import { useEffect, useRef, useState } from 'react';
 
 const ITEMS = [
-  { value: '350만', label: '혼자 사는 노인', accent: 'border-l-primary-400' },
-  { value: '700만+', label: '1인 가구', accent: 'border-l-primary-500' },
-  { value: '수십만', label: '자취·기숙 학생', accent: 'border-l-primary-300' },
+  { value: '350만', label: '혼자 사는 노인', accent: 'border-l-primary-500' },
+  { value: '700만+', label: '1인 가구', accent: 'border-l-primary-600' },
+  { value: '수십만', label: '자취·기숙 학생', accent: 'border-l-primary-500' },
 ];
 
 export function StatsSection() {
@@ -89,7 +89,7 @@ export function StatsSection() {
             >
               <div
                 data-mobile-hover-card
-                className={`group relative overflow-hidden rounded-2xl border border-navy-100/80 border-l-4 ${item.accent} bg-gradient-to-b from-white to-navy-50/30 px-6 py-5 text-center shadow-[0_2px_16px_rgba(31,42,68,0.06)] transition-all duration-300 hover:-translate-y-0.5 hover:border-primary-200/60 hover:border-l-primary-500 hover:shadow-[0_8px_28px_rgba(74,144,226,0.12)] active:translate-y-0 active:scale-[0.99]`}
+                className={`group relative overflow-hidden rounded-2xl border border-navy-100/80 border-l-[6px] ${item.accent} bg-gradient-to-b from-white to-navy-50/30 px-6 py-5 text-center shadow-[0_2px_16px_rgba(31,42,68,0.06)] transition-all duration-300 hover:-translate-y-0.5 hover:border-primary-200/60 hover:border-l-primary-600 hover:shadow-[0_8px_28px_rgba(74,144,226,0.12)] active:translate-y-0 active:scale-[0.99]`}
               >
                 <div
                   data-mobile-hover-blur
