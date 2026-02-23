@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
-type WaitlistItem = { id: string; phone: string; createdAt: string };
+type WaitlistItem = { id: string; phone: string; createdAt: string; lastFcmSentAt: string | null; lastFcmOpenedAt: string | null };
 
 export default function AdminWaitlistPage() {
   const [list, setList] = useState<WaitlistItem[]>([]);
@@ -13,6 +13,10 @@ export default function AdminWaitlistPage() {
   const [deleting, setDeleting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editPhone, setEditPhone] = useState('');
+  const [showFcmModal, setShowFcmModal] = useState(false);
+  const [fcmTitle, setFcmTitle] = useState('');
+  const [fcmBody, setFcmBody] = useState('');
+  const [fcmSending, setFcmSending] = useState(false);
 
   function load() {
     setLoading(true);
@@ -105,6 +109,43 @@ export default function AdminWaitlistPage() {
     setEditPhone(item.phone || '');
   }
 
+  async function handleSendFcm() {
+    if (!fcmTitle.trim() || !fcmBody.trim()) {
+      alert('제목과 내용을 모두 입력해 주세요.');
+      return;
+    }
+    setFcmSending(true);
+    try {
+      const res = await fetch('/api/admin/waitlist/send-fcm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          selectedIds: [...selectedIds],
+          title: fcmTitle.trim(),
+          body: fcmBody.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || data.detail || '발송 실패');
+      }
+      const msg = data.message
+        || (data.sentCount > 0
+          ? `발송 완료: ${data.sentCount}건${data.noTokenCount > 0 ? ` (앱 미설치/비로그인 ${data.noTokenCount}명 제외)` : ''}`
+          : '발송할 대상이 없습니다.');
+      alert(msg);
+      setShowFcmModal(false);
+      setFcmTitle('');
+      setFcmBody('');
+      setSelectedIds(new Set());
+      load();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'FCM 발송에 실패했습니다.');
+    } finally {
+      setFcmSending(false);
+    }
+  }
+
   async function handleDeleteSelected() {
     if (selectedIds.size === 0) {
       alert('삭제할 항목을 선택해 주세요.');
@@ -137,7 +178,7 @@ export default function AdminWaitlistPage() {
   return (
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold text-slate-800">베타 1기 대기</h1>
+        <h1 className="text-2xl font-bold text-slate-800">베타 1기 참여 리스트</h1>
         <div className="flex gap-2">
           <input
             type="text"
@@ -151,6 +192,13 @@ export default function AdminWaitlistPage() {
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
             휴대폰 번호 복사
+          </button>
+          <button
+            onClick={() => setShowFcmModal(true)}
+            disabled={selectedIds.size === 0}
+            className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+          >
+            FCM 발송 ({selectedIds.size})
           </button>
           <button
             onClick={handleDeleteSelected}
@@ -188,6 +236,8 @@ export default function AdminWaitlistPage() {
               <th className="w-16 min-w-[4rem] py-3 px-4 text-left text-sm font-medium text-slate-600 whitespace-nowrap">번호</th>
               <th className="text-left py-3 px-4 text-sm font-medium text-slate-600">휴대폰 번호</th>
               <th className="text-left py-3 px-4 text-sm font-medium text-slate-600">신청일시</th>
+              <th className="text-left py-3 px-4 text-sm font-medium text-slate-600 whitespace-nowrap">마지막 FCM 발송</th>
+              <th className="text-left py-3 px-4 text-sm font-medium text-slate-600 whitespace-nowrap">마지막 FCM 열람</th>
             </tr>
           </thead>
           <tbody>
@@ -239,6 +289,12 @@ export default function AdminWaitlistPage() {
                 <td className="py-3 px-4 text-sm text-slate-600">
                   {new Date(i.createdAt).toLocaleString('ko-KR')}
                 </td>
+                <td className="py-3 px-4 text-sm text-slate-600">
+                  {i.lastFcmSentAt ? new Date(i.lastFcmSentAt).toLocaleString('ko-KR') : '-'}
+                </td>
+                <td className="py-3 px-4 text-sm text-slate-600">
+                  {i.lastFcmOpenedAt ? new Date(i.lastFcmOpenedAt).toLocaleString('ko-KR') : '-'}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -249,6 +305,55 @@ export default function AdminWaitlistPage() {
           </div>
         )}
       </div>
+
+      {showFcmModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md mx-4">
+            <h2 className="text-lg font-bold text-slate-800 mb-4">FCM 푸시 발송</h2>
+            <p className="text-sm text-slate-500 mb-4">
+              선택한 {selectedIds.size}명 중 앱을 설치하고 로그인한 사용자에게만 발송됩니다.
+            </p>
+            <div className="space-y-3 mb-6">
+              <div>
+                <label className="block text-sm font-medium text-slate-600 mb-1">제목</label>
+                <input
+                  type="text"
+                  value={fcmTitle}
+                  onChange={(e) => setFcmTitle(e.target.value)}
+                  placeholder="알림 제목"
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-600 mb-1">내용</label>
+                <textarea
+                  value={fcmBody}
+                  onChange={(e) => setFcmBody(e.target.value)}
+                  placeholder="알림 내용"
+                  rows={3}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg resize-none"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => { setShowFcmModal(false); setFcmTitle(''); setFcmBody(''); }}
+                disabled={fcmSending}
+                className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg disabled:opacity-50"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleSendFcm}
+                disabled={fcmSending || !fcmTitle.trim() || !fcmBody.trim()}
+                className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {fcmSending ? '발송 중...' : '발송'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -15,6 +15,7 @@ import 'guardian_dashboard_screen.dart';
 import 'question_screen.dart';
 import 'subject_detail_screen.dart';
 import '../models/mood_response_model.dart';
+import '../services/fcm_service.dart';
 import '../services/mood_service.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -58,7 +59,12 @@ class _SplashScreenState extends State<SplashScreen> {
       final pendingInviterId = await InvitePendingService.getPendingInviterId();
       final pendingSubjectId = await InvitePendingService.getPendingSubjectId();
       if (!mounted) return;
-      if (type == 'DAILY_REMINDER') {
+      if (type == 'ADMIN_BROADCAST') {
+        FCMService.reportAdminFcmOpened();
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const HomeScreen(skipAutoNavigation: true)),
+        );
+      } else if (type == 'DAILY_REMINDER') {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
             builder: (_) => const QuestionScreen(
@@ -114,6 +120,12 @@ class _SplashScreenState extends State<SplashScreen> {
               alreadyResponded: false,
             ),
           ),
+        );
+      } else if (type == 'ADMIN_BROADCAST') {
+        await FCMService.reportAdminFcmOpened();
+        if (!mounted) return;
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const HomeScreen(skipAutoNavigation: true)),
         );
       } else if (pendingInviterId != null && pendingInviterId.isNotEmpty) {
         final user = authService.user;

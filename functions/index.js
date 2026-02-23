@@ -388,7 +388,7 @@ exports.sendSubjectReminder = functions.pubsub
       for (const doc of toSend) {
         const subjectId = doc.id;
         const r = await sendToUser(subjectId, {
-          notification: { title: '', body: '오늘 하루는 어떠셨나요?' },
+          notification: { title: '', body: '오늘 어때요? 편안한 저녁 되세요.' },
           data: { type: 'DAILY_REMINDER', click_action: 'FLUTTER_NOTIFICATION_CLICK' },
           android: { priority: 'high', notification: { sound: 'default', channelId: 'daily_mood_check' } },
           apns: { payload: { aps: { sound: 'default', badge: 1 } } },
@@ -398,55 +398,6 @@ exports.sendSubjectReminder = functions.pubsub
       return null;
     } catch (e) {
       console.error('[19:00 보호대상자] 오류:', e);
-      return null;
-    }
-  });
-
-/**
- * 20:05 3일 무응답 보호자 강한 알림
- * - lastResponseAt < now - 72h 인 subjects
- * - createdAt < now - 72h (가입 72h 미만이면 스킵, 신규 epoch 과경보 방지)
- * - createdAt 없는 기존 문서 스킵 (마이그레이션 전 안전)
- * - lastGuardianAlertAt 미설정 또는 lastGuardianAlertAt < now - 72h 인 경우만 발송
- */
-exports.sendThreeDayNoResponseAlert = functions.pubsub
-  .schedule('5 20 * * *')
-  .timeZone('Asia/Seoul')
-  .onRun(async () => {
-    const now = admin.firestore.Timestamp.now();
-    const cutoff = admin.firestore.Timestamp.fromDate(new Date(now.toMillis() - 72 * 60 * 60 * 1000));
-    console.log(`[20:05 3일 무응답] lastResponseAt < ${cutoff.toDate().toISOString()}`);
-
-    try {
-      const snapshot = await db.collection('subjects')
-        .where('lastResponseAt', '<', cutoff)
-        .get();
-
-      const toAlert = [];
-      for (const doc of snapshot.docs) {
-        const d = doc.data();
-        if (!d.createdAt || d.createdAt.toMillis() >= cutoff.toMillis()) continue;
-        const lastAlert = d.lastGuardianAlertAt;
-        if (lastAlert && lastAlert.toMillis && lastAlert.toMillis() > cutoff.toMillis()) continue;
-        toAlert.push({ doc, subjectId: doc.id, guardians: d.pairedGuardianUids || [] });
-      }
-      console.log(`[20:05 3일 무응답] 발송 대상: ${toAlert.length}건`);
-
-      for (const { doc, subjectId, guardians } of toAlert) {
-        const displayName = doc.data().displayName || '보호 대상';
-        for (const guardianId of guardians) {
-          await sendToGuardian(guardianId, {
-            notification: { title: '안부 확인 필요', body: '3일째 1명의 안부가 확인되지 않았습니다.' },
-            data: { type: 'ESCALATION_3DAYS', subjectId: String(subjectId), subjectDisplayName: String(displayName), click_action: 'FLUTTER_NOTIFICATION_CLICK' },
-            android: { priority: 'high', notification: { sound: 'default', channelId: 'guardian_notifications' } },
-            apns: { payload: { aps: { sound: 'default', badge: 1 } } },
-          });
-        }
-        await doc.ref.update({ lastGuardianAlertAt: now });
-      }
-      return null;
-    } catch (e) {
-      console.error('[20:05 3일 무응답] 오류:', e);
       return null;
     }
   });
@@ -567,5 +518,52 @@ exports.addToWaitlist = functions.https.onCall(async (data) => {
   } catch (error) {
     console.error('[addToWaitlist] 오류:', error);
     throw new functions.https.HttpsError('internal', '등록에 실패했습니다. 다시 시도해 주세요.');
+  }
+});
+
+/**
+ * 관리자 FCM(ADMIN_BROADCAST) 열람 보고
+ * - 앱에서 알림 탭 시 호출 → 해당 사용자 전화번호와 매칭되는 waitlist 항목에 lastFcmOpenedAt 업데이트
+ */
+exports.reportAdminFcmOpened = functions.https.onCall(async (data, context) => {
+  if (!context.auth || !context.auth.uid) {
+    throw new functions.https.HttpsError('unauthenticated', '로그인이 필요합니다.');
+  }
+  const uid = context.auth.uid;
+
+  try {
+    let userPhone = '';
+    const userDoc = await db.collection('users').doc(uid).get();
+    if (userDoc.exists) {
+      userPhone = (userDoc.data()?.phone ?? '').toString().trim();
+    }
+    if (!userPhone) {
+      const authUser = await admin.auth().getUser(uid);
+      userPhone = (authUser.phoneNumber ?? '').toString().trim();
+    }
+    if (!userPhone) return { updated: 0 };
+    const userNormalized = normalizePhone(userPhone);
+
+    const now = admin.firestore.Timestamp.now();
+    const batch = db.batch();
+
+    // users/{uid}에 lastFcmOpenedAt 업데이트 (회원관리 페이지 표시용)
+    batch.update(db.collection('users').doc(uid), { lastFcmOpenedAt: now });
+
+    const waitlistSnap = await db.collection('waitlist').get();
+    let updated = 0;
+    for (const doc of waitlistSnap.docs) {
+      const wlPhone = (doc.data()?.phone ?? '').toString().trim();
+      if (!wlPhone) continue;
+      if (normalizePhone(wlPhone) === userNormalized) {
+        batch.update(doc.ref, { lastFcmOpenedAt: now });
+        updated++;
+      }
+    }
+    await batch.commit();
+    return { updated };
+  } catch (e) {
+    console.error('[reportAdminFcmOpened] 오류:', e);
+    throw new functions.https.HttpsError('internal', '열람 보고에 실패했습니다.');
   }
 });

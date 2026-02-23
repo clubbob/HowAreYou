@@ -85,7 +85,7 @@ export function AdminStats() {
       href: '/admin/announcements',
     },
     {
-      label: '베타 1기 대기',
+      label: '베타 1기 참여 리스트',
       value: displayStats.waitlistCount,
       href: '/admin/waitlist',
     },

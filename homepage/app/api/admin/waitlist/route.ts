@@ -16,11 +16,15 @@ export async function GET() {
     .map((doc) => {
       const d = doc.data();
       const createdAt = d.createdAt?.toDate?.() ?? new Date();
+      const lastFcmSentAt = d.lastFcmSentAt?.toDate?.();
+      const lastFcmOpenedAt = d.lastFcmOpenedAt?.toDate?.();
       return {
         id: doc.id,
         phone: d.phone ?? '',
         cohort: d.cohort ?? '1',
         createdAt: createdAt.toISOString(),
+        lastFcmSentAt: lastFcmSentAt ? lastFcmSentAt.toISOString() : null,
+        lastFcmOpenedAt: lastFcmOpenedAt ? lastFcmOpenedAt.toISOString() : null,
       };
     })
     .filter((item) => item.phone)

@@ -60,12 +60,16 @@ export async function GET() {
       : []) as string[];
 
     const createdAt = d.createdAt?.toDate?.();
+    const lastFcmSentAt = d.lastFcmSentAt?.toDate?.();
+    const lastFcmOpenedAt = d.lastFcmOpenedAt?.toDate?.();
     return {
       id: uid,
       phone: d.phone ?? '',
       displayName: d.displayName ?? null,
       role,
       createdAt: createdAt ? createdAt.toISOString() : null,
+      lastFcmSentAt: lastFcmSentAt ? lastFcmSentAt.toISOString() : null,
+      lastFcmOpenedAt: lastFcmOpenedAt ? lastFcmOpenedAt.toISOString() : null,
       guardianPhones: [...new Set(guardianPhones)].filter(Boolean),
       wardPhones: [...new Set(wardPhones)].filter(Boolean),
     };
@@ -98,6 +102,26 @@ export async function GET() {
         existing.createdAt && u.createdAt && new Date(u.createdAt) < new Date(existing.createdAt)
           ? u.createdAt
           : existing.createdAt,
+      lastFcmSentAt:
+        !existing.lastFcmSentAt && !u.lastFcmSentAt
+          ? null
+          : !u.lastFcmSentAt
+            ? existing.lastFcmSentAt
+            : !existing.lastFcmSentAt
+              ? u.lastFcmSentAt
+              : new Date(u.lastFcmSentAt) > new Date(existing.lastFcmSentAt)
+                ? u.lastFcmSentAt
+                : existing.lastFcmSentAt,
+      lastFcmOpenedAt:
+        !existing.lastFcmOpenedAt && !u.lastFcmOpenedAt
+          ? null
+          : !u.lastFcmOpenedAt
+            ? existing.lastFcmOpenedAt
+            : !existing.lastFcmOpenedAt
+              ? u.lastFcmOpenedAt
+              : new Date(u.lastFcmOpenedAt) > new Date(existing.lastFcmOpenedAt)
+                ? u.lastFcmOpenedAt
+                : existing.lastFcmOpenedAt,
     };
     byPhone.set(phone, merged);
   }

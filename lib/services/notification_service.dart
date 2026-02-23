@@ -6,8 +6,10 @@ import 'package:timezone/data/latest.dart' as tz;
 import 'package:firebase_auth/firebase_auth.dart';
 import '../main.dart';
 import '../screens/question_screen.dart';
+import '../screens/home_screen.dart';
 import '../screens/guardian_dashboard_screen.dart';
 import '../screens/subject_detail_screen.dart';
+import 'fcm_service.dart';
 import '../models/mood_response_model.dart';
 import '../services/guardian_service.dart';
 import '../services/mode_service.dart';
@@ -144,7 +146,7 @@ class NotificationService {
       await _notifications.zonedSchedule(
         subjectReminderNotificationId,
         '',
-        '오늘 하루는 어떠셨나요?',
+        '오늘 어때요? 편안한 저녁 되세요.',
         _nextTimeInKST(19, 0),
         _dailyReminderDetails(),
         payload: 'SUBJECT_REMINDER',
@@ -226,6 +228,20 @@ class NotificationService {
         debugPrint('[알림] ✅ 보호자 FCM 알림 탭 - 상세 화면으로 이동');
         if (response.id != null) await _notifications.cancel(response.id!);
         _navigateToGuardianDashboard(payload);
+      } else if (payload == 'ADMIN_BROADCAST' || (payload != null && payload.startsWith('ADMIN_BROADCAST'))) {
+        // notificationResponseType: selectedNotification(탭) | selectedNotificationAction(버튼탭) 만 열람으로 인정
+        final rt = response.notificationResponseType;
+        final isUserTap = rt == NotificationResponseType.selectedNotification ||
+            rt == NotificationResponseType.selectedNotificationAction;
+        if (isUserTap) {
+          debugPrint('[알림] ✅ 관리자 FCM 알림 탭 - 열람 보고 후 홈으로 이동');
+          if (response.id != null) await _notifications.cancel(response.id!);
+          await FCMService.reportAdminFcmOpened();
+          _navigateToHome();
+        } else {
+          debugPrint('[알림] ADMIN_BROADCAST responseType=$rt - 사용자 탭 아님, 열람 보고 스킵');
+          if (response.id != null) await _notifications.cancel(response.id!);
+        }
       } else {
         debugPrint('[알림] ✅ 보호대상자 알림 탭 - 질문 화면으로 이동');
         if (response.id != null) await _notifications.cancel(response.id!);
@@ -303,6 +319,23 @@ class NotificationService {
     });
   }
 
+  /// 홈 화면으로 이동 (ADMIN_BROADCAST 탭 시)
+  void _navigateToHome() {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      var navigator = MyApp.navigatorKey.currentState;
+      if (navigator == null) {
+        await Future.delayed(const Duration(milliseconds: 300));
+        navigator = MyApp.navigatorKey.currentState;
+      }
+      if (navigator != null) {
+        navigator.pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const HomeScreen(skipAutoNavigation: true)),
+          (route) => false,
+        );
+      }
+    });
+  }
+
   /// 컨디션 선택지 화면으로 이동
   void _navigateToQuestionScreen() {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -339,7 +372,7 @@ class NotificationService {
       await _notifications.show(
         notificationId,
         '',
-        '오늘 하루는 어떠셨나요?',
+        '오늘 어때요? 편안한 저녁 되세요.',
         NotificationDetails(
           android: AndroidNotificationDetails(
             'daily_mood_check',

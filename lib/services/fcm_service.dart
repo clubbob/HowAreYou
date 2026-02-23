@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -9,6 +10,7 @@ import '../utils/permission_helper.dart';
 import '../screens/guardian_dashboard_screen.dart';
 import '../screens/subject_detail_screen.dart';
 import '../screens/question_screen.dart';
+import '../screens/home_screen.dart';
 import '../models/mood_response_model.dart';
 import 'notification_service.dart';
 import 'guardian_service.dart';
@@ -295,13 +297,37 @@ class FCMService {
     return await _getNotificationSoundEnabled();
   }
 
+  /// 관리자 FCM(ADMIN_BROADCAST) 열람 보고 - waitlist lastFcmOpenedAt 업데이트
+  /// 사용자가 알림을 탭해서 내용을 확인한 경우에만 호출됨 (탭 없이는 열람 아님)
+  static Future<void> reportAdminFcmOpened() async {
+    try {
+      final callable = FirebaseFunctions.instanceFor(region: 'us-central1').httpsCallable('reportAdminFcmOpened');
+      await callable.call();
+      debugPrint('[FCM] ADMIN_BROADCAST 열람 보고 완료');
+    } catch (e) {
+      debugPrint('[FCM] ADMIN_BROADCAST 열람 보고 실패: $e');
+    }
+  }
+
   /// 알림 탭 시 처리 (앱이 백그라운드에서 실행 중일 때 알림을 탭한 경우)
   void _handleNotificationTap(RemoteMessage message) {
     debugPrint('알림 탭: ${message.notification?.title}');
     final data = message.data;
     final type = data['type'];
     final subjectId = data['subjectId']; // FCM data에서 subjectId 추출
-    
+
+    if (type == 'ADMIN_BROADCAST') {
+      FCMService.reportAdminFcmOpened(); // 열람 보고 (navigator와 무관하게 항상 호출)
+      final navigator = MyApp.navigatorKey.currentState;
+      if (navigator != null) {
+        navigator.pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const HomeScreen(skipAutoNavigation: true)),
+          (route) => false,
+        );
+      }
+      return;
+    }
+
     final navigator = MyApp.navigatorKey.currentState;
     if (navigator == null) return;
 

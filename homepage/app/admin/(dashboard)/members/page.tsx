@@ -8,6 +8,8 @@ type User = {
   displayName: string | null;
   role: string;
   createdAt: string | null;
+  lastFcmSentAt: string | null;
+  lastFcmOpenedAt: string | null;
   guardianPhones: string[];
   wardPhones: string[];
 };
@@ -23,6 +25,11 @@ export default function AdminMembersPage() {
   const [sortKey, setSortKey] = useState<SortKey>('createdAt-desc');
   const [page, setPage] = useState(1);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showFcmModal, setShowFcmModal] = useState(false);
+  const [fcmTitle, setFcmTitle] = useState('');
+  const [fcmBody, setFcmBody] = useState('');
+  const [fcmSending, setFcmSending] = useState(false);
 
   function load() {
     setLoading(true);
@@ -82,6 +89,67 @@ export default function AdminMembersPage() {
     return s;
   }, [list]);
 
+  const allFilteredSelected = filtered.length > 0 && filtered.every((u) => selectedIds.has(u.id));
+  function toggleSelectAll() {
+    if (allFilteredSelected) {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        filtered.forEach((u) => next.delete(u.id));
+        return next;
+      });
+    } else {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        filtered.forEach((u) => next.add(u.id));
+        return next;
+      });
+    }
+  }
+  function toggleSelect(id: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+  async function handleSendFcm() {
+    if (!fcmTitle.trim() || !fcmBody.trim()) {
+      alert('제목과 내용을 모두 입력해 주세요.');
+      return;
+    }
+    setFcmSending(true);
+    try {
+      const res = await fetch('/api/admin/users/send-fcm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          selectedIds: [...selectedIds],
+          title: fcmTitle.trim(),
+          body: fcmBody.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || data.detail || '발송 실패');
+      }
+      const msg = data.message
+        || (data.sentCount > 0
+          ? `발송 완료: ${data.sentCount}건${data.noTokenCount > 0 ? ` (FCM 토큰 없음 ${data.noTokenCount}명 제외)` : ''}`
+          : '발송할 대상이 없습니다.');
+      alert(msg);
+      setShowFcmModal(false);
+      setFcmTitle('');
+      setFcmBody('');
+      setSelectedIds(new Set());
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'FCM 발송에 실패했습니다.');
+    } finally {
+      setFcmSending(false);
+    }
+  }
+
   const PAGE_SIZE = 20;
   const paginated = useMemo(() => {
     const start = (page - 1) * PAGE_SIZE;
@@ -140,9 +208,16 @@ export default function AdminMembersPage() {
           총 {filtered.length}명 / {list.length}명
         </span>
         <button
+          onClick={() => setShowFcmModal(true)}
+          disabled={selectedIds.size === 0}
+          className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+        >
+          FCM 발송 ({selectedIds.size})
+        </button>
+        <button
           onClick={load}
           disabled={loading}
-          className="ml-auto px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 disabled:opacity-50 text-sm"
+          className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 disabled:opacity-50 text-sm"
         >
           새로고침
         </button>
@@ -152,12 +227,22 @@ export default function AdminMembersPage() {
         <table className="w-full">
           <thead className="bg-slate-50">
             <tr>
+              <th className="w-12 py-3 px-4">
+                <input
+                  type="checkbox"
+                  checked={filtered.length > 0 && allFilteredSelected}
+                  onChange={toggleSelectAll}
+                  className="rounded border-slate-300"
+                />
+              </th>
               <th className="w-16 min-w-[4rem] text-left py-3 px-4 text-sm font-medium text-slate-600 whitespace-nowrap">번호</th>
               <th className="text-left py-3 px-4 text-sm font-medium text-slate-600">전화번호</th>
               <th className="text-left py-3 px-4 text-sm font-medium text-slate-600">가입일시</th>
               <th className="text-left py-3 px-4 text-sm font-medium text-slate-600">역할</th>
               <th className="text-left py-3 px-4 text-sm font-medium text-slate-600">연결된 보호자</th>
               <th className="text-left py-3 px-4 text-sm font-medium text-slate-600">연결된 보호대상자</th>
+              <th className="text-left py-3 px-4 text-sm font-medium text-slate-600 whitespace-nowrap">마지막 FCM 발송</th>
+              <th className="text-left py-3 px-4 text-sm font-medium text-slate-600 whitespace-nowrap">마지막 FCM 열람</th>
             </tr>
           </thead>
           <tbody>
@@ -167,6 +252,15 @@ export default function AdminMembersPage() {
                 onClick={() => setSelectedUser(u)}
                 className="border-t border-slate-100 hover:bg-slate-50 cursor-pointer"
               >
+                <td className="w-12 py-3 px-4" onClick={(e) => e.stopPropagation()}>
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.has(u.id)}
+                    onChange={() => {}}
+                    onClick={(e) => toggleSelect(u.id, e)}
+                    className="rounded border-slate-300"
+                  />
+                </td>
                 <td className="w-16 min-w-[4rem] py-3 px-4 text-sm text-slate-600">{filtered.length - (page - 1) * PAGE_SIZE - idx}</td>
                 <td className="py-3 px-4 font-mono text-sm">{u.phone || '-'}</td>
                 <td className="py-3 px-4 text-sm text-slate-600">
@@ -194,6 +288,12 @@ export default function AdminMembersPage() {
                   {(u.wardPhones ?? []).length > 0
                     ? (u.wardPhones ?? []).join(', ')
                     : '-'}
+                </td>
+                <td className="py-3 px-4 text-sm text-slate-600 whitespace-nowrap">
+                  {u.lastFcmSentAt ? new Date(u.lastFcmSentAt).toLocaleString('ko-KR') : '-'}
+                </td>
+                <td className="py-3 px-4 text-sm text-slate-600 whitespace-nowrap">
+                  {u.lastFcmOpenedAt ? new Date(u.lastFcmOpenedAt).toLocaleString('ko-KR') : '-'}
                 </td>
               </tr>
             ))}
@@ -294,10 +394,71 @@ export default function AdminMembersPage() {
                 </dd>
               </div>
               <div>
+                <dt className="text-sm text-slate-500">마지막 FCM 발송</dt>
+                <dd className="text-sm">
+                  {selectedUser.lastFcmSentAt ? new Date(selectedUser.lastFcmSentAt).toLocaleString('ko-KR') : '-'}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-sm text-slate-500">마지막 FCM 열람</dt>
+                <dd className="text-sm">
+                  {selectedUser.lastFcmOpenedAt ? new Date(selectedUser.lastFcmOpenedAt).toLocaleString('ko-KR') : '-'}
+                </dd>
+              </div>
+              <div>
                 <dt className="text-sm text-slate-500">회원 ID</dt>
                 <dd className="font-mono text-xs text-slate-600 break-all">{selectedUser.id}</dd>
               </div>
             </dl>
+          </div>
+        </div>
+      )}
+
+      {showFcmModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md mx-4">
+            <h2 className="text-lg font-bold text-slate-800 mb-4">FCM 푸시 발송</h2>
+            <p className="text-sm text-slate-500 mb-4">
+              선택한 {selectedIds.size}명 중 FCM 토큰이 등록된 회원에게만 발송됩니다.
+            </p>
+            <div className="space-y-3 mb-6">
+              <div>
+                <label className="block text-sm font-medium text-slate-600 mb-1">제목</label>
+                <input
+                  type="text"
+                  value={fcmTitle}
+                  onChange={(e) => setFcmTitle(e.target.value)}
+                  placeholder="알림 제목"
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-600 mb-1">내용</label>
+                <textarea
+                  value={fcmBody}
+                  onChange={(e) => setFcmBody(e.target.value)}
+                  placeholder="알림 내용"
+                  rows={3}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg resize-none"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => { setShowFcmModal(false); setFcmTitle(''); setFcmBody(''); }}
+                disabled={fcmSending}
+                className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg disabled:opacity-50"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleSendFcm}
+                disabled={fcmSending || !fcmTitle.trim() || !fcmBody.trim()}
+                className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {fcmSending ? '발송 중...' : '발송'}
+              </button>
+            </div>
           </div>
         </div>
       )}
