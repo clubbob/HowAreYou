@@ -36,7 +36,7 @@ export function FaqSection() {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   return (
-    <section className="bg-navy-50 px-4 py-14 sm:px-6 sm:py-16 md:py-24">
+    <section className="bg-primary-50 px-4 py-14 sm:px-6 sm:py-16 md:py-24">
       <div className="mx-auto max-w-3xl">
         <h2 className="mb-12 text-center text-[1.75rem] font-bold leading-[1.4] text-navy-900">
           자주 묻는 질문

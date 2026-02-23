@@ -6,7 +6,7 @@ const ITEMS = [
 
 export function RecommendSection() {
   return (
-    <section className="bg-primary-50 px-4 py-14 sm:px-6 sm:py-16 md:py-24">
+    <section className="bg-white px-4 py-14 sm:px-6 sm:py-16 md:py-24">
       <div className="mx-auto max-w-2xl">
         <h2 className="mb-8 text-center text-[1.375rem] font-bold leading-[1.4] text-navy-900 sm:mb-10 sm:text-[1.75rem]">
           이런 분들께 추천합니다
