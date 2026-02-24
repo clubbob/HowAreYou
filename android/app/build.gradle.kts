@@ -10,10 +10,27 @@ plugins {
 }
 
 // Release 서명: android/key.properties (없으면 debug 서명 사용)
+// 경로 표준화: 항상 android/ 기준 (rootProject = android/)
 val keystorePropertiesFile = rootProject.file("key.properties")
 val keystoreProperties = Properties()
 if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(keystorePropertiesFile.inputStream())
+}
+
+// 빌드 전 keystore 존재 여부 검증 (경로 오류 즉시 파악)
+tasks.register("validateKeystore") {
+    doFirst {
+        if (keystorePropertiesFile.exists()) {
+            val storeFilePath = keystoreProperties["storeFile"] ?: "upload-keystore.jks"
+            val storeFile = rootProject.file(storeFilePath)
+            if (!storeFile.exists()) {
+                throw GradleException(
+                    "Keystore file not found at: ${storeFile.absolutePath}\n" +
+                    "Check key.properties storeFile value. Expected: upload-keystore.jks in android/"
+                )
+            }
+        }
+    }
 }
 
 android {
@@ -44,7 +61,8 @@ android {
     signingConfigs {
         if (keystorePropertiesFile.exists()) {
             create("release") {
-                storeFile = file(keystoreProperties["storeFile"] ?: "../upload-keystore.jks")
+                // rootProject.file() = android/ 기준, 경로 불일치 차단
+                storeFile = rootProject.file(keystoreProperties["storeFile"] ?: "upload-keystore.jks")
                 storePassword = keystoreProperties["storePassword"] as String?
                 keyAlias = keystoreProperties["keyAlias"] as String?
                 keyPassword = keystoreProperties["keyPassword"] as String?
@@ -61,6 +79,11 @@ android {
             }
         }
     }
+}
+
+// Release 빌드 시 keystore 검증 선행
+tasks.named("preBuild").configure {
+    dependsOn("validateKeystore")
 }
 
 flutter {

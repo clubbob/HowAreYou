@@ -159,7 +159,13 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
     });
     // 이전 로그인 전화번호로 미리 채우기
     WidgetsBinding.instance.addPostFrameCallback((_) => _prefillLastPhone());
-    // 6자리 입력 시 자동 인증 시도
+    // 전화번호 화면 진입 시 커서를 맨 앞에 두고 포커스
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && !_codeSent) {
+        _phoneFocusNode.requestFocus();
+        _phoneController.selection = TextSelection.collapsed(offset: 0);
+      }
+    });
     _codeController.addListener(() {
       // 에러 메시지가 있으면 입력 시 제거
       if (_errorMessage != null && _codeController.text.isNotEmpty) {
@@ -167,9 +173,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
           _errorMessage = null;
         });
       }
-      if (_codeController.text.length == 6 && !_isLoading && _verificationId != null) {
-        _verifyOTP();
-      }
+      // 인증하기 버튼 클릭 시에만 인증 진행 (자동 인증 제거)
     });
   }
 
@@ -467,114 +471,6 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
     }
 
     final phoneNumber = _toE164(_phoneController.text);
-    
-    // 이전에 로그인한 번호와 다른 경우 경고 다이얼로그 표시
-    final authService = Provider.of<AuthService>(context, listen: false);
-    final lastLoginPhone = await authService.getLastLoginPhone();
-    
-    if (lastLoginPhone != null && lastLoginPhone != phoneNumber) {
-      // 다른 번호로 로그인 시도 - 경고 다이얼로그 표시
-      final shouldContinue = await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: const Row(
-            children: [
-              Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
-              SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  '다른 핸드폰 번호로 로그인',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                '이전에 로그인한 번호와 다른 번호입니다.',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                '이전 번호: ${_formatPhoneNumber(lastLoginPhone)}',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[700],
-                ),
-              ),
-              Text(
-                '입력한 번호: ${_formatPhoneNumber(phoneNumber)}',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[700],
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                '다른 핸드폰 번호로 로그인하면 기존 계정과 다른 계정으로 로그인됩니다. 계속하시겠습니까?',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.black87,
-                  height: 1.5,
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.of(context).pop(false),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.grey.shade700,
-                      side: BorderSide(color: Colors.grey.shade400),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                    child: const Text('취소', style: TextStyle(fontSize: 16)),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.of(context).pop(true),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Theme.of(context).colorScheme.primary,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                    child: const Text('계속', style: TextStyle(fontSize: 16)),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      );
-      
-      if (shouldContinue != true) {
-        // 사용자가 취소한 경우
-        return;
-      }
-    }
 
     setState(() {
       _isLoading = true;
@@ -618,22 +514,18 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
       await FirebaseAuth.instance.verifyPhoneNumber(
         phoneNumber: phoneNumber,
         verificationCompleted: (PhoneAuthCredential credential) async {
-          debugPrint('자동 인증 완료: ${credential.smsCode}');
-          if (mounted) setState(() => _isLoading = false);
-          final authService = Provider.of<AuthService>(context, listen: false);
-          try {
-            final err = await authService.verifyWithCredential(
-              credential,
-              termsAgreedAt: _agreedToTerms ? DateTime.now() : null,
-              privacyAgreedAt: _agreedToPrivacy ? DateTime.now() : null,
-            );
-            if (err != null && mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
-              return;
-            }
-            if (mounted) await _navigateAfterLogin(context, authService);
-          } on NeedAgreementException catch (e) {
-            if (mounted) await _showAgreementAndComplete(context, authService, e.user);
+          // Android에서 SMS 자동 감지 시: 코드만 입력란에 채우고, 인증하기 버튼 클릭을 기다림
+          debugPrint('SMS 자동 감지: ${credential.smsCode} (인증하기 버튼 클릭 대기)');
+          if (!mounted) return;
+          final code = credential.smsCode;
+          if (code != null && code.isNotEmpty) {
+            setState(() {
+              _isLoading = false;
+              _codeController.text = code;
+              _codeController.selection = TextSelection.collapsed(offset: code.length);
+            });
+          } else {
+            setState(() => _isLoading = false);
           }
         },
         verificationFailed: (FirebaseAuthException e) {
@@ -681,15 +573,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
               _isLoading = false;
               _errorMessage = null;
               _codeSentTime = DateTime.now();
-              _canResend = false;
-            });
-            // 30초 후 재전송 가능하도록 설정
-            Future.delayed(const Duration(seconds: 30), () {
-              if (mounted) {
-                setState(() {
-                  _canResend = true;
-                });
-              }
+              _canResend = true;
             });
             // 자동 포커스 및 숫자 키패드 표시
             WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -711,15 +595,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
               _codeSent = true;
               _isLoading = false;
               _codeSentTime = DateTime.now();
-              _canResend = false;
-            });
-            // 30초 후 재전송 가능하도록 설정
-            Future.delayed(const Duration(seconds: 30), () {
-              if (mounted) {
-                setState(() {
-                  _canResend = true;
-                });
-              }
+              _canResend = true;
             });
             // 자동 포커스 및 숫자 키패드 표시
             WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -756,10 +632,14 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
 
   Future<void> _verifyOTP() async {
     if (_codeController.text.isEmpty || _verificationId == null) {
-      setState(() {
-        _errorMessage = '인증번호를 입력해 주세요.';
-      });
+      setState(() => _errorMessage = '인증번호를 입력해 주세요.');
       _shakeInput();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('인증번호를 입력해 주세요.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
       return;
     }
 
@@ -792,6 +672,14 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
             baseOffset: 0,
             extentOffset: _codeController.text.length,
           );
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(error.replaceAll('\n', ' ')),
+              backgroundColor: const Color(0xFFD32F2F),
+              duration: const Duration(seconds: 4),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
         }
       }
     } on NeedAgreementException catch (e) {
@@ -801,16 +689,24 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
       }
     } catch (e) {
       if (mounted) {
+        final msg = e is TimeoutException
+            ? '요청이 지연되었습니다. 네트워크를 확인해 주세요.'
+            : '오류가 발생했습니다. 잠시 후 다시 시도해 주세요.';
         setState(() {
           _isLoading = false;
-          _errorMessage = e is TimeoutException
-              ? '요청이 지연되었습니다. 네트워크를 확인해 주세요.'
-              : '오류가 발생했습니다. 잠시 후 다시 시도해 주세요.';
+          _errorMessage = msg;
         });
         _shakeInput();
         _codeController.selection = TextSelection(
           baseOffset: 0,
           extentOffset: _codeController.text.length,
+        );
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(msg),
+            backgroundColor: const Color(0xFFD32F2F),
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
     }
@@ -957,17 +853,6 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                         )
                       : const Text('인증번호 받기'),
                 ),
-                if (_showTermsCheckboxes) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    '휴대폰 번호 인증 시 계정이 생성됩니다.',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey.shade600,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
               ] else ...[
                 _shakeController != null
                     ? AnimatedBuilder(
@@ -1030,35 +915,6 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                           color: Color(0xFF202124),
                         ),
                       ),
-                if (_errorMessage != null) ...[
-                  const SizedBox(height: 10),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFDECEC),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      _errorMessage!,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: Color(0xFFD32F2F),
-                        height: 1.4,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ] else if (_showTermsCheckboxes) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    '인증번호는 안전하게 처리됩니다.',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey.shade600,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
                 const SizedBox(height: 20),
                 ElevatedButton(
                   onPressed: _isLoading ? null : _verifyOTP,
@@ -1079,49 +935,39 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                         )
                       : const Text('인증하기'),
                 ),
-                if (_showTermsCheckboxes) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    '휴대폰 번호 인증 시 계정이 생성됩니다.',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey.shade600,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
                 const SizedBox(height: 12),
                 Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    TextButton(
+                    OutlinedButton(
                       onPressed: () {
                         setState(() {
                           _codeSent = false;
                           _codeController.clear();
                           _errorMessage = null;
                         });
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (mounted) {
+                            _phoneFocusNode.requestFocus();
+                            _phoneController.selection = TextSelection.collapsed(offset: 0);
+                          }
+                        });
                       },
-                      child: Text(
-                        '핸드폰 번호 다시 입력',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey.shade700,
-                          decoration: TextDecoration.none,
-                        ),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
+                      child: const Text('핸드폰 번호 다시 입력'),
                     ),
-                    if (_canResend)
-                      TextButton(
+                    if (_canResend) ...[
+                      const SizedBox(height: 8),
+                      OutlinedButton(
                         onPressed: _isLoading ? null : _resendCode,
-                        child: Text(
-                          '인증번호 다시 받기',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Theme.of(context).colorScheme.primary,
-                            decoration: TextDecoration.none,
-                          ),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
                         ),
+                        child: const Text('인증번호 다시 받기'),
                       ),
+                    ],
                   ],
                 ),
               ],

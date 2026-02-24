@@ -1,0 +1,2 @@
+성공하면 build/app/outputs/bundle/release/app-release.aab 파일이 생성됩니다.
+이 파일을 Play Console → 내부 테스트(또는 프로덕션)에 업로드하면 됩니다.

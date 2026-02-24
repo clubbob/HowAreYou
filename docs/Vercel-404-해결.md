@@ -1,7 +1,7 @@
 # Vercel 404 해결 - 홈페이지 배포
 
 ## 현상
-`how-are-you-nu.vercel.app` 접속 시 **404: NOT_FOUND**
+Vercel 기본 도메인(예: `how-are-you-nu.vercel.app`) 접속 시 **404: NOT_FOUND**
 
 ## 체크리스트
 

@@ -1,6 +1,6 @@
 import { MetadataRoute } from 'next';
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://howareyou.kr';
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://오늘어때.com';
 
 export default function sitemap(): MetadataRoute.Sitemap {
   return [

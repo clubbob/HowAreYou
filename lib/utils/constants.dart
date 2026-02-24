@@ -3,12 +3,12 @@ class AppConstants {
   static const String inviteBaseUrl = 'https://howareyou-1c5de.web.app/invite';
 
   /// 약관/개인정보처리방침 URL (홈페이지)
-  static const String termsUrl = 'https://how-are-you-nu.vercel.app/terms';
-  static const String privacyUrl = 'https://how-are-you-nu.vercel.app/privacy';
+  static const String termsUrl = 'https://오늘어때.com/terms';
+  static const String privacyUrl = 'https://오늘어때.com/privacy';
   /// 1:1 문의 (홈페이지 또는 문의 페이지)
-  static const String inquiryUrl = 'https://how-are-you-nu.vercel.app';
+  static const String inquiryUrl = 'https://오늘어때.com';
   /// 공지사항 (홈페이지 공지 섹션)
-  static const String announcementsUrl = 'https://how-are-you-nu.vercel.app/#announcements';
+  static const String announcementsUrl = 'https://오늘어때.com/#announcements';
 
   // 알림 채널 ID
   static const String dailyMoodCheckChannelId = 'daily_mood_check';
@@ -49,5 +49,5 @@ class AppConstants {
   static const String serviceFeedbackCollection = 'service_feedback';
 
   /// 업그레이드(연 결제) 안내 페이지
-  static const String upgradeUrl = 'https://how-are-you-nu.vercel.app/#pricing';
+  static const String upgradeUrl = 'https://오늘어때.com/#pricing';
 }

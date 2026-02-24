@@ -274,9 +274,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 32),
-              // 테스트 알림 (실제 서비스 알림 종류별)
-              _buildTestNotificationSection(),
             ],
           ),
         ),

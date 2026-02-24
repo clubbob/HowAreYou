@@ -9,6 +9,7 @@ import '../services/mode_service.dart';
 import '../models/mood_response_model.dart';
 import '../utils/button_styles.dart';
 import '../utils/permission_helper.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../main.dart';
 import 'question_screen.dart';
 import 'guardian_screen.dart';
@@ -252,14 +253,28 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> with WidgetsBindi
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: Colors.orange.shade200),
                   ),
-                  child: Row(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(Icons.notifications_off_outlined, color: Colors.orange.shade700, size: 22),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          '알림을 켜야 컨디션 기록 알림을 받을 수 있습니다.',
-                          style: TextStyle(fontSize: 14, color: Colors.orange.shade900),
+                      Row(
+                        children: [
+                          Icon(Icons.notifications_off_outlined, color: Colors.orange.shade700, size: 22),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              '알림을 켜야 컨디션 기록 알림을 받을 수 있습니다.',
+                              style: TextStyle(fontSize: 14, color: Colors.orange.shade900),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton.icon(
+                          onPressed: () => openAppSettings(),
+                          icon: Icon(Icons.settings, size: 18, color: Colors.orange.shade700),
+                          label: Text('설정에서 켜기', style: TextStyle(fontSize: 13, color: Colors.orange.shade800, fontWeight: FontWeight.w600)),
                         ),
                       ),
                     ],

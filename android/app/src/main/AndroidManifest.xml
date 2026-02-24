@@ -13,6 +13,10 @@
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="https" android:host="how-are-you-nu.vercel.app" />
         </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" android:host="xn--wh1b84c83w0ma.com" />
+        </intent>
     </queries>
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>

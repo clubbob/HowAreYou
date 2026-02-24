@@ -6,7 +6,7 @@ const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL ||
   (typeof process.env.VERCEL_URL === 'string'
     ? `https://${process.env.VERCEL_URL}`
-    : 'https://howareyou.kr');
+    : 'https://오늘어때.com');
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),

@@ -13,6 +13,7 @@ import '../services/mood_service.dart';
 import '../services/subscription_service.dart';
 import '../services/fcm_service.dart';
 import '../utils/permission_helper.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../utils/in_app_review_helper.dart';
 import 'dart:io' show Platform;
 import '../models/mood_response_model.dart';
@@ -38,7 +39,8 @@ class GuardianDashboardScreen extends StatefulWidget {
       _GuardianDashboardScreenState();
 }
 
-class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
+class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> with WidgetsBindingObserver {
+  bool? _notificationPermissionGranted;
   final GuardianService _guardianService = GuardianService();
   final MoodService _moodService = MoodService();
   Future<List<String>>? _subjectIdsFuture;
@@ -51,19 +53,30 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
   static const double _inputMinHeight = 56;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // 보호자 대시보드 진입 시 FCM 초기화 (알림 수신을 위해)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeFCM();
+    });
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _nameController.dispose();
     _phoneController.dispose();
     super.dispose();
   }
 
   @override
-  void initState() {
-    super.initState();
-    // 보호자 대시보드 진입 시 FCM 초기화 (알림 수신을 위해)
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _initializeFCM();
-    });
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && Platform.isAndroid) {
+      PermissionHelper.isNotificationPermissionGranted().then((granted) {
+        if (mounted) setState(() => _notificationPermissionGranted = granted);
+      });
+    }
   }
 
   Future<void> _initializeFCM() async {
@@ -82,16 +95,21 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
       try {
         final isGranted = await PermissionHelper.isNotificationPermissionGranted();
         debugPrint('[보호자 대시보드] 알림 권한 상태: $isGranted');
+        if (mounted) setState(() => _notificationPermissionGranted = isGranted);
         if (!isGranted && mounted) {
           debugPrint('[보호자 대시보드] 알림 권한 요청 시작');
           final granted = await PermissionHelper.requestNotificationPermission(context, isForSubject: false);
           debugPrint('[보호자 대시보드] 알림 권한 요청 결과: $granted');
+          if (mounted) setState(() => _notificationPermissionGranted = granted);
         } else {
           debugPrint('[보호자 대시보드] 알림 권한이 이미 허용되어 있음');
         }
       } catch (e) {
         debugPrint('[보호자 대시보드] 알림 권한 요청 오류: $e');
+        if (mounted) setState(() => _notificationPermissionGranted = false);
       }
+    } else {
+      if (mounted) setState(() => _notificationPermissionGranted = true);
     }
 
     // FCM 초기화 (토큰 저장) - 강제로 다시 초기화하여 토큰이 확실히 저장되도록 함
@@ -560,6 +578,7 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                if (_notificationPermissionGranted == false) _buildPermissionDeniedBanner(context),
                 if (subState.isGracePeriod) _buildGraceBanner(context, subState),
                 Expanded(
                   child: FutureBuilder<List<String>>(
@@ -675,6 +694,30 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
               }
             },
             child: Text('결제하기', style: TextStyle(fontWeight: FontWeight.w600, color: Colors.orange.shade800)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPermissionDeniedBanner(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      color: Colors.amber.shade50,
+      child: Row(
+        children: [
+          Icon(Icons.notifications_off_outlined, size: 22, color: Colors.amber.shade800),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              '알림 권한이 거부되었습니다. 설정에서 알림을 허용해 주세요.',
+              style: TextStyle(fontSize: 14, color: Colors.amber.shade900),
+            ),
+          ),
+          TextButton(
+            onPressed: () => openAppSettings(),
+            child: Text('설정', style: TextStyle(fontWeight: FontWeight.w600, color: Colors.amber.shade800)),
           ),
         ],
       ),

@@ -17,9 +17,10 @@ export default function PrivacyPage() {
         >
           ← 홈으로
         </Link>
-        <h1 className="mb-10 text-[1.75rem] font-bold leading-[1.4] text-navy-900">
+        <h1 className="mb-2 text-[1.75rem] font-bold leading-[1.4] text-navy-900">
           개인정보처리방침
         </h1>
+        <p className="mb-10 text-[15px] text-navy-500">오늘 어때? · 오늘어때.com</p>
         <div className="whitespace-pre-line text-[17px] leading-[1.6] text-navy-700">
           {PRIVACY_CONTENT}
         </div>

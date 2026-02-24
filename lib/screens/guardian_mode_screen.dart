@@ -8,6 +8,7 @@ import '../services/guardian_service.dart';
 import '../services/mode_service.dart';
 import '../services/mood_service.dart';
 import '../utils/permission_helper.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../utils/button_styles.dart';
 import '../main.dart';
 import 'guardian_dashboard_screen.dart';
@@ -228,14 +229,28 @@ class _GuardianModeScreenState extends State<GuardianModeScreen> with WidgetsBin
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: Colors.orange.shade200),
                   ),
-                  child: Row(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(Icons.notifications_off_outlined, color: Colors.orange.shade700, size: 22),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          '알림을 켜야 안부 확인 알림을 받을 수 있습니다.',
-                          style: TextStyle(fontSize: 14, color: Colors.orange.shade900),
+                      Row(
+                        children: [
+                          Icon(Icons.notifications_off_outlined, color: Colors.orange.shade700, size: 22),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              '알림을 켜야 안부 확인 알림을 받을 수 있습니다.',
+                              style: TextStyle(fontSize: 14, color: Colors.orange.shade900),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton.icon(
+                          onPressed: () => openAppSettings(),
+                          icon: Icon(Icons.settings, size: 18, color: Colors.orange.shade700),
+                          label: Text('설정에서 켜기', style: TextStyle(fontSize: 13, color: Colors.orange.shade800, fontWeight: FontWeight.w600)),
                         ),
                       ),
                     ],

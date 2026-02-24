@@ -5,4 +5,5 @@
 storePassword=YOUR_STORE_PASSWORD
 keyPassword=YOUR_KEY_PASSWORD
 keyAlias=upload
-storeFile=../upload-keystore.jks
+# 프로젝트 루트 기준 고정 경로 (android/ 내부)
+storeFile=upload-keystore.jks

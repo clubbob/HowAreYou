@@ -19,10 +19,10 @@
 ## ✅ 현재 URL
 
 ```
-https://how-are-you-nu.vercel.app/privacy
+https://오늘어때.com/privacy
 ```
 
-**constants.dart**: `privacyUrl = 'https://how-are-you-nu.vercel.app/privacy'`
+**constants.dart**: `privacyUrl = 'https://오늘어때.com/privacy'`
 
 ---
 
@@ -44,7 +44,7 @@ https://how-are-you-nu.vercel.app/privacy
 ## 🧪 수동 검증 (배포 후 매번 확인 권장)
 
 1. **PC 브라우저 시크릿 모드**
-   - `https://how-are-you-nu.vercel.app/privacy` 접속
+   - `https://오늘어때.com/privacy` 접속
    - 로그인 없이 문서만 보이는지 확인
 
 2. **모바일 브라우저**
@@ -76,8 +76,8 @@ https://how-are-you-nu.vercel.app/privacy
 
 ## 📌 스토어 등록 시 입력 값
 
-- **개인정보처리방침 URL**: `https://how-are-you-nu.vercel.app/privacy`
-- **이용약관 URL** (필요 시): `https://how-are-you-nu.vercel.app/terms`
+- **개인정보처리방침 URL**: `https://오늘어때.com/privacy`
+- **이용약관 URL** (필요 시): `https://오늘어때.com/terms`
 
 ---
 
@@ -85,7 +85,7 @@ https://how-are-you-nu.vercel.app/privacy
 
 `privacyUrl`은 `lib/utils/constants.dart`에 정의되어 있음.
 
-Vercel 커스텀 도메인(예: howareyou.kr)으로 옮기면:
+커스텀 도메인 변경 시:
 
 1. `constants.dart`의 `privacyUrl`, `termsUrl` 수정
 2. 웹 `NEXT_PUBLIC_SITE_URL` 등 환경 변수 동기화

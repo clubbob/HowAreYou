@@ -102,6 +102,16 @@ lib/
     └── guardian_screen.dart
 ```
 
+## Android 배포 정보
+
+| 항목 | 값 |
+|------|-----|
+| **applicationId** | `com.andy.howareyou` |
+| **Play Console 업로드** | 미확인 (첫 배포 전) |
+| **Google Play App Signing** | 미확인 |
+
+> ⚠️ Play Console에 한 번이라도 업로드한 후에는 keystore를 절대 재생성하지 마세요. [Keystore 비밀번호 오류 해결](docs/Keystore-비밀번호-오류-해결.md) 참고.
+
 ## 다음 단계
 
 - [ ] Firebase Cloud Functions 설정 (미회신 판단 로직)
