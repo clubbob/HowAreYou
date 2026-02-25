@@ -18,9 +18,10 @@ export function CtaSection() {
   return (
     <section id="cta" className="bg-primary-50 px-4 py-14 sm:px-6 sm:py-16 md:py-24">
       <div className="mx-auto flex max-w-3xl flex-col items-center">
-        <h2 className="mb-4 text-center text-[1.375rem] font-bold leading-[1.4] text-navy-900 sm:text-[1.75rem]">
+        <h2 className="mb-2 text-center text-[1.375rem] font-bold leading-[1.4] text-navy-900 sm:text-[1.75rem]">
           오늘 어때 시작하기
         </h2>
+        <p className="mb-4 text-center text-[14px] text-navy-500 sm:text-[15px]">Android에서 먼저 시작합니다.</p>
         {isFull ? (
           <div className="flex flex-col items-center gap-4">
             <p className="text-center text-[17px] font-medium text-navy-600">

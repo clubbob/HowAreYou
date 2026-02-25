@@ -39,6 +39,7 @@ export function HeroSection() {
           <br className="hidden sm:block" />
           <span className="sm:ml-1">작은 기록 하나로 서로의 안심을 확인하세요.</span>
         </p>
+        <p className="mb-8 text-[14px] text-navy-500 sm:text-[15px]">Android에서 먼저 시작합니다.</p>
 
         {/* 베타 참여 CTA 강조 */}
         <div className="flex w-full max-w-sm flex-col items-center gap-4 sm:max-w-md sm:gap-5">
