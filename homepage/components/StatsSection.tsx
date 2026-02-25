@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 const ITEMS = [
   { value: '350만', label: '혼자 사는 노인', accent: 'border-l-primary-500' },
   { value: '700만+', label: '1인 가구', accent: 'border-l-primary-600' },
-  { value: '수십만', label: '자취·기숙 학생', accent: 'border-l-primary-500' },
+  { value: '50만+', label: '자취·기숙 학생, 유학생', accent: 'border-l-primary-500' },
 ];
 
 export function StatsSection() {

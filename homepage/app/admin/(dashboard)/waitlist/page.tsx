@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
-type WaitlistItem = { id: string; phone: string; createdAt: string; lastFcmSentAt: string | null; lastFcmOpenedAt: string | null };
+type WaitlistItem = { id: string; phone: string; name: string; createdAt: string; loggedIn: boolean; appInstalled: boolean; lastFcmSentAt: string | null; lastFcmOpenedAt: string | null };
 
 export default function AdminWaitlistPage() {
   const [list, setList] = useState<WaitlistItem[]>([]);
@@ -13,6 +13,8 @@ export default function AdminWaitlistPage() {
   const [deleting, setDeleting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editPhone, setEditPhone] = useState('');
+  const [editingNameId, setEditingNameId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
   const [showFcmModal, setShowFcmModal] = useState(false);
   const [fcmTitle, setFcmTitle] = useState('');
   const [fcmBody, setFcmBody] = useState('');
@@ -107,6 +109,27 @@ export default function AdminWaitlistPage() {
   function startEdit(item: WaitlistItem) {
     setEditingId(item.id);
     setEditPhone(item.phone || '');
+  }
+
+  function startEditName(item: WaitlistItem) {
+    setEditingNameId(item.id);
+    setEditName(item.name || '');
+  }
+
+  async function handleSaveName(id: string) {
+    try {
+      const res = await fetch(`/api/admin/waitlist/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: editName.trim() }),
+      });
+      if (!res.ok) throw new Error('수정 실패');
+      setEditingNameId(null);
+      setEditName('');
+      load();
+    } catch (e) {
+      alert('참여자 이름 수정에 실패했습니다.');
+    }
   }
 
   async function handleSendFcm() {
@@ -235,7 +258,10 @@ export default function AdminWaitlistPage() {
               </th>
               <th className="w-16 min-w-[4rem] py-3 px-4 text-left text-sm font-medium text-slate-600 whitespace-nowrap">번호</th>
               <th className="text-left py-3 px-4 text-sm font-medium text-slate-600">휴대폰 번호</th>
+              <th className="text-left py-3 px-4 text-sm font-medium text-slate-600 whitespace-nowrap">참여자 이름</th>
               <th className="text-left py-3 px-4 text-sm font-medium text-slate-600">신청일시</th>
+              <th className="text-left py-3 px-4 text-sm font-medium text-slate-600 whitespace-nowrap">앱 설치</th>
+              <th className="text-left py-3 px-4 text-sm font-medium text-slate-600 whitespace-nowrap">로그인</th>
               <th className="text-left py-3 px-4 text-sm font-medium text-slate-600 whitespace-nowrap">마지막 FCM 발송</th>
               <th className="text-left py-3 px-4 text-sm font-medium text-slate-600 whitespace-nowrap">마지막 FCM 열람</th>
             </tr>
@@ -265,29 +291,79 @@ export default function AdminWaitlistPage() {
                       />
                       <button
                         onClick={() => handleSavePhone(i.id)}
-                        className="text-xs text-blue-600 hover:underline"
+                        className="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
                       >
                         저장
                       </button>
                       <button
                         onClick={() => { setEditingId(null); setEditPhone(''); }}
-                        className="text-xs text-slate-500 hover:underline"
+                        className="px-3 py-1.5 text-sm font-medium text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200"
                       >
                         취소
                       </button>
                     </div>
                   ) : (
-                    <span
-                      className={`cursor-pointer ${!i.phone ? 'text-amber-600 hover:underline' : ''}`}
+                    <button
+                      type="button"
+                      className={`block w-full min-h-[2.25rem] text-left px-3 py-2 rounded border border-dashed border-slate-300 hover:bg-slate-50 hover:border-slate-400 text-sm ${!i.phone ? 'text-amber-600' : 'text-slate-600'}`}
                       onClick={() => startEdit(i)}
                       title={i.phone ? '클릭하여 수정' : '휴대폰 번호 없음 - 클릭하여 추가'}
                     >
-                      {i.phone || '-'}
-                    </span>
+                      {i.phone || '클릭하여 입력'}
+                    </button>
+                  )}
+                </td>
+                <td className="py-3 px-4 text-sm text-slate-600">
+                  {editingNameId === i.id ? (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        placeholder="참여자 이름"
+                        className="w-28 rounded border border-slate-300 px-2 py-1 text-sm"
+                        autoFocus
+                      />
+                      <button
+                        onClick={() => handleSaveName(i.id)}
+                        className="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+                      >
+                        저장
+                      </button>
+                      <button
+                        onClick={() => { setEditingNameId(null); setEditName(''); }}
+                        className="px-3 py-1.5 text-sm font-medium text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200"
+                      >
+                        취소
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      className="block w-full min-h-[2.25rem] text-left px-3 py-2 rounded border border-dashed border-slate-300 hover:bg-slate-50 hover:border-slate-400 text-sm text-slate-600"
+                      onClick={() => startEditName(i)}
+                      title="클릭하여 수정"
+                    >
+                      {i.name || '클릭하여 입력'}
+                    </button>
                   )}
                 </td>
                 <td className="py-3 px-4 text-sm text-slate-600">
                   {new Date(i.createdAt).toLocaleString('ko-KR')}
+                </td>
+                <td className="py-3 px-4 text-sm">
+                  {i.appInstalled ? (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-800">설치됨</span>
+                  ) : (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-600">미설치</span>
+                  )}
+                </td>
+                <td className="py-3 px-4 text-sm">
+                  {i.loggedIn ? (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">로그인</span>
+                  ) : (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-600">미로그인</span>
+                  )}
                 </td>
                 <td className="py-3 px-4 text-sm text-slate-600">
                   {i.lastFcmSentAt ? new Date(i.lastFcmSentAt).toLocaleString('ko-KR') : '-'}

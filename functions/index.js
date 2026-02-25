@@ -347,6 +347,43 @@ async function sendResponseNotification(snap, context) {
 }
 
 /**
+ * users 문서 업데이트 시: 새로 추가된 FCM 토큰을 다른 사용자 문서에서 제거 (토큰 이전)
+ * - FCM 토큰은 기기 단위라, 같은 폰에서 A 로그아웃 후 B 로그인 시 같은 토큰이 B에 추가됨
+ * - A 로그아웃 시 removeToken이 실패하면 A 문서에 토큰이 남아있을 수 있음
+ * - B 로그인 시 토큰 저장 시 이 트리거가 다른 사용자(A) 문서에서 토큰을 제거함
+ */
+exports.onUserFcmTokensUpdated = functions.firestore
+  .document('users/{userId}')
+  .onUpdate(async (change, context) => {
+    const userId = context.params.userId;
+    const before = change.before.data();
+    const after = change.after.data();
+    const beforeTokens = (before?.fcmTokens || []).filter(Boolean);
+    const afterTokens = (after?.fcmTokens || []).filter(Boolean);
+    const added = afterTokens.filter((t) => !beforeTokens.includes(t));
+    if (added.length === 0) return null;
+
+    for (const token of added) {
+      try {
+        const others = await db.collection('users')
+          .where('fcmTokens', 'array-contains', token)
+          .get();
+        const refsToUpdate = others.docs.filter((d) => d.id !== userId);
+        if (refsToUpdate.length === 0) continue;
+        const batch = db.batch();
+        for (const doc of refsToUpdate) {
+          batch.update(doc.ref, { fcmTokens: admin.firestore.FieldValue.arrayRemove(token) });
+          console.log(`[FCM 토큰 이전] ${doc.id}에서 토큰 제거 (${userId}로 이전)`);
+        }
+        await batch.commit();
+      } catch (e) {
+        console.error('[FCM 토큰 이전] 오류:', e);
+      }
+    }
+    return null;
+  });
+
+/**
  * 응답 생성 시 알림 발송
  */
 exports.onResponseCreated = functions.firestore

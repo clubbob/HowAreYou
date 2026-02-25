@@ -71,6 +71,8 @@ export async function POST(request: NextRequest) {
 
     for (const doc of usersSnap.docs) {
       const data = doc.data();
+      // 로그아웃한 사용자(signedOutAt 있음)는 발송 대상에서 제외
+      if (data.signedOutAt) continue;
       const userPhone = (data.phone ?? '').toString().trim();
       if (!userPhone) continue;
       const userNormalized = normalizePhone(userPhone);

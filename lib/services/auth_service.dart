@@ -444,7 +444,11 @@ class AuthService extends ChangeNotifier {
       await userRef.set(data);
     } else {
       // 이미 있는 사용자도 전화번호를 E.164로 갱신 (지정자 조회 일치용)
-      final updateData = <String, dynamic>{'phone': normalizedPhone};
+      // 로그인 시 signedOutAt 제거 (현재 로그인 상태로 표시)
+      final updateData = <String, dynamic>{
+        'phone': normalizedPhone,
+        'signedOutAt': FieldValue.delete(),
+      };
       if (termsAgreedAt != null) {
         updateData['termsAgreedAt'] = Timestamp.fromDate(termsAgreedAt);
       }

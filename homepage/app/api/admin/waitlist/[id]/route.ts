@@ -15,14 +15,22 @@ export async function PATCH(
     return NextResponse.json({ error: 'id required' }, { status: 400 });
   }
 
-  let body: { phone?: string };
+  let body: { phone?: string; name?: string };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
-  const phone = body.phone != null ? String(body.phone).trim().replace(/[\s-]/g, '') : '';
+  const phone = body.phone != null ? String(body.phone).trim().replace(/[\s-]/g, '') : undefined;
+  const name = body.name != null ? String(body.name).trim() : undefined;
+
+  const updates: Record<string, string> = {};
+  if (phone !== undefined) updates.phone = phone;
+  if (name !== undefined) updates.name = name;
+  if (Object.keys(updates).length === 0) {
+    return NextResponse.json({ error: 'phone or name required' }, { status: 400 });
+  }
 
   const db = getAdminFirestore();
   if (!db) {
@@ -30,7 +38,7 @@ export async function PATCH(
   }
 
   try {
-    await db.collection('waitlist').doc(id).update({ phone });
+    await db.collection('waitlist').doc(id).update(updates);
     return NextResponse.json({ ok: true });
   } catch (e) {
     console.error('[waitlist patch]', e);

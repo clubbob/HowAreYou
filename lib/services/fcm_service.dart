@@ -414,15 +414,26 @@ class FCMService {
   // 주의: 로컬 알림 응답 처리는 NotificationService의 통합 핸들러에서 처리됩니다.
   // 이 메서드는 더 이상 사용되지 않습니다 (중복 초기화 방지를 위해 제거됨).
 
+  /// 로그아웃 시 Firestore에서 해당 사용자의 FCM 토큰 제거.
+  /// 토큰은 기기 단위이므로, 제거하지 않으면 다른 사용자가 로그인한 폰에도
+  /// 이전 사용자용 푸시가 전달될 수 있음.
   Future<void> removeToken(String userId) async {
-    if (_fcmToken != null) {
-      try {
-        await _firestore.collection('users').doc(userId).update({
-          'fcmTokens': FieldValue.arrayRemove([_fcmToken!]),
-        });
-      } catch (e) {
-        debugPrint('FCM 토큰 제거 실패: $e');
+    try {
+      String? tokenToRemove = _fcmToken;
+      if (tokenToRemove == null || tokenToRemove.isEmpty) {
+        // 메모리에 토큰이 없으면(앱 재시작 등) 기기에서 다시 가져와서 제거 시도
+        tokenToRemove = await _messaging.getToken();
       }
+      final updateData = <String, dynamic>{
+        'signedOutAt': FieldValue.serverTimestamp(),
+      };
+      if (tokenToRemove != null && tokenToRemove.isNotEmpty) {
+        updateData['fcmTokens'] = FieldValue.arrayRemove([tokenToRemove]);
+      }
+      await _firestore.collection('users').doc(userId).update(updateData);
+      debugPrint('FCM 토큰 제거 완료: $userId');
+    } catch (e) {
+      debugPrint('FCM 토큰 제거/로그아웃 기록 실패: $e');
     }
   }
 

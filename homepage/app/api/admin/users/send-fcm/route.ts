@@ -40,7 +40,10 @@ export async function POST(request: NextRequest) {
     for (const uid of uniqueIds) {
       const userDoc = await db.collection('users').doc(uid).get();
       if (!userDoc.exists) continue;
-      const tokens = (userDoc.data()?.fcmTokens ?? []).filter((t: unknown): t is string => typeof t === 'string' && Boolean(t));
+      const data = userDoc.data();
+      // 로그아웃한 사용자(signedOutAt 있음)는 발송 대상에서 제외
+      if (data?.signedOutAt) continue;
+      const tokens = (data?.fcmTokens ?? []).filter((t: unknown): t is string => typeof t === 'string' && Boolean(t));
       if (tokens.length > 0) {
         usersWithTokens.add(uid);
         allTokens.push(...tokens);
