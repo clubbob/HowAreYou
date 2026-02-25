@@ -2,7 +2,7 @@ import java.util.Properties
 
 plugins {
     id("com.android.application")
-    id("kotlin-android")
+    id("org.jetbrains.kotlin.android")
     id("com.google.gms.google-services")
     id("com.google.firebase.crashlytics")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
@@ -10,25 +10,29 @@ plugins {
 }
 
 // Release 서명: android/key.properties (없으면 debug 서명 사용)
-// 경로 표준화: 항상 android/ 기준 (rootProject = android/)
 val keystorePropertiesFile = rootProject.file("key.properties")
 val keystoreProperties = Properties()
 if (keystorePropertiesFile.exists()) {
-    keystoreProperties.load(keystorePropertiesFile.inputStream())
+    keystorePropertiesFile.inputStream().use { keystoreProperties.load(it) }
 }
+val storePass = keystoreProperties.getProperty("storePassword")
+val keyAliasVal = keystoreProperties.getProperty("keyAlias")
+val keyPass = keystoreProperties.getProperty("keyPassword")
+val storeFileStr = keystoreProperties.getProperty("storeFile") ?: "upload-keystore.jks"
+val storeFileResolved = rootProject.file(storeFileStr)
+val hasValidReleaseSigning = keystorePropertiesFile.exists() &&
+    storePass != null && storePass.isNotBlank() &&
+    keyAliasVal != null && keyAliasVal.isNotBlank() &&
+    keyPass != null && keyPass.isNotBlank() &&
+    storeFileResolved.exists()
 
-// 빌드 전 keystore 존재 여부 검증 (경로 오류 즉시 파악)
 tasks.register("validateKeystore") {
     doFirst {
-        if (keystorePropertiesFile.exists()) {
-            val storeFilePath = keystoreProperties["storeFile"] ?: "upload-keystore.jks"
-            val storeFile = rootProject.file(storeFilePath)
-            if (!storeFile.exists()) {
-                throw GradleException(
-                    "Keystore file not found at: ${storeFile.absolutePath}\n" +
-                    "Check key.properties storeFile value. Expected: upload-keystore.jks in android/"
-                )
-            }
+        if (keystorePropertiesFile.exists() && !hasValidReleaseSigning) {
+            logger.warn(
+                "key.properties가 있지만 release 서명에 필요한 값이 부족합니다. debug 서명으로 빌드합니다.\n" +
+                "storePassword, keyPassword, keyAlias, storeFile 확인. keystore 경로: ${storeFileResolved.absolutePath}"
+            )
         }
     }
 }
@@ -44,8 +48,10 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_17.toString()
+    kotlin {
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        }
     }
 
     defaultConfig {
@@ -59,20 +65,19 @@ android {
     }
 
     signingConfigs {
-        if (keystorePropertiesFile.exists()) {
+        if (hasValidReleaseSigning) {
             create("release") {
-                // rootProject.file() = android/ 기준, 경로 불일치 차단
-                storeFile = rootProject.file(keystoreProperties["storeFile"] ?: "upload-keystore.jks")
-                storePassword = keystoreProperties["storePassword"] as String?
-                keyAlias = keystoreProperties["keyAlias"] as String?
-                keyPassword = keystoreProperties["keyPassword"] as String?
+                storeFile = storeFileResolved
+                storePassword = storePass
+                keyAlias = keyAliasVal
+                keyPassword = keyPass
             }
         }
     }
 
     buildTypes {
         release {
-            signingConfig = if (keystorePropertiesFile.exists()) {
+            signingConfig = if (hasValidReleaseSigning) {
                 signingConfigs.getByName("release")
             } else {
                 signingConfigs.getByName("debug")
