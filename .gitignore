@@ -43,6 +43,9 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
+# Java heap dumps (디버깅 시 생성, 수백 MB~GB)
+*.hprof
+
 # Firebase
 **/google-services.json
 **/GoogleService-Info.plist
