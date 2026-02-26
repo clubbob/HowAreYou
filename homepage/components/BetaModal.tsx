@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { addToWaitlist } from '@/lib/waitlist';
 import { BETA } from '@/lib/config/beta';
 
@@ -27,9 +28,15 @@ export function BetaModal({ open, onClose }: Props) {
       setName('');
       setPhone('');
       setEmail('');
+      document.body.style.overflow = '';
     } else {
+      document.body.style.overflow = 'hidden';
+      window.scrollTo(0, 0);
       closeBtnRef.current?.focus();
     }
+    return () => {
+      document.body.style.overflow = '';
+    };
   }, [open]);
 
   const normalizePhone = (v: string) => v.replace(/\D/g, '');
@@ -75,9 +82,9 @@ export function BetaModal({ open, onClose }: Props) {
 
   if (!open) return null;
 
-  return (
+  const modalContent = (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-navy-900/40 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex min-h-[100dvh] items-center justify-center overflow-y-auto bg-navy-900/40 p-4 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
@@ -246,4 +253,6 @@ export function BetaModal({ open, onClose }: Props) {
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : null;
 }

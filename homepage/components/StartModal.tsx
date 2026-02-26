@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { BETA } from '@/lib/config/beta';
 
 type Props = {
@@ -13,7 +14,16 @@ export function StartModal({ open, onClose, onWaitlistClick }: Props) {
   const closeBtnRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    if (open) closeBtnRef.current?.focus();
+    if (open) {
+      document.body.style.overflow = 'hidden';
+      window.scrollTo(0, 0);
+      closeBtnRef.current?.focus();
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
   }, [open]);
 
   const handleWaitlist = () => {
@@ -23,11 +33,11 @@ export function StartModal({ open, onClose, onWaitlistClick }: Props) {
 
   if (!open) return null;
 
-  return (
+  const modalContent = (
     <div
-        className="fixed inset-0 z-50 flex items-center justify-center bg-navy-900/40 p-4 backdrop-blur-sm"
-        onClick={onClose}
-      >
+      className="fixed inset-0 z-50 flex min-h-[100dvh] items-center justify-center overflow-y-auto bg-navy-900/40 p-4 backdrop-blur-sm"
+      onClick={onClose}
+    >
         <div
           className="w-full max-w-md rounded-[1rem] border border-navy-100 bg-white p-5 shadow-[0_8px_32px_rgba(0,0,0,0.12)] sm:p-6"
           onClick={(e) => e.stopPropagation()}
@@ -77,6 +87,8 @@ export function StartModal({ open, onClose, onWaitlistClick }: Props) {
             </div>
           </div>
         </div>
-      </div>
+    </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : null;
 }
