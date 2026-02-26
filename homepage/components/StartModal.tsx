@@ -12,6 +12,7 @@ type Props = {
 
 export function StartModal({ open, onClose, onWaitlistClick }: Props) {
   const closeBtnRef = useRef<HTMLButtonElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (open) {
@@ -26,6 +27,10 @@ export function StartModal({ open, onClose, onWaitlistClick }: Props) {
     };
   }, [open]);
 
+  useEffect(() => {
+    if (open) overlayRef.current?.scrollTo({ top: 0 });
+  }, [open]);
+
   const handleWaitlist = () => {
     onClose();
     setTimeout(() => onWaitlistClick?.(), 150);
@@ -35,6 +40,7 @@ export function StartModal({ open, onClose, onWaitlistClick }: Props) {
 
   const modalContent = (
     <div
+      ref={overlayRef}
       className="fixed inset-0 z-50 flex min-h-[100dvh] items-center justify-center overflow-y-auto bg-navy-900/40 p-4 backdrop-blur-sm"
       onClick={onClose}
     >

@@ -19,6 +19,7 @@ export function BetaModal({ open, onClose }: Props) {
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'already_registered' | 'full' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
   const closeBtnRef = useRef<HTMLButtonElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
   const submittingRef = useRef(false);
 
   useEffect(() => {
@@ -37,6 +38,10 @@ export function BetaModal({ open, onClose }: Props) {
     return () => {
       document.body.style.overflow = '';
     };
+  }, [open]);
+
+  useEffect(() => {
+    if (open) overlayRef.current?.scrollTo({ top: 0 });
   }, [open]);
 
   const normalizePhone = (v: string) => v.replace(/\D/g, '');
@@ -84,6 +89,7 @@ export function BetaModal({ open, onClose }: Props) {
 
   const modalContent = (
     <div
+      ref={overlayRef}
       className="fixed inset-0 z-50 flex min-h-[100dvh] items-center justify-center overflow-y-auto bg-navy-900/40 p-4 backdrop-blur-sm"
       onClick={onClose}
     >

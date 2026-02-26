@@ -1,7 +1,7 @@
 import { ImageResponse } from 'next/og';
 
 export const alt = '오늘 어때';
-export const size = { width: 1200, height: 630 };
+export const size = { width: 1200, height: 1200 };
 export const contentType = 'image/png';
 
 const siteUrl =
@@ -26,8 +26,8 @@ export default async function Image() {
         <img
           src={`${siteUrl}/logo.png`}
           alt="오늘 어때"
-          width={150}
-          height={150}
+          width={480}
+          height={480}
           style={{ objectFit: 'contain' }}
         />
       </div>
