@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
-type WaitlistItem = { id: string; phone: string; name: string; createdAt: string; loggedIn: boolean; appInstalled: boolean; lastFcmSentAt: string | null; lastFcmOpenedAt: string | null };
+type WaitlistItem = { id: string; phone: string; name: string; email: string; createdAt: string; loggedIn: boolean; appInstalled: boolean; lastFcmSentAt: string | null; lastFcmOpenedAt: string | null };
 
 export default function AdminWaitlistPage() {
   const [list, setList] = useState<WaitlistItem[]>([]);
@@ -15,6 +15,8 @@ export default function AdminWaitlistPage() {
   const [editPhone, setEditPhone] = useState('');
   const [editingNameId, setEditingNameId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
+  const [editingEmailId, setEditingEmailId] = useState<string | null>(null);
+  const [editEmail, setEditEmail] = useState('');
   const [showFcmModal, setShowFcmModal] = useState(false);
   const [fcmTitle, setFcmTitle] = useState('');
   const [fcmBody, setFcmBody] = useState('');
@@ -38,8 +40,11 @@ export default function AdminWaitlistPage() {
 
   const filtered = search.trim()
     ? list.filter((i) => {
-        const q = search.trim().replace(/\s/g, '');
-        return (i.phone ?? '').replace(/\s/g, '').includes(q);
+        const q = search.trim().replace(/\s/g, '').toLowerCase();
+        const phoneMatch = (i.phone ?? '').replace(/\s/g, '').includes(q);
+        const nameMatch = (i.name ?? '').replace(/\s/g, '').toLowerCase().includes(q);
+        const emailMatch = (i.email ?? '').toLowerCase().includes(q);
+        return phoneMatch || nameMatch || emailMatch;
       })
     : list;
 
@@ -56,6 +61,38 @@ export default function AdminWaitlistPage() {
     } catch {
       alert('복사에 실패했습니다.');
     }
+  }
+
+  async function handleCopyEmails() {
+    const emails = filtered.map((i) => i.email).filter(Boolean);
+    const text = emails.join('\n');
+    if (!text) {
+      alert('복사할 이메일이 없습니다.');
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      alert(`${emails.length}개 이메일이 클립보드에 복사되었습니다. Play Console 테스터 등록에 사용하세요.`);
+    } catch {
+      alert('복사에 실패했습니다.');
+    }
+  }
+
+  function handleDownloadEmailCsv() {
+    const emails = filtered.map((i) => i.email).filter(Boolean);
+    if (emails.length === 0) {
+      alert('다운로드할 이메일이 없습니다.');
+      return;
+    }
+    const csv = '이메일\n' + emails.map((e) => `"${e.replace(/"/g, '""')}"`).join('\n');
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `play-console-testers-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    alert(`${emails.length}개 이메일 CSV가 다운로드되었습니다. Play Console 비공개 테스트 테스터 등록에 사용하세요.`);
   }
 
   const allFilteredSelected = filtered.length > 0 && filtered.every((i) => selectedIds.has(i.id));
@@ -128,7 +165,37 @@ export default function AdminWaitlistPage() {
       setEditName('');
       load();
     } catch (e) {
-      alert('참여자 이름 수정에 실패했습니다.');
+      alert('신청자 이름 수정에 실패했습니다.');
+    }
+  }
+
+  function startEditEmail(item: WaitlistItem) {
+    setEditingEmailId(item.id);
+    setEditEmail(item.email || '');
+  }
+
+  async function handleSaveEmail(id: string) {
+    const trimmed = editEmail.trim();
+    if (!trimmed) {
+      alert('이메일을 입력해 주세요.');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      alert('올바른 이메일 주소를 입력해 주세요.');
+      return;
+    }
+    try {
+      const res = await fetch(`/api/admin/waitlist/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: trimmed }),
+      });
+      if (!res.ok) throw new Error('수정 실패');
+      setEditingEmailId(null);
+      setEditEmail('');
+      load();
+    } catch (e) {
+      alert('이메일 수정에 실패했습니다.');
     }
   }
 
@@ -201,11 +268,11 @@ export default function AdminWaitlistPage() {
   return (
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold text-slate-800">베타 1기 참여 리스트</h1>
+        <h1 className="text-2xl font-bold text-slate-800">베타 1기 신청 리스트</h1>
         <div className="flex gap-2">
           <input
             type="text"
-            placeholder="휴대폰 번호 검색"
+            placeholder="이름, 휴대폰, 이메일 검색"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="px-4 py-2 border border-slate-300 rounded-lg w-64"
@@ -215,6 +282,18 @@ export default function AdminWaitlistPage() {
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
             휴대폰 번호 복사
+          </button>
+          <button
+            onClick={handleCopyEmails}
+            className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700"
+          >
+            이메일 복사 (Play Console용)
+          </button>
+          <button
+            onClick={handleDownloadEmailCsv}
+            className="px-4 py-2 bg-violet-50 text-violet-700 border border-violet-200 rounded-lg hover:bg-violet-100"
+          >
+            이메일 CSV 다운로드
           </button>
           <button
             onClick={() => setShowFcmModal(true)}
@@ -257,8 +336,9 @@ export default function AdminWaitlistPage() {
                 />
               </th>
               <th className="w-16 min-w-[4rem] py-3 px-4 text-left text-sm font-medium text-slate-600 whitespace-nowrap">번호</th>
+              <th className="text-left py-3 px-4 text-sm font-medium text-slate-600 whitespace-nowrap">이름</th>
               <th className="text-left py-3 px-4 text-sm font-medium text-slate-600">휴대폰 번호</th>
-              <th className="text-left py-3 px-4 text-sm font-medium text-slate-600 whitespace-nowrap">참여자 이름</th>
+              <th className="text-left py-3 px-4 text-sm font-medium text-slate-600">이메일</th>
               <th className="text-left py-3 px-4 text-sm font-medium text-slate-600">신청일시</th>
               <th className="text-left py-3 px-4 text-sm font-medium text-slate-600 whitespace-nowrap">앱 설치</th>
               <th className="text-left py-3 px-4 text-sm font-medium text-slate-600 whitespace-nowrap">로그인</th>
@@ -278,6 +358,41 @@ export default function AdminWaitlistPage() {
                   />
                 </td>
                 <td className="w-16 min-w-[4rem] py-3 px-4 text-sm text-slate-600">{filtered.length - idx}</td>
+                <td className="py-3 px-4 text-sm text-slate-600">
+                  {editingNameId === i.id ? (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        placeholder="신청자 이름"
+                        className="w-28 rounded border border-slate-300 px-2 py-1 text-sm"
+                        autoFocus
+                      />
+                      <button
+                        onClick={() => handleSaveName(i.id)}
+                        className="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+                      >
+                        저장
+                      </button>
+                      <button
+                        onClick={() => { setEditingNameId(null); setEditName(''); }}
+                        className="px-3 py-1.5 text-sm font-medium text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200"
+                      >
+                        취소
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      className="block w-full min-h-[2.25rem] text-left px-3 py-2 rounded border border-dashed border-slate-300 hover:bg-slate-50 hover:border-slate-400 text-sm text-slate-600"
+                      onClick={() => startEditName(i)}
+                      title="클릭하여 수정"
+                    >
+                      {i.name || '클릭하여 입력'}
+                    </button>
+                  )}
+                </td>
                 <td className="py-3 px-4 text-sm text-slate-600">
                   {editingId === i.id ? (
                     <div className="flex items-center gap-2">
@@ -314,24 +429,24 @@ export default function AdminWaitlistPage() {
                   )}
                 </td>
                 <td className="py-3 px-4 text-sm text-slate-600">
-                  {editingNameId === i.id ? (
+                  {editingEmailId === i.id ? (
                     <div className="flex items-center gap-2">
                       <input
-                        type="text"
-                        value={editName}
-                        onChange={(e) => setEditName(e.target.value)}
-                        placeholder="참여자 이름"
-                        className="w-28 rounded border border-slate-300 px-2 py-1 text-sm"
+                        type="email"
+                        value={editEmail}
+                        onChange={(e) => setEditEmail(e.target.value)}
+                        placeholder="example@gmail.com"
+                        className="w-40 rounded border border-slate-300 px-2 py-1 text-sm"
                         autoFocus
                       />
                       <button
-                        onClick={() => handleSaveName(i.id)}
+                        onClick={() => handleSaveEmail(i.id)}
                         className="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
                       >
                         저장
                       </button>
                       <button
-                        onClick={() => { setEditingNameId(null); setEditName(''); }}
+                        onClick={() => { setEditingEmailId(null); setEditEmail(''); }}
                         className="px-3 py-1.5 text-sm font-medium text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200"
                       >
                         취소
@@ -340,11 +455,11 @@ export default function AdminWaitlistPage() {
                   ) : (
                     <button
                       type="button"
-                      className="block w-full min-h-[2.25rem] text-left px-3 py-2 rounded border border-dashed border-slate-300 hover:bg-slate-50 hover:border-slate-400 text-sm text-slate-600"
-                      onClick={() => startEditName(i)}
-                      title="클릭하여 수정"
+                      className={`block w-full min-h-[2.25rem] text-left px-3 py-2 rounded border border-dashed border-slate-300 hover:bg-slate-50 hover:border-slate-400 text-sm ${!i.email ? 'text-amber-600' : 'text-slate-600'}`}
+                      onClick={() => startEditEmail(i)}
+                      title={i.email ? '클릭하여 수정' : '이메일 없음 - 클릭하여 추가'}
                     >
-                      {i.name || '클릭하여 입력'}
+                      {i.email || '클릭하여 입력'}
                     </button>
                   )}
                 </td>
@@ -377,7 +492,7 @@ export default function AdminWaitlistPage() {
         </table>
         {filtered.length === 0 && (
           <div className="py-12 text-center text-slate-500">
-            {list.length === 0 ? '대기자가 없습니다.' : '검색 결과가 없습니다.'}
+            {list.length === 0 ? '신청자가 없습니다.' : '검색 결과가 없습니다.'}
           </div>
         )}
       </div>

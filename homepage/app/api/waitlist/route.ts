@@ -29,18 +29,39 @@ export async function GET() {
   }
 }
 
+function isValidEmail(v: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}));
+    const name = body?.name;
     const phone = body?.phone;
+    const email = body?.email;
 
+    if (!name || typeof name !== 'string') {
+      return NextResponse.json({ error: '이름을 입력해 주세요.' }, { status: 400 });
+    }
     if (!phone || typeof phone !== 'string') {
       return NextResponse.json({ error: '휴대폰 번호를 입력해 주세요.' }, { status: 400 });
     }
+    if (!email || typeof email !== 'string') {
+      return NextResponse.json({ error: '이메일을 입력해 주세요.' }, { status: 400 });
+    }
 
+    const nameTrimmed = name.trim();
     const phoneNormalized = phone.trim().replace(/[\s-]/g, '');
+    const emailTrimmed = email.trim();
+
+    if (nameTrimmed.length < 1) {
+      return NextResponse.json({ error: '이름을 입력해 주세요.' }, { status: 400 });
+    }
     if (phoneNormalized.length < 10) {
       return NextResponse.json({ error: '올바른 휴대폰 번호를 입력해 주세요.' }, { status: 400 });
+    }
+    if (!isValidEmail(emailTrimmed)) {
+      return NextResponse.json({ error: '올바른 이메일 주소를 입력해 주세요.' }, { status: 400 });
     }
 
     const db = getAdminFirestore();
@@ -63,7 +84,9 @@ export async function POST(request: NextRequest) {
     if (alreadyInCohort) return NextResponse.json({ status: 'already_registered' });
 
     await db.collection('waitlist').add({
+      name: nameTrimmed,
       phone: phoneNormalized,
+      email: emailTrimmed,
       cohort: BETA.cohort,
       createdAt: FieldValue.serverTimestamp(),
     });

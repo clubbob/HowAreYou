@@ -3,16 +3,22 @@ export type WaitlistResult =
   | { status: 'already_registered' }
   | { status: 'full' };
 
+export type WaitlistInput = {
+  name: string;
+  phone: string;
+  email: string;
+};
+
 /**
- * 베타 대기 등록 - Next.js API 사용 (휴대폰 번호로 문자 안내)
+ * 베타 대기 등록 - Next.js API 사용 (이름, 휴대폰번호, 이메일 수집)
  */
-export async function addToWaitlist(phone: string): Promise<WaitlistResult> {
+export async function addToWaitlist(input: WaitlistInput): Promise<WaitlistResult> {
   let res: Response;
   try {
     res = await fetch('/api/waitlist', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone: phone.trim() }),
+      body: JSON.stringify(input),
     });
   } catch (e) {
     if (e instanceof TypeError && (e.message?.includes('fetch') || e.message?.includes('Failed to fetch'))) {

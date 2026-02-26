@@ -41,7 +41,7 @@ export function HeroSection() {
         </p>
         <p className="mb-8 text-[14px] text-navy-500 sm:text-[15px]">Android에서 먼저 시작합니다.</p>
 
-        {/* 베타 참여 CTA 강조 */}
+        {/* 베타 신청 CTA 강조 */}
         <div className="flex w-full max-w-sm flex-col items-center gap-4 sm:max-w-md sm:gap-5">
           {isFull ? (
             <>
@@ -59,7 +59,7 @@ export function HeroSection() {
                 onClick={() => setShowModal(true)}
                 className="flex h-14 w-full items-center justify-center rounded-[16px] bg-primary-400 px-10 text-[18px] font-bold text-white shadow-[0_4px_20px_rgba(74,144,226,0.35)] transition-all hover:bg-primary-500 hover:shadow-[0_6px_24px_rgba(74,144,226,0.4)] active:scale-[0.98] sm:h-16 sm:text-[20px]"
               >
-                {BETA.cohortName} 참여하기
+                {BETA.cohortName} {BETA.cohortActionLabel}
               </button>
               <p className="whitespace-nowrap rounded-xl bg-primary-50/80 px-5 py-3 text-center text-[13px] font-bold text-primary-600 sm:px-6 sm:py-4 sm:text-[15px] md:text-[17px]">
                 {BETA.cohortName} 선착순 {BETA.limit}명 · 출시 최우선 안내 · 1년 무료 이용

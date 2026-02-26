@@ -56,6 +56,7 @@ export async function GET() {
         id: doc.id,
         phone,
         name: d.name ?? '',
+        email: d.email ?? '',
         cohort: d.cohort ?? '1',
         createdAt: createdAt.toISOString(),
         loggedIn,

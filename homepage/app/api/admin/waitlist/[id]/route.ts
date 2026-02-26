@@ -15,7 +15,7 @@ export async function PATCH(
     return NextResponse.json({ error: 'id required' }, { status: 400 });
   }
 
-  let body: { phone?: string; name?: string };
+  let body: { phone?: string; name?: string; email?: string };
   try {
     body = await request.json();
   } catch {
@@ -24,12 +24,14 @@ export async function PATCH(
 
   const phone = body.phone != null ? String(body.phone).trim().replace(/[\s-]/g, '') : undefined;
   const name = body.name != null ? String(body.name).trim() : undefined;
+  const email = body.email != null ? String(body.email).trim() : undefined;
 
   const updates: Record<string, string> = {};
   if (phone !== undefined) updates.phone = phone;
   if (name !== undefined) updates.name = name;
+  if (email !== undefined) updates.email = email;
   if (Object.keys(updates).length === 0) {
-    return NextResponse.json({ error: 'phone or name required' }, { status: 400 });
+    return NextResponse.json({ error: 'phone, name or email required' }, { status: 400 });
   }
 
   const db = getAdminFirestore();

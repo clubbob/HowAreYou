@@ -1,0 +1,82 @@
+'use client';
+
+import { useEffect, useRef } from 'react';
+import { BETA } from '@/lib/config/beta';
+
+type Props = {
+  open: boolean;
+  onClose: () => void;
+  onWaitlistClick?: () => void;
+};
+
+export function StartModal({ open, onClose, onWaitlistClick }: Props) {
+  const closeBtnRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (open) closeBtnRef.current?.focus();
+  }, [open]);
+
+  const handleWaitlist = () => {
+    onClose();
+    setTimeout(() => onWaitlistClick?.(), 150);
+  };
+
+  if (!open) return null;
+
+  return (
+    <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-navy-900/40 p-4 backdrop-blur-sm"
+        onClick={onClose}
+      >
+        <div
+          className="w-full max-w-md rounded-[1rem] border border-navy-100 bg-white p-5 shadow-[0_8px_32px_rgba(0,0,0,0.12)] sm:p-6"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="mb-5 flex items-center justify-between">
+            <h2 className="text-xl font-bold text-navy-900">안심 시작하기</h2>
+            <button
+              ref={closeBtnRef}
+              type="button"
+              onClick={onClose}
+              className="rounded-xl p-2 text-navy-600 transition-colors hover:bg-navy-50 active:bg-navy-100"
+              aria-label="닫기"
+            >
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <p className="mb-6 text-[17px] leading-[1.6] text-navy-700">
+            현재 1기 베타 테스트를 진행 중입니다.
+            <br />
+            Android에서 소규모 사용자 대상으로 안정화 운영 중입니다.
+          </p>
+
+          <div className="space-y-3">
+            <div>
+              <p className="mb-2 text-[15px] font-medium text-navy-600">베타 1기 신청 하신 분</p>
+              <a
+                href={BETA.playStoreUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex h-[52px] w-full items-center justify-center rounded-[14px] bg-primary-400 text-[17px] font-semibold text-white transition-colors hover:bg-primary-500 active:bg-primary-600"
+              >
+                Android 앱 설치하기
+              </a>
+            </div>
+            <div>
+              <p className="mb-2 text-[15px] font-medium text-navy-600">베타 테스터 신청을 원하시는 분</p>
+              <button
+                type="button"
+                onClick={handleWaitlist}
+                className="flex h-[52px] w-full items-center justify-center rounded-[14px] border border-navy-200 py-4 text-[17px] font-medium text-navy-700 transition-colors hover:bg-navy-50 active:bg-navy-100"
+              >
+                {BETA.cohortName} {BETA.cohortActionLabel}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+  );
+}

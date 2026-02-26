@@ -1,6 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import { PRICING, formatPrice } from '@/lib/config/pricing';
+import { StartModal } from './StartModal';
+import { BetaModal } from './BetaModal';
 
 const FEATURES = [
   '매일 안부를 자동으로 확인합니다',
@@ -10,9 +13,8 @@ const FEATURES = [
 ];
 
 export function PricingSection() {
-  const scrollToCta = () => {
-    document.getElementById('cta')?.scrollIntoView({ behavior: 'smooth' });
-  };
+  const [showStartModal, setShowStartModal] = useState(false);
+  const [showBetaModal, setShowBetaModal] = useState(false);
 
   return (
     <section
@@ -58,13 +60,19 @@ export function PricingSection() {
 
           <button
             type="button"
-            onClick={scrollToCta}
+            onClick={() => setShowStartModal(true)}
             className="flex h-[52px] w-full items-center justify-center rounded-[14px] bg-primary-400 text-[17px] font-semibold text-white transition-colors hover:bg-primary-500 active:bg-primary-600"
           >
             1개월 무료로 안심 시작하기
           </button>
         </div>
       </div>
+      <StartModal
+        open={showStartModal}
+        onClose={() => setShowStartModal(false)}
+        onWaitlistClick={() => setShowBetaModal(true)}
+      />
+      <BetaModal open={showBetaModal} onClose={() => setShowBetaModal(false)} />
     </section>
   );
 }

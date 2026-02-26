@@ -9,8 +9,12 @@ type Props = {
   onClose: () => void;
 };
 
+const isValidEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
+
 export function BetaModal({ open, onClose }: Props) {
+  const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'already_registered' | 'full' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
   const closeBtnRef = useRef<HTMLButtonElement>(null);
@@ -20,6 +24,9 @@ export function BetaModal({ open, onClose }: Props) {
     if (!open) {
       setStatus('idle');
       setErrorMsg('');
+      setName('');
+      setPhone('');
+      setEmail('');
     } else {
       closeBtnRef.current?.focus();
     }
@@ -33,18 +40,30 @@ export function BetaModal({ open, onClose }: Props) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const trimmed = phone.trim();
-    if (!trimmed || submittingRef.current) return;
-    if (!isValidPhone(trimmed)) {
+    const trimmedName = name.trim();
+    const trimmedPhone = phone.trim();
+    const trimmedEmail = email.trim();
+    if (!trimmedName || !trimmedPhone || !trimmedEmail || submittingRef.current) return;
+    if (!isValidPhone(trimmedPhone)) {
       setErrorMsg('올바른 휴대폰 번호를 입력해 주세요. (10~11자리)');
+      return;
+    }
+    if (!isValidEmail(trimmedEmail)) {
+      setErrorMsg('올바른 이메일 주소를 입력해 주세요.');
       return;
     }
     submittingRef.current = true;
     setStatus('loading');
     setErrorMsg('');
     try {
-      const result = await addToWaitlist(normalizePhone(trimmed));
+      const result = await addToWaitlist({
+        name: trimmedName,
+        phone: normalizePhone(trimmedPhone),
+        email: trimmedEmail,
+      });
+      setName('');
       setPhone('');
+      setEmail('');
       setStatus(result.status === 'already_registered' ? 'already_registered' : result.status === 'full' ? 'full' : 'success');
     } catch (err) {
       setStatus('error');
@@ -66,7 +85,7 @@ export function BetaModal({ open, onClose }: Props) {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-5 flex items-center justify-between">
-          <h2 className="text-xl font-bold text-navy-900">{BETA.cohortName} 참여하기</h2>
+          <h2 className="text-xl font-bold text-navy-900">{BETA.cohortName} {BETA.cohortActionLabel}</h2>
           <button
             ref={closeBtnRef}
             type="button"
@@ -137,6 +156,20 @@ export function BetaModal({ open, onClose }: Props) {
               출시 시 설치 링크를 문자로 보내드립니다.
             </p>
             <div className="space-y-3">
+              <label className="block text-[15px] font-medium text-navy-700">이름 (필수)</label>
+              <input
+                type="text"
+                autoComplete="name"
+                value={name}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  if (errorMsg) setErrorMsg('');
+                }}
+                placeholder="홍길동"
+                required
+                disabled={status === 'loading'}
+                className="w-full rounded-[14px] border border-navy-200 px-4 py-4 text-[17px] text-navy-900 placeholder:text-navy-400 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-400/20 disabled:bg-navy-50 disabled:opacity-70"
+              />
               <label className="block text-[15px] font-medium text-navy-700">휴대폰 번호 (필수)</label>
               <input
                 type="tel"
@@ -144,15 +177,41 @@ export function BetaModal({ open, onClose }: Props) {
                 autoComplete="tel"
                 value={phone}
                 onChange={(e) => {
-                setPhone(e.target.value);
-                if (errorMsg) setErrorMsg('');
-              }}
+                  setPhone(e.target.value);
+                  if (errorMsg) setErrorMsg('');
+                }}
                 placeholder="010-1234-5678"
                 required
                 disabled={status === 'loading'}
                 className="w-full rounded-[14px] border border-navy-200 px-4 py-4 text-[17px] text-navy-900 placeholder:text-navy-400 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-400/20 disabled:bg-navy-50 disabled:opacity-70"
               />
               <p className="text-[14px] text-navy-500">하이픈(-) 없이 번호만 입력하세요</p>
+              <label className="block text-[15px] font-medium text-navy-700">이메일 (필수)</label>
+              <input
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (errorMsg) setErrorMsg('');
+                }}
+                placeholder="example@gmail.com"
+                required
+                disabled={status === 'loading'}
+                className="w-full rounded-[14px] border border-navy-200 px-4 py-4 text-[17px] text-navy-900 placeholder:text-navy-400 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-400/20 disabled:bg-navy-50 disabled:opacity-70"
+              />
+              <p className="text-[14px] text-navy-500">Play Store 설치 시 사용하는 Gmail 주소를 입력해 주세요</p>
+              <details className="mt-2 rounded-xl border border-navy-100 bg-navy-50/50 px-4 py-3">
+                <summary className="cursor-pointer text-[14px] font-medium text-navy-600 hover:text-navy-800">
+                  이메일을 모르시나요? (찾는 방법)
+                </summary>
+                <ul className="mt-3 space-y-1.5 text-[13px] leading-[1.5] text-navy-600">
+                  <li>• <strong>Play Store</strong>: 앱 실행 → 우측 상단 프로필 아이콘 → 맨 위에 표시</li>
+                  <li>• <strong>Gmail</strong>: 앱 실행 → 우측 상단 프로필 아이콘 → 이메일 확인</li>
+                  <li>• <strong>설정</strong>: 설정 → Google → 계정 관리 → 이메일 확인</li>
+                </ul>
+              </details>
             </div>
             {errorMsg && (
               <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3" role="alert">
@@ -161,7 +220,7 @@ export function BetaModal({ open, onClose }: Props) {
               </div>
             )}
             <p className="mt-4 text-[15px] leading-[1.5] text-navy-500">
-              입력하신 번호는 {BETA.cohortName} 안내 외 다른 용도로 사용되지 않습니다.
+              입력하신 정보는 {BETA.cohortName} 안내 및 Play Store 테스터 등록 외 다른 용도로 사용되지 않습니다.
             </p>
             <div className="mt-6 flex gap-3">
               <button
@@ -176,7 +235,7 @@ export function BetaModal({ open, onClose }: Props) {
                 disabled={status === 'loading'}
                 className="flex flex-1 items-center justify-center rounded-[14px] bg-primary-400 py-4 text-[17px] font-medium text-white transition-colors hover:bg-primary-500 active:bg-primary-600 disabled:opacity-60"
               >
-                {status === 'loading' ? '등록 중...' : `${BETA.cohortName} 참여하기`}
+                {status === 'loading' ? '등록 중...' : `${BETA.cohortName} ${BETA.cohortActionLabel}`}
               </button>
             </div>
             {status === 'loading' && (
