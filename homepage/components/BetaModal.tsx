@@ -119,8 +119,12 @@ export function BetaModal({ open, onClose }: Props) {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <p className="text-lg font-semibold text-navy-900">등록되었습니다.</p>
-            <p className="mt-1 text-[17px] text-navy-600">빠른 시일 내에 연락드리겠습니다.</p>
+            <p className="text-lg font-semibold text-navy-900">&quot;오늘 어때&quot; 베타 신청을 해주셔서 감사합니다.</p>
+            <p className="mt-2 text-[17px] leading-[1.6] text-navy-600">
+              여러분의 의견이 서비스 완성에 큰 도움이 됩니다.
+              <br />
+              사용 중 가끔 짧은 의견을 여쭤볼 수 있습니다.
+            </p>
             <button
               onClick={onClose}
               className="mx-auto mt-6 flex h-[52px] items-center justify-center rounded-[14px] bg-primary-400 px-8 text-[17px] font-medium text-white transition-colors hover:bg-primary-500 active:bg-primary-600"

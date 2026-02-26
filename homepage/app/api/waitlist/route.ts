@@ -72,21 +72,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const [count, existingSnap] = await Promise.all([
+    const emailLower = emailTrimmed.toLowerCase();
+    const [count, phoneSnap, emailSnap] = await Promise.all([
       getWaitlistCount(db, BETA.cohort),
       db.collection('waitlist').where('phone', '==', phoneNormalized).get(),
+      db.collection('waitlist').where('email', '==', emailLower).get(),
     ]);
     if (count >= BETA.limit) return NextResponse.json({ status: 'full' });
-    const alreadyInCohort = existingSnap.docs.some((doc) => {
-      const c = doc.data().cohort;
-      return !c || c === BETA.cohort;
-    });
-    if (alreadyInCohort) return NextResponse.json({ status: 'already_registered' });
+    const isDuplicate = (snap: FirebaseFirestore.QuerySnapshot) =>
+      snap.docs.some((doc) => {
+        const c = doc.data().cohort;
+        return !c || c === BETA.cohort;
+      });
+    if (isDuplicate(phoneSnap) || isDuplicate(emailSnap)) {
+      return NextResponse.json({ status: 'already_registered' });
+    }
 
     await db.collection('waitlist').add({
       name: nameTrimmed,
       phone: phoneNormalized,
-      email: emailTrimmed,
+      email: emailLower,
       cohort: BETA.cohort,
       createdAt: FieldValue.serverTimestamp(),
     });
