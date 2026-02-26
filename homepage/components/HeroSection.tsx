@@ -61,7 +61,7 @@ export function HeroSection() {
               >
                 {BETA.cohortName} {BETA.cohortActionLabel}
               </button>
-              <p className="whitespace-nowrap rounded-xl bg-primary-50/80 px-5 py-3 text-center text-[13px] font-bold text-primary-600 sm:px-6 sm:py-4 sm:text-[15px] md:text-[17px]">
+              <p className="rounded-xl bg-primary-50/80 px-5 py-3 text-center text-[13px] font-bold text-primary-600 sm:px-6 sm:py-4 sm:text-[15px] md:text-[17px]">
                 {BETA.cohortName} 선착순 {BETA.limit}명 · 출시 최우선 안내 · 1년 무료 이용
               </p>
             </>
