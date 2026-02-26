@@ -163,7 +163,7 @@ export function BetaModal({ open, onClose }: Props) {
         ) : (
           <form onSubmit={handleSubmit}>
             <div className="mb-4 rounded-xl bg-primary-50 px-4 py-3">
-              <p className="text-[15px] font-semibold text-primary-700">{BETA.cohortName} 선착순 {BETA.limit}명 · 1년 무료 이용</p>
+              <p className="whitespace-nowrap text-[15px] font-semibold text-primary-700">{BETA.cohortName} 선착순 {BETA.limit}명 · 서비스 우선 안내 · 1년 무료 이용</p>
             </div>
             <p className="mb-4 text-[17px] leading-[1.6] text-navy-700">
               출시 시 설치 링크를 문자로 보내드립니다.
