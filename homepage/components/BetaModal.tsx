@@ -175,7 +175,7 @@ export function BetaModal({ open, onClose }: Props) {
         ) : (
           <form onSubmit={handleSubmit}>
             <div className="space-y-3">
-              <label className="block text-[15px] font-medium text-navy-700">이름 (필수)</label>
+              <label className="block text-[15px] font-medium text-navy-700">이름</label>
               <input
                 type="text"
                 autoComplete="name"
@@ -189,7 +189,7 @@ export function BetaModal({ open, onClose }: Props) {
                 disabled={status === 'loading'}
                 className="w-full rounded-[14px] border border-navy-200 px-4 py-4 text-[17px] text-navy-900 placeholder:text-navy-400 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-400/20 disabled:bg-navy-50 disabled:opacity-70"
               />
-              <label className="block text-[15px] font-medium text-navy-700">휴대폰 번호 (필수)</label>
+              <label className="block text-[15px] font-medium text-navy-700">휴대폰 번호</label>
               <input
                 type="tel"
                 inputMode="tel"
@@ -205,7 +205,7 @@ export function BetaModal({ open, onClose }: Props) {
                 className="w-full rounded-[14px] border border-navy-200 px-4 py-4 text-[17px] text-navy-900 placeholder:text-navy-400 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-400/20 disabled:bg-navy-50 disabled:opacity-70"
               />
               <p className="text-[14px] text-navy-500">하이픈(-) 없이 번호만 입력하세요</p>
-              <label className="block text-[15px] font-medium text-navy-700">이메일 (필수)</label>
+              <label className="block text-[15px] font-medium text-navy-700">이메일</label>
               <input
                 type="email"
                 inputMode="email"
@@ -243,7 +243,7 @@ export function BetaModal({ open, onClose }: Props) {
               </div>
             )}
             <p className="mt-4 text-[15px] leading-[1.5] text-navy-500">
-              입력하신 정보는 1년 무료 혜택 적용 및 안내 목적으로만 사용됩니다.
+              입력하신 정보는 안내 목적으로만 사용됩니다.
             </p>
             <div className="mt-6 flex gap-3">
               <button

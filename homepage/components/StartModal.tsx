@@ -63,13 +63,8 @@ export function StartModal({ open, onClose, onWaitlistClick }: Props) {
             </button>
           </div>
 
-          <p className="mb-6 text-[17px] leading-[1.6] text-navy-700">
-            베타 1기 혜택 신청 시 1년 무료 이용이 적용됩니다.
-          </p>
-
           <div className="space-y-3">
             <div>
-              <p className="mb-2 text-[15px] font-medium text-navy-600">앱 설치하기</p>
               <a
                 href={BETA.playStoreUrl}
                 target="_blank"
@@ -85,9 +80,9 @@ export function StartModal({ open, onClose, onWaitlistClick }: Props) {
                 onClick={handleWaitlist}
                 className="flex h-[52px] w-full items-center justify-center rounded-[14px] border border-navy-200 py-4 text-[17px] font-medium text-navy-700 transition-colors hover:bg-navy-50 active:bg-navy-100"
               >
-                {BETA.cohortName} {BETA.cohortActionLabel}
+                베타 1기 신청
               </button>
-              <p className="mt-2 text-center text-[14px] text-navy-500">선착순 {BETA.limit}명</p>
+              <p className="mt-2 text-center text-[14px] text-navy-500">베타 1기 신청 시 1년 무료</p>
             </div>
           </div>
         </div>
