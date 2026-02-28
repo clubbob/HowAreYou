@@ -33,6 +33,12 @@ function isValidEmail(v: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
 }
 
+/** Play Store 테스터 등록용 Gmail/Google 계정만 허용 */
+function isGmailOrGoogle(v: string): boolean {
+  const domain = v.trim().toLowerCase().split('@')[1] || '';
+  return domain === 'gmail.com' || domain === 'googlemail.com';
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}));
@@ -62,6 +68,12 @@ export async function POST(request: NextRequest) {
     }
     if (!isValidEmail(emailTrimmed)) {
       return NextResponse.json({ error: '올바른 이메일 주소를 입력해 주세요.' }, { status: 400 });
+    }
+    if (!isGmailOrGoogle(emailTrimmed)) {
+      return NextResponse.json(
+        { error: 'Play Store 테스터 등록을 위해 Gmail 주소를 입력해 주세요. (예: example@gmail.com)' },
+        { status: 400 }
+      );
     }
 
     const db = getAdminFirestore();

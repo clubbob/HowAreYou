@@ -11,6 +11,10 @@ type Props = {
 };
 
 const isValidEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
+const isGmailOrGoogle = (v: string) => {
+  const domain = v.trim().toLowerCase().split('@')[1] || '';
+  return domain === 'gmail.com' || domain === 'googlemail.com';
+};
 
 export function BetaModal({ open, onClose }: Props) {
   const [name, setName] = useState('');
@@ -62,6 +66,10 @@ export function BetaModal({ open, onClose }: Props) {
     }
     if (!isValidEmail(trimmedEmail)) {
       setErrorMsg('올바른 이메일 주소를 입력해 주세요.');
+      return;
+    }
+    if (!isGmailOrGoogle(trimmedEmail)) {
+      setErrorMsg('Play Store 테스터 등록을 위해 Gmail 주소를 입력해 주세요. (예: example@gmail.com)');
       return;
     }
     submittingRef.current = true;
@@ -166,12 +174,6 @@ export function BetaModal({ open, onClose }: Props) {
           </div>
         ) : (
           <form onSubmit={handleSubmit}>
-            <div className="mb-4 rounded-xl bg-primary-50 px-4 py-3">
-              <p className="whitespace-nowrap text-[15px] font-semibold text-primary-700">{BETA.cohortName} 선착순 {BETA.limit}명 · 서비스 우선 안내 · 1년 무료 이용</p>
-            </div>
-            <p className="mb-4 text-[17px] leading-[1.6] text-navy-700">
-              출시 시 설치 링크를 문자로 보내드립니다.
-            </p>
             <div className="space-y-3">
               <label className="block text-[15px] font-medium text-navy-700">이름 (필수)</label>
               <input
@@ -218,10 +220,10 @@ export function BetaModal({ open, onClose }: Props) {
                 disabled={status === 'loading'}
                 className="w-full rounded-[14px] border border-navy-200 px-4 py-4 text-[17px] text-navy-900 placeholder:text-navy-400 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-400/20 disabled:bg-navy-50 disabled:opacity-70"
               />
-              <p className="text-[14px] text-navy-500">Play Store 설치 시 사용하는 Gmail 주소를 입력해 주세요</p>
-              <details className="mt-2 rounded-xl border border-navy-100 bg-navy-50/50 px-4 py-3">
-                <summary className="cursor-pointer text-[14px] font-medium text-navy-600 hover:text-navy-800">
-                  이메일을 모르시나요? (찾는 방법)
+              <p className="text-[14px] text-red-600">Play Store 설치 시 사용하는 Google 이메일을 입력해 주세요.</p>
+              <details open className="mt-2 rounded-xl border border-navy-100 bg-navy-50/50 px-4 py-3">
+                <summary className="cursor-pointer text-[14px] font-medium text-red-600 hover:text-red-700">
+                  Google 이메일 찾는 방법
                 </summary>
                 <ul className="mt-3 space-y-1.5 text-[13px] leading-[1.5] text-navy-600">
                   <li>• <strong>Play Store</strong>: 앱 실행 → 우측 상단 프로필 아이콘 → 맨 위에 표시</li>
@@ -233,7 +235,11 @@ export function BetaModal({ open, onClose }: Props) {
             {errorMsg && (
               <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3" role="alert">
                 <p className="text-sm font-medium text-red-700">{errorMsg}</p>
-                <p className="mt-1 text-[13px] text-red-600/90">번호를 확인한 후 다시 시도해 주세요. 계속되면 잠시 후 시도해 주세요.</p>
+                <p className="mt-1 text-[13px] text-red-600/90">
+                  {errorMsg.includes('Gmail') || errorMsg.includes('이메일')
+                    ? 'Gmail 확인 방법을 참조해서 다시 입력해 주세요.'
+                    : '번호를 확인한 후 다시 시도해 주세요. 계속되면 잠시 후 시도해 주세요.'}
+                </p>
               </div>
             )}
             <p className="mt-4 text-[15px] leading-[1.5] text-navy-500">
