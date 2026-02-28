@@ -1,16 +1,7 @@
 import { NextResponse } from 'next/server';
 import { verifyAdminSession } from '@/lib/admin-auth';
 import { getAdminFirestore } from '@/lib/firebase-admin';
-
-function normalizePhone(phone: string): string {
-  if (!phone || typeof phone !== 'string') return '';
-  const digits = phone.replace(/\D/g, '');
-  if (digits.length === 0) return '';
-  if (digits.startsWith('82') && digits.length >= 11) return '+' + digits;
-  if (digits.startsWith('010') && digits.length >= 9) return '+82' + digits.substring(1);
-  if (digits.startsWith('0') && digits.length >= 10) return '+82' + digits.substring(1);
-  return '+82' + digits;
-}
+import { toE164 } from '@/lib/phone';
 
 export async function GET() {
   if (!(await verifyAdminSession())) {
@@ -32,7 +23,8 @@ export async function GET() {
     const data = doc.data();
     const phone = (data.phone ?? '').toString().trim();
     if (!phone) continue;
-    const normalized = normalizePhone(phone);
+    const normalized = toE164(phone);
+    if (!normalized || normalized.length < 12) continue;
     usersPhoneSet.add(normalized);
     if (data.signedOutAt) {
       phoneToSignedOut.set(normalized, true);
@@ -46,7 +38,7 @@ export async function GET() {
     .map((doc) => {
       const d = doc.data();
       const phone = d.phone ?? '';
-      const normalized = normalizePhone(phone);
+      const normalized = toE164(phone);
       const createdAt = d.createdAt?.toDate?.() ?? new Date();
       const lastFcmSentAt = d.lastFcmSentAt?.toDate?.();
       const lastFcmOpenedAt = d.lastFcmOpenedAt?.toDate?.();

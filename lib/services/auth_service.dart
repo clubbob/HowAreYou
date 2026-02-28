@@ -112,17 +112,27 @@ class AuthService extends ChangeNotifier {
   }
 
   /// 휴대폰 번호가 베타 1기 waitlist에 있는지 확인 후 betaCohort 부여
-  Future<void> _checkAndSetBetaCohort(String uid, String phone) async {
-    if (phone.trim().length < 10) return;
+  /// Firebase ID token으로 서버 호출 → 토큰의 phone_number로 매칭 (클라이언트 조작 불가)
+  Future<void> _checkAndSetBetaCohort(User user) async {
+    if (user.phoneNumber == null || user.phoneNumber!.trim().length < 10) return;
     try {
-      final encoded = Uri.encodeQueryComponent(phone.trim());
-      final uri = Uri.parse('${AppConstants.waitlistCheckUrl}?phone=$encoded');
-      final res = await http.get(uri).timeout(const Duration(seconds: 5));
+      final token = await user.getIdToken();
+      if (token == null || token.isEmpty) return;
+      final uri = Uri.parse(AppConstants.waitlistCheckUrl);
+      final res = await http
+          .post(
+            uri,
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+          )
+          .timeout(const Duration(seconds: 5));
       if (res.statusCode != 200) return;
       final body = res.body;
       if (body.contains('"isBeta":true')) {
-        await _firestore.collection('users').doc(uid).update({'betaCohort': '1'});
-        debugPrint('betaCohort 부여 완료: $uid');
+        await _firestore.collection('users').doc(user.uid).update({'betaCohort': '1'});
+        debugPrint('betaCohort 부여 완료: ${user.uid}');
       }
     } catch (e) {
       debugPrint('베타 확인 API 오류 (무시): $e');
@@ -255,7 +265,7 @@ class AuthService extends ChangeNotifier {
       debugPrint('FCM 초기화 지연/실패 (무시): $e');
     });
     // 베타 1기 waitlist 확인 후 betaCohort 부여 (1년 무료 혜택)
-    _checkAndSetBetaCohort(user.uid, phoneNumber).catchError((e) {
+    _checkAndSetBetaCohort(user).catchError((e) {
       debugPrint('베타 확인 지연/실패 (무시): $e');
     });
   }

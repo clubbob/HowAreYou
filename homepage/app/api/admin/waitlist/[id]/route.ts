@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAdminSession } from '@/lib/admin-auth';
 import { getAdminFirestore } from '@/lib/firebase-admin';
+import { toE164 } from '@/lib/phone';
 
 export async function PATCH(
   request: NextRequest,
@@ -22,7 +23,8 @@ export async function PATCH(
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
-  const phone = body.phone != null ? String(body.phone).trim().replace(/[\s-]/g, '') : undefined;
+  const phoneRaw = body.phone != null ? String(body.phone).trim() : undefined;
+  const phone = phoneRaw ? toE164(phoneRaw) || undefined : undefined;
   const name = body.name != null ? String(body.name).trim() : undefined;
   const email = body.email != null ? String(body.email).trim() : undefined;
 

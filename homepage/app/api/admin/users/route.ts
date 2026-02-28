@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { verifyAdminSession } from '@/lib/admin-auth';
 import { getAdminFirestore } from '@/lib/firebase-admin';
-import { normalizePhone } from '@/lib/phone';
+import { toE164 } from '@/lib/phone';
 
 export async function GET() {
   if (!(await verifyAdminSession())) {
@@ -22,8 +22,8 @@ export async function GET() {
   const phoneToWaitlist = new Map<string, { name: string; email: string }>();
   waitlistSnap.docs.forEach((doc) => {
     const d = doc.data();
-    const phone = normalizePhone((d.phone ?? '').toString());
-    if (phone.length >= 10) {
+    const phone = toE164((d.phone ?? '').toString());
+    if (phone.length >= 12) {
       phoneToWaitlist.set(phone, {
         name: (d.name ?? '').toString().trim(),
         email: (d.email ?? '').toString().trim(),
@@ -78,7 +78,7 @@ export async function GET() {
     const lastFcmSentAt = d.lastFcmSentAt?.toDate?.();
     const lastFcmOpenedAt = d.lastFcmOpenedAt?.toDate?.();
     const phoneRaw = d.phone ?? '';
-    const phoneNorm = normalizePhone(phoneRaw);
+    const phoneNorm = toE164(phoneRaw);
     const waitlistData = phoneToWaitlist.get(phoneNorm);
     return {
       id: uid,
