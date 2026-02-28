@@ -256,9 +256,9 @@ export function BetaModal({ open, onClose }: Props) {
               <button
                 type="submit"
                 disabled={status === 'loading'}
-                className="flex flex-1 items-center justify-center rounded-[14px] bg-primary-400 py-4 text-[17px] font-medium text-white transition-colors hover:bg-primary-500 active:bg-primary-600 disabled:opacity-60"
+                className="flex flex-1 items-center justify-center rounded-[14px] bg-primary-400 py-4 text-[15px] font-medium text-white transition-colors hover:bg-primary-500 active:bg-primary-600 disabled:opacity-60 sm:text-[17px]"
               >
-                {status === 'loading' ? '등록 중...' : `${BETA.cohortName} ${BETA.cohortActionLabel}`}
+                {status === 'loading' ? '등록 중...' : '1년 무료 혜택 신청'}
               </button>
             </div>
             {status === 'loading' && (

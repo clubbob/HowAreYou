@@ -64,8 +64,6 @@ export function StartModal({ open, onClose, onWaitlistClick }: Props) {
           </div>
 
           <p className="mb-6 text-[17px] leading-[1.6] text-navy-700">
-            누구나 앱을 설치해 이용할 수 있습니다.
-            <br />
             베타 1기 혜택 신청 시 1년 무료 이용이 적용됩니다.
           </p>
 
