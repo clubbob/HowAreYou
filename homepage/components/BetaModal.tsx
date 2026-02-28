@@ -127,11 +127,11 @@ export function BetaModal({ open, onClose }: Props) {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <p className="text-lg font-semibold text-navy-900">&quot;오늘 어때&quot; 베타 신청을 해주셔서 감사합니다.</p>
+            <p className="text-lg font-semibold text-navy-900">1년 무료 혜택 신청이 완료되었습니다.</p>
             <p className="mt-2 text-[17px] leading-[1.6] text-navy-600">
-              여러분의 의견이 서비스 완성에 큰 도움이 됩니다.
+              앱에서 동일 휴대폰 번호로 가입하면 1년 무료로 이용하실 수 있습니다.
               <br />
-              사용 중 가끔 짧은 의견을 여쭤볼 수 있습니다.
+              앱 설치 후 바로 이용을 시작하세요.
             </p>
             <button
               onClick={onClose}
@@ -164,7 +164,7 @@ export function BetaModal({ open, onClose }: Props) {
               </svg>
             </div>
             <p className="text-lg font-semibold text-navy-900">이미 신청하셨습니다.</p>
-            <p className="mt-1 text-[17px] text-navy-600">등록된 번호로 출시 시 설치 링크를 문자로 보내드립니다.</p>
+            <p className="mt-1 text-[17px] text-navy-600">앱에서 동일 휴대폰 번호로 가입하면 1년 무료 혜택이 적용됩니다.</p>
             <button
               onClick={onClose}
               className="mx-auto mt-6 flex h-[52px] items-center justify-center rounded-[14px] bg-navy-200 px-8 text-[17px] font-medium text-navy-800 transition-colors hover:bg-navy-300 active:bg-navy-400"
@@ -243,7 +243,7 @@ export function BetaModal({ open, onClose }: Props) {
               </div>
             )}
             <p className="mt-4 text-[15px] leading-[1.5] text-navy-500">
-              입력하신 정보는 {BETA.cohortName} 안내 및 Play Store 테스터 등록 외 다른 용도로 사용되지 않습니다.
+              입력하신 정보는 1년 무료 혜택 적용 및 안내 목적으로만 사용됩니다.
             </p>
             <div className="mt-6 flex gap-3">
               <button

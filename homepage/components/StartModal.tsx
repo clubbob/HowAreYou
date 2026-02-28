@@ -64,14 +64,14 @@ export function StartModal({ open, onClose, onWaitlistClick }: Props) {
           </div>
 
           <p className="mb-6 text-[17px] leading-[1.6] text-navy-700">
-            현재 1기 베타 테스트를 진행 중입니다.
+            누구나 앱을 설치해 이용할 수 있습니다.
             <br />
-            Android에서 소규모 사용자 대상으로 안정화 운영 중입니다.
+            베타 1기 혜택 신청 시 1년 무료 이용이 적용됩니다.
           </p>
 
           <div className="space-y-3">
             <div>
-              <p className="mb-2 text-[15px] font-medium text-navy-600">베타 1기 신청 하신 분</p>
+              <p className="mb-2 text-[15px] font-medium text-navy-600">앱 설치하기</p>
               <a
                 href={BETA.playStoreUrl}
                 target="_blank"
@@ -82,7 +82,7 @@ export function StartModal({ open, onClose, onWaitlistClick }: Props) {
               </a>
             </div>
             <div>
-              <p className="mb-2 text-[15px] font-medium text-navy-600">베타 테스터 신청을 원하시는 분</p>
+              <p className="mb-2 text-[15px] font-medium text-navy-600">1년 무료 혜택 신청 (선착순 {BETA.limit}명)</p>
               <button
                 type="button"
                 onClick={handleWaitlist}

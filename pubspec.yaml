@@ -39,6 +39,7 @@ dependencies:
   app_links: ^6.3.2
   url_launcher: ^6.2.0
   in_app_review: ^2.0.9
+  http: ^1.2.0
 
 dev_dependencies:
   flutter_test:

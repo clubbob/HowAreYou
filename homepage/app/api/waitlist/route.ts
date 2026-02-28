@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAdminFirestore } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { BETA } from '@/lib/config/beta';
+import { normalizePhone } from '@/lib/phone';
 
 /** 해당 기수(1기, 2기 등) 대기 인원 수 */
 async function getWaitlistCount(
@@ -57,7 +58,7 @@ export async function POST(request: NextRequest) {
     }
 
     const nameTrimmed = name.trim();
-    const phoneNormalized = phone.trim().replace(/[\s-]/g, '');
+    const phoneNormalized = normalizePhone(phone);
     const emailTrimmed = email.trim();
 
     if (nameTrimmed.length < 1) {

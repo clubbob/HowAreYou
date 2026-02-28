@@ -50,4 +50,7 @@ class AppConstants {
 
   /// 업그레이드(연 결제) 안내 페이지
   static const String upgradeUrl = 'https://오늘어때.com/#pricing';
+
+  /// 베타 혜택 확인 API (휴대폰 번호가 waitlist에 있는지)
+  static const String waitlistCheckUrl = 'https://오늘어때.com/api/waitlist/check';
 }

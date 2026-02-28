@@ -175,6 +175,7 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
             subscriptionStatus: info.subscriptionStatus,
             createdAt: info.createdAt,
             subscriptionExpiry: info.subscriptionExpiry,
+            betaCohort: info.betaCohort,
           ),
         ),
         builder: (context, subSnapshot) {

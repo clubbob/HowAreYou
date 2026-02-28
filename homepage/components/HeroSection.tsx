@@ -1,20 +1,13 @@
 'use client';
 
 import Image from 'next/image';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { StartModal } from './StartModal';
 import { BetaModal } from './BetaModal';
-import { BETA } from '@/lib/config/beta';
 
 export function HeroSection() {
-  const [showModal, setShowModal] = useState(false);
-  const [isFull, setIsFull] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    fetch('/api/waitlist')
-      .then((res) => res.ok ? res.json() : null)
-      .then((data) => data?.full === true && setIsFull(true))
-      .catch(() => {});
-  }, []);
+  const [showStartModal, setShowStartModal] = useState(false);
+  const [showBetaModal, setShowBetaModal] = useState(false);
 
   return (
     <section className="relative overflow-hidden bg-[#F7F8FA] px-4 py-16 sm:px-6 sm:py-20 md:py-28">
@@ -41,35 +34,29 @@ export function HeroSection() {
         </p>
         <p className="mb-8 text-[14px] text-navy-500 sm:text-[15px]">Android에서 먼저 시작합니다.</p>
 
-        {/* 베타 신청 CTA 강조 */}
         <div className="flex w-full max-w-sm flex-col items-center gap-4 sm:max-w-md sm:gap-5">
-          {isFull ? (
-            <>
-              <div className="flex h-14 w-full items-center justify-center rounded-[16px] bg-navy-200 px-10 text-[18px] font-bold text-navy-700 sm:h-16 sm:text-[20px]">
-                마감
-              </div>
-              <p className="rounded-xl bg-navy-100/80 px-5 py-3 text-center text-[15px] font-bold text-navy-600 sm:px-6 sm:py-4 sm:text-[17px]">
-                {BETA.cohortName} 선착순 {BETA.limit}명이 마감되었습니다.
-              </p>
-            </>
-          ) : (
-            <>
-              <button
-                type="button"
-                onClick={() => setShowModal(true)}
-                className="flex h-14 w-full items-center justify-center rounded-[16px] bg-primary-400 px-10 text-[18px] font-bold text-white shadow-[0_4px_20px_rgba(74,144,226,0.35)] transition-all hover:bg-primary-500 hover:shadow-[0_6px_24px_rgba(74,144,226,0.4)] active:scale-[0.98] sm:h-16 sm:text-[20px]"
-              >
-                {BETA.cohortName} {BETA.cohortActionLabel}
-              </button>
-              <p className="whitespace-nowrap overflow-x-auto rounded-xl bg-primary-50/80 px-5 py-3 text-center text-[11px] font-bold text-primary-600 sm:px-6 sm:py-4 sm:text-[13px] md:text-[15px]">
-                {BETA.cohortName} 선착순 {BETA.limit}명 · 서비스 우선 안내 · 1년 무료 이용
-              </p>
-            </>
-          )}
+          <button
+            type="button"
+            onClick={() => setShowStartModal(true)}
+            className="flex h-14 w-full items-center justify-center rounded-[16px] bg-primary-400 px-10 text-[18px] font-bold text-white shadow-[0_4px_20px_rgba(74,144,226,0.35)] transition-all hover:bg-primary-500 hover:shadow-[0_6px_24px_rgba(74,144,226,0.4)] active:scale-[0.98] sm:h-16 sm:text-[20px]"
+          >
+            1개월 무료로 안심 시작하기
+          </button>
+          <p className="whitespace-nowrap overflow-x-auto rounded-xl bg-primary-50/80 px-5 py-3 text-center text-[11px] font-bold text-primary-600 sm:px-6 sm:py-4 sm:text-[13px] md:text-[15px]">
+            베타 1기 선착순 100명 · 1년 무료 혜택 신청 가능
+          </p>
         </div>
       </div>
 
-      <BetaModal open={showModal} onClose={() => setShowModal(false)} />
+      <StartModal
+        open={showStartModal}
+        onClose={() => setShowStartModal(false)}
+        onWaitlistClick={() => {
+          setShowStartModal(false);
+          setTimeout(() => setShowBetaModal(true), 150);
+        }}
+      />
+      <BetaModal open={showBetaModal} onClose={() => setShowBetaModal(false)} />
     </section>
   );
 }

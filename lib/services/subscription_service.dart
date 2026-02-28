@@ -25,10 +25,12 @@ class SubscriptionState {
   bool get isExpired => phase == SubscriptionPhase.expired;
 
   /// 계정 정보로부터 구독 상태 산출
+  /// [betaCohort] '1'이면 베타 1기 → 12개월 무료 (일반 1개월 대신)
   static SubscriptionState evaluate({
     required String subscriptionStatus,
     required DateTime? createdAt,
     DateTime? subscriptionExpiry,
+    String? betaCohort,
   }) {
     final now = DateTime.now();
 
@@ -60,11 +62,14 @@ class SubscriptionState {
       );
     }
 
-    final trialEnd = DateTime(createdAt.year, createdAt.month + 1, createdAt.day);
+    // 베타 1기: 12개월 무료 (일반 1개월 대신)
+    final trialMonths = betaCohort == '1' ? 12 : 1;
+    final trialEnd = DateTime(createdAt.year, createdAt.month + trialMonths, createdAt.day);
     final graceEnd = trialEnd.add(const Duration(days: 7));
 
     if (!now.isAfter(trialEnd)) {
-      final daysLeft = trialEnd.difference(now).inDays.clamp(0, 31);
+      final maxDays = trialMonths * 31;
+      final daysLeft = trialEnd.difference(now).inDays.clamp(0, maxDays);
       return SubscriptionState._(
         phase: SubscriptionPhase.trial,
         isRestricted: false,

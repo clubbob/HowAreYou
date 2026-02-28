@@ -452,6 +452,7 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> with 
               subscriptionStatus: info.subscriptionStatus,
               createdAt: info.createdAt,
               subscriptionExpiry: info.subscriptionExpiry,
+              betaCohort: info.betaCohort,
             ),
           );
     }

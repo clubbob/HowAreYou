@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'dart:io' show Platform;
+import 'package:http/http.dart' as http;
 import '../models/user_model.dart';
 import '../utils/constants.dart';
 import 'fcm_service.dart';
@@ -31,12 +32,13 @@ class AuthService extends ChangeNotifier {
   UserModel? get userModel => _userModel;
   bool get isAuthenticated => _user != null;
 
-  /// 계정 정보 (휴대폰 번호, 가입일, 구독 상태, 구독 만료일)
+  /// 계정 정보 (휴대폰 번호, 가입일, 구독 상태, 구독 만료일, 베타 기수)
   Future<({
     String phone,
     DateTime? createdAt,
     String subscriptionStatus,
     DateTime? subscriptionExpiry,
+    String? betaCohort,
   })> getAccountInfo() async {
     final uid = _user?.uid;
     if (uid == null) {
@@ -45,6 +47,7 @@ class AuthService extends ChangeNotifier {
         createdAt: null,
         subscriptionStatus: '무료 체험 중',
         subscriptionExpiry: null,
+        betaCohort: null,
       );
     }
     try {
@@ -71,6 +74,7 @@ class AuthService extends ChangeNotifier {
       }
       final statusRaw = data?['subscriptionStatus'] as String?;
       final expiryTs = data?['subscriptionExpiryAt'] as Timestamp?;
+      final betaCohort = data?['betaCohort'] as String?;
       DateTime? expiry = expiryTs?.toDate();
       String subscriptionStatus = '무료 체험 중';
       if (statusRaw != null && statusRaw.isNotEmpty) {
@@ -93,6 +97,7 @@ class AuthService extends ChangeNotifier {
         createdAt: createdAt,
         subscriptionStatus: subscriptionStatus,
         subscriptionExpiry: expiry,
+        betaCohort: betaCohort,
       );
     } catch (e) {
       debugPrint('getAccountInfo 오류: $e');
@@ -101,7 +106,26 @@ class AuthService extends ChangeNotifier {
         createdAt: null,
         subscriptionStatus: '무료 체험 중',
         subscriptionExpiry: null,
+        betaCohort: null,
       );
+    }
+  }
+
+  /// 휴대폰 번호가 베타 1기 waitlist에 있는지 확인 후 betaCohort 부여
+  Future<void> _checkAndSetBetaCohort(String uid, String phone) async {
+    if (phone.trim().length < 10) return;
+    try {
+      final encoded = Uri.encodeQueryComponent(phone.trim());
+      final uri = Uri.parse('${AppConstants.waitlistCheckUrl}?phone=$encoded');
+      final res = await http.get(uri).timeout(const Duration(seconds: 5));
+      if (res.statusCode != 200) return;
+      final body = res.body;
+      if (body.contains('"isBeta":true')) {
+        await _firestore.collection('users').doc(uid).update({'betaCohort': '1'});
+        debugPrint('betaCohort 부여 완료: $uid');
+      }
+    } catch (e) {
+      debugPrint('베타 확인 API 오류 (무시): $e');
     }
   }
 
@@ -229,6 +253,10 @@ class AuthService extends ChangeNotifier {
     await addAgreedPhone(phoneNumber);
     FCMService.instance.initialize(user.uid).catchError((e) {
       debugPrint('FCM 초기화 지연/실패 (무시): $e');
+    });
+    // 베타 1기 waitlist 확인 후 betaCohort 부여 (1년 무료 혜택)
+    _checkAndSetBetaCohort(user.uid, phoneNumber).catchError((e) {
+      debugPrint('베타 확인 지연/실패 (무시): $e');
     });
   }
 
