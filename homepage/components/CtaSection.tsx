@@ -24,7 +24,7 @@ export function CtaSection() {
             지금 1개월 무료로 시작하기
           </button>
           <p className="whitespace-nowrap overflow-x-auto rounded-xl bg-primary-50/80 px-5 py-3 text-center text-[11px] font-bold text-primary-600 sm:px-6 sm:py-4 sm:text-[13px] md:text-[15px]">
-            베타 참여자에게는 1년 무료 혜택이 제공됩니다.
+            출시 기념 참여자에게는 1년 무료 혜택이 제공됩니다.
           </p>
         </div>
       </div>

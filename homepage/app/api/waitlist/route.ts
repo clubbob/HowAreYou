@@ -16,7 +16,7 @@ async function getWaitlistCount(
   }).length;
 }
 
-/** 베타 모집 마감 여부 조회 (공개) */
+/** 1년 무료 혜택 모집 마감 여부 조회 (공개) */
 export async function GET() {
   try {
     const db = getAdminFirestore();
@@ -53,28 +53,17 @@ export async function POST(request: NextRequest) {
     if (!phone || typeof phone !== 'string') {
       return NextResponse.json({ error: '휴대폰 번호를 입력해 주세요.' }, { status: 400 });
     }
-    if (!email || typeof email !== 'string') {
-      return NextResponse.json({ error: '이메일을 입력해 주세요.' }, { status: 400 });
-    }
 
     const nameTrimmed = name.trim();
     const phoneNormalized = normalizePhone(phone);
-    const emailTrimmed = email.trim();
+    const emailTrimmed = typeof email === 'string' ? email.trim().toLowerCase() : '';
+    const hasValidEmail = emailTrimmed && isValidEmail(emailTrimmed) && isGmailOrGoogle(emailTrimmed);
 
     if (nameTrimmed.length < 1) {
       return NextResponse.json({ error: '이름을 입력해 주세요.' }, { status: 400 });
     }
     if (phoneNormalized.length < 10) {
       return NextResponse.json({ error: '올바른 휴대폰 번호를 입력해 주세요.' }, { status: 400 });
-    }
-    if (!isValidEmail(emailTrimmed)) {
-      return NextResponse.json({ error: '올바른 이메일 주소를 입력해 주세요.' }, { status: 400 });
-    }
-    if (!isGmailOrGoogle(emailTrimmed)) {
-      return NextResponse.json(
-        { error: 'Play Store 테스터 등록을 위해 Gmail 주소를 입력해 주세요. (예: example@gmail.com)' },
-        { status: 400 }
-      );
     }
 
     const db = getAdminFirestore();
@@ -85,18 +74,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const emailLower = emailTrimmed.toLowerCase();
     const [count, phoneSnap, emailSnap] = await Promise.all([
       getWaitlistCount(db, BETA.cohort),
       db.collection('waitlist').where('phone', '==', phoneNormalized).get(),
-      db.collection('waitlist').where('email', '==', emailLower).get(),
+      hasValidEmail ? db.collection('waitlist').where('email', '==', emailTrimmed).get() : Promise.resolve(null),
     ]);
     if (count >= BETA.limit) return NextResponse.json({ status: 'full' });
-    const isDuplicate = (snap: FirebaseFirestore.QuerySnapshot) =>
-      snap.docs.some((doc) => {
+    const isDuplicate = (snap: FirebaseFirestore.QuerySnapshot | null) =>
+      snap ? snap.docs.some((doc) => {
         const c = doc.data().cohort;
         return !c || c === BETA.cohort;
-      });
+      }) : false;
     if (isDuplicate(phoneSnap) || isDuplicate(emailSnap)) {
       return NextResponse.json({ status: 'already_registered' });
     }
@@ -104,7 +92,7 @@ export async function POST(request: NextRequest) {
     await db.collection('waitlist').add({
       name: nameTrimmed,
       phone: phoneNormalized,
-      email: emailLower,
+      email: hasValidEmail ? emailTrimmed : '',
       cohort: BETA.cohort,
       createdAt: FieldValue.serverTimestamp(),
     });

@@ -90,7 +90,7 @@ export function AdminStats() {
       href: '/admin/announcements',
     },
     {
-      label: '베타 1기 신청 리스트',
+      label: '1년 무료 혜택 신청 리스트',
       value: displayStats.waitlistCount,
       href: '/admin/waitlist',
       highlight: displayStats.waitlistCount > 0,

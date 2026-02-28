@@ -6,11 +6,12 @@ export type WaitlistResult =
 export type WaitlistInput = {
   name: string;
   phone: string;
-  email: string;
+  email?: string;
 };
 
 /**
- * 베타 대기 등록 - Next.js API 사용 (이름, 휴대폰번호, 이메일 수집)
+ * 1년 무료 혜택 신청 - Next.js API 사용 (이름, 휴대폰번호)
+ * 이메일은 선택(앱 Google 로그인 시 자동 수집)
  */
 export async function addToWaitlist(input: WaitlistInput): Promise<WaitlistResult> {
   let res: Response;

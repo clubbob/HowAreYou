@@ -10,16 +10,9 @@ type Props = {
   onClose: () => void;
 };
 
-const isValidEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
-const isGmailOrGoogle = (v: string) => {
-  const domain = v.trim().toLowerCase().split('@')[1] || '';
-  return domain === 'gmail.com' || domain === 'googlemail.com';
-};
-
 export function BetaModal({ open, onClose }: Props) {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'already_registered' | 'full' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
   const closeBtnRef = useRef<HTMLButtonElement>(null);
@@ -32,7 +25,6 @@ export function BetaModal({ open, onClose }: Props) {
       setErrorMsg('');
       setName('');
       setPhone('');
-      setEmail('');
       document.body.style.overflow = '';
     } else {
       document.body.style.overflow = 'hidden';
@@ -58,18 +50,9 @@ export function BetaModal({ open, onClose }: Props) {
     e.preventDefault();
     const trimmedName = name.trim();
     const trimmedPhone = phone.trim();
-    const trimmedEmail = email.trim();
-    if (!trimmedName || !trimmedPhone || !trimmedEmail || submittingRef.current) return;
+    if (!trimmedName || !trimmedPhone || submittingRef.current) return;
     if (!isValidPhone(trimmedPhone)) {
       setErrorMsg('올바른 휴대폰 번호를 입력해 주세요. (10~11자리)');
-      return;
-    }
-    if (!isValidEmail(trimmedEmail)) {
-      setErrorMsg('올바른 이메일 주소를 입력해 주세요.');
-      return;
-    }
-    if (!isGmailOrGoogle(trimmedEmail)) {
-      setErrorMsg('Play 스토어 테스터 등록을 위해 Gmail 주소를 입력해 주세요. (예: example@gmail.com)');
       return;
     }
     submittingRef.current = true;
@@ -79,11 +62,9 @@ export function BetaModal({ open, onClose }: Props) {
       const result = await addToWaitlist({
         name: trimmedName,
         phone: normalizePhone(trimmedPhone),
-        email: trimmedEmail,
       });
       setName('');
       setPhone('');
-      setEmail('');
       setStatus(result.status === 'already_registered' ? 'already_registered' : result.status === 'full' ? 'full' : 'success');
     } catch (err) {
       setStatus('error');
@@ -106,7 +87,7 @@ export function BetaModal({ open, onClose }: Props) {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-5 flex items-center justify-between">
-          <h2 className="text-xl font-bold text-navy-900">1년 무료 베타 참여 신청</h2>
+          <h2 className="text-xl font-bold text-navy-900">1년 무료 혜택 신청</h2>
           <button
             ref={closeBtnRef}
             type="button"
@@ -129,9 +110,7 @@ export function BetaModal({ open, onClose }: Props) {
             </div>
             <p className="text-lg font-semibold text-navy-900">1년 무료 혜택 신청이 완료되었습니다.</p>
             <p className="mt-2 text-[17px] leading-[1.6] text-navy-600">
-              앱에서 동일 휴대폰 번호로 가입하면 1년 무료로 이용하실 수 있습니다.
-              <br />
-              앱 설치 후 바로 이용을 시작하세요.
+              &quot;구글 Play 스토어&quot;에서 &quot;오늘 어때&quot;를 검색해 앱 설치 시 바로 이용할 수 있습니다.
             </p>
             <button
               onClick={onClose}
@@ -205,48 +184,17 @@ export function BetaModal({ open, onClose }: Props) {
                 className="w-full rounded-[14px] border border-navy-200 px-4 py-4 text-[17px] text-navy-900 placeholder:text-navy-400 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-400/20 disabled:bg-navy-50 disabled:opacity-70"
               />
               <p className="text-[14px] text-navy-500">하이픈(-) 없이 번호만 입력하세요</p>
-              <label className="block text-[15px] font-medium text-navy-700">이메일</label>
-              <input
-                type="email"
-                inputMode="email"
-                autoComplete="email"
-                value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                  if (errorMsg) setErrorMsg('');
-                }}
-                placeholder="example@gmail.com"
-                required
-                disabled={status === 'loading'}
-                className="w-full rounded-[14px] border border-navy-200 px-4 py-4 text-[17px] text-navy-900 placeholder:text-navy-400 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-400/20 disabled:bg-navy-50 disabled:opacity-70"
-              />
-              <p className="text-[14px] text-navy-700">
-                앱 설치 시 사용하는 Google 계정을 입력해 주세요.
-                <br />
-                베타 안내를 정확히 전달하기 위함입니다.
-              </p>
-              <details open className="mt-2 rounded-xl border border-navy-100 bg-navy-50/50 px-4 py-3">
-                <summary className="cursor-pointer text-[14px] font-medium text-primary-600 hover:text-primary-700">
-                  Google 계정 확인 방법
-                </summary>
-                <ul className="mt-3 space-y-1.5 text-[13px] leading-[1.5] text-navy-600">
-                  <li>• <strong>Play 스토어</strong>: 앱 찾기 → 프로필 정보 → 이메일 확인</li>
-                  <li>• <strong>설정</strong>: 설정 → 프로필 정보 → 이메일 확인</li>
-                </ul>
-              </details>
             </div>
             {errorMsg && (
               <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3" role="alert">
                 <p className="text-sm font-medium text-red-700">{errorMsg}</p>
                 <p className="mt-1 text-[13px] text-red-600/90">
-                  {errorMsg.includes('Gmail') || errorMsg.includes('이메일')
-                    ? 'Gmail 확인 방법을 참조해서 다시 입력해 주세요.'
-                    : '번호를 확인한 후 다시 시도해 주세요. 계속되면 잠시 후 시도해 주세요.'}
+                  번호를 확인한 후 다시 시도해 주세요. 계속되면 잠시 후 시도해 주세요.
                 </p>
               </div>
             )}
             <p className="mt-4 text-[15px] leading-[1.5] text-navy-500">
-              입력하신 정보는 베타 안내 및 연락 목적 외에는 사용되지 않습니다.
+              혜택 적용은 앱 설치 후 동일 휴대폰 번호로 가입하면 자동으로 됩니다.
             </p>
             <div className="mt-6 flex gap-3">
               <button

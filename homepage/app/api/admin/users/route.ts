@@ -18,7 +18,7 @@ export async function GET() {
     db.collection('waitlist').limit(500).get(),
   ]);
 
-  // 베타 신청(waitlist) 데이터: 전화번호 → { name, email }
+  // 1년 무료 혜택 신청(waitlist) 데이터: 전화번호 → { name, email }
   const phoneToWaitlist = new Map<string, { name: string; email: string }>();
   waitlistSnap.docs.forEach((doc) => {
     const d = doc.data();

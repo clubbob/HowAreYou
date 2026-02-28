@@ -51,7 +51,7 @@ export function HeroSection() {
           <p className="rounded-xl bg-primary-50/80 px-5 py-3 text-center text-[11px] font-bold leading-[1.5] text-primary-600 sm:px-6 sm:py-4 sm:text-[13px] md:text-[15px]">
             1개월 무료 체험
             <br />
-            베타 참여자에게는 1년 무료 혜택 제공
+            출시 기념 참여자에게는 1년 무료 혜택 제공
           </p>
         </div>
       </div>

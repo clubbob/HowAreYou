@@ -81,8 +81,9 @@ export function StartModal({ open, onClose, onWaitlistClick }: Props) {
                 onClick={handleWaitlist}
                 className="flex h-[52px] w-full items-center justify-center rounded-[14px] border border-navy-200 py-4 text-[17px] font-medium text-navy-700 transition-colors hover:bg-navy-50 active:bg-navy-100"
               >
-                베타로 1년 무료 참여하기
+                1년 무료 혜택 신청하기
               </button>
+              <p className="mt-2 text-center text-[14px] text-navy-500">출시 기념 혜택입니다.</p>
             </div>
           </div>
         </div>

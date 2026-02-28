@@ -3,7 +3,7 @@ import { getAdminFirestore } from '@/lib/firebase-admin';
 import { BETA } from '@/lib/config/beta';
 import { normalizePhone } from '@/lib/phone';
 
-/** 베타 1기 waitlist 등록 여부 확인 (앱에서 betaCohort 부여용) */
+/** 1년 무료 혜택 waitlist 등록 여부 확인 (앱에서 betaCohort 부여용) */
 export async function GET(request: NextRequest) {
   try {
     const phone = request.nextUrl.searchParams.get('phone');
