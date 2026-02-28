@@ -1919,7 +1919,7 @@ class _GuardianSettingsScreenState extends State<GuardianSettingsScreen> {
   bool _notificationSoundEnabled = true;
   bool _isLoading = true;
   String _appVersion = '-';
-  ({String phone, DateTime? createdAt, String subscriptionStatus, DateTime? subscriptionExpiry})? _accountInfo;
+  ({String phone, DateTime? createdAt, String subscriptionStatus, DateTime? subscriptionExpiry, String? betaCohort})? _accountInfo;
 
   @override
   void initState() {
