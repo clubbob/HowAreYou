@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { verifyAdminSession } from '@/lib/admin-auth';
 import { getAdminFirestore } from '@/lib/firebase-admin';
+import { normalizePhone } from '@/lib/phone';
 
 export async function GET() {
   if (!(await verifyAdminSession())) {
@@ -12,7 +13,24 @@ export async function GET() {
   }
 
   try {
-    const snap = await db.collection('inquiries').orderBy('createdAt', 'desc').limit(200).get();
+    const [inquiriesSnap, waitlistSnap] = await Promise.all([
+      db.collection('inquiries').orderBy('createdAt', 'desc').limit(200).get(),
+      db.collection('waitlist').limit(500).get(),
+    ]);
+
+    const phoneToWaitlist = new Map<string, { name: string; email: string }>();
+    waitlistSnap.docs.forEach((doc) => {
+      const d = doc.data();
+      const phone = normalizePhone((d.phone ?? '').toString());
+      if (phone.length >= 10) {
+        phoneToWaitlist.set(phone, {
+          name: (d.name ?? '').toString().trim(),
+          email: (d.email ?? '').toString().trim(),
+        });
+      }
+    });
+
+    const snap = inquiriesSnap;
     const list = snap.docs.map((doc) => {
       try {
         const d = doc.data();
@@ -40,11 +58,16 @@ export async function GET() {
           }
           return { message: r.message ?? '', createdAt: dt.toISOString() };
         });
+        const userPhone = d.userPhone ?? '';
+        const phoneNorm = normalizePhone(userPhone);
+        const waitlistData = phoneToWaitlist.get(phoneNorm);
         return {
           id: doc.id,
           userId: d.userId ?? '',
-          userPhone: d.userPhone ?? '',
+          userPhone,
           userDisplayName: d.userDisplayName ?? null,
+          userName: (waitlistData?.name || d.userDisplayName) ?? null,
+          userEmail: waitlistData?.email ?? null,
           role: d.role ?? 'subject',
           inquiryCode: d.inquiryCode ?? null,
           message: d.message ?? '',
@@ -59,6 +82,8 @@ export async function GET() {
           userId: '',
           userPhone: '',
           userDisplayName: null,
+          userName: null,
+          userEmail: null,
           role: 'visitor',
           inquiryCode: null,
           message: '(파싱 오류)',

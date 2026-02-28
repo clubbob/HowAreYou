@@ -25,6 +25,8 @@ type Inquiry = {
   userId: string;
   userPhone: string;
   userDisplayName: string | null;
+  userName?: string | null;
+  userEmail?: string | null;
   role: string;
   inquiryCode?: string | null;
   message: string;
@@ -46,8 +48,10 @@ export default function AdminInquiriesPage() {
   async function load() {
     setLoading(true);
     setError('');
+    const ctrl = new AbortController();
+    const timeout = setTimeout(() => ctrl.abort(), 30000);
     try {
-      const res = await fetch('/api/admin/inquiries', { credentials: 'include' });
+      const res = await fetch('/api/admin/inquiries', { credentials: 'include', signal: ctrl.signal });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         throw new Error(data.error || (res.status === 401 ? '로그인이 필요합니다.' : '조회에 실패했습니다.'));
@@ -55,10 +59,15 @@ export default function AdminInquiriesPage() {
       setList(Array.isArray(data) ? data : []);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      setError(msg === 'Failed to fetch'
-        ? '서버에 연결할 수 없습니다. 개발 서버가 실행 중인지 확인해 주세요.'
-        : msg);
+      setError(
+        msg === 'Failed to fetch'
+          ? '서버에 연결할 수 없습니다. 개발 서버가 실행 중인지 확인해 주세요.'
+          : (e instanceof Error && e.name === 'AbortError')
+            ? '요청 시간이 초과되었습니다. 새로고침해 주세요.'
+            : msg
+      );
     } finally {
+      clearTimeout(timeout);
       setLoading(false);
     }
   }
@@ -226,7 +235,7 @@ export default function AdminInquiriesPage() {
           {selected ? (
             <div className="p-6">
               <div className="text-sm text-slate-500 mb-2">
-                {(selected.role === 'visitor' && selected.inquiryCode) ? `문의번호 ${selected.inquiryCode}` : `${selected.userPhone ?? ''} · ${selected.userDisplayName ?? '-'}`} · {roleLabel(selected.role)}
+                {(selected.role === 'visitor' && selected.inquiryCode) ? `문의번호 ${selected.inquiryCode}` : `${selected.userPhone ?? ''} · ${selected.userName ?? selected.userDisplayName ?? '-'}${selected.userEmail ? ` · ${selected.userEmail}` : ''}`} · {roleLabel(selected.role)}
                 {selected.deletedByUserAt && (
                   <span className="ml-2 px-2 py-0.5 rounded text-xs font-medium bg-slate-200 text-slate-600">
                     문의자 삭제됨

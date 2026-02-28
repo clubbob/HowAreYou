@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { verifyAdminSession } from '@/lib/admin-auth';
 import { getAdminFirestore } from '@/lib/firebase-admin';
+import { normalizePhone } from '@/lib/phone';
 
 export async function GET() {
   if (!(await verifyAdminSession())) {
@@ -11,10 +12,24 @@ export async function GET() {
     return NextResponse.json({ error: 'Firestore not configured' }, { status: 500 });
   }
 
-  const [usersSnap, subjectsSnap] = await Promise.all([
+  const [usersSnap, subjectsSnap, waitlistSnap] = await Promise.all([
     db.collection('users').limit(500).get(),
     db.collection('subjects').get(),
+    db.collection('waitlist').limit(500).get(),
   ]);
+
+  // 베타 신청(waitlist) 데이터: 전화번호 → { name, email }
+  const phoneToWaitlist = new Map<string, { name: string; email: string }>();
+  waitlistSnap.docs.forEach((doc) => {
+    const d = doc.data();
+    const phone = normalizePhone((d.phone ?? '').toString());
+    if (phone.length >= 10) {
+      phoneToWaitlist.set(phone, {
+        name: (d.name ?? '').toString().trim(),
+        email: (d.email ?? '').toString().trim(),
+      });
+    }
+  });
 
   const uidToPhone = new Map<string, string>();
   usersSnap.docs.forEach((doc) => {
@@ -62,10 +77,15 @@ export async function GET() {
     const createdAt = d.createdAt?.toDate?.();
     const lastFcmSentAt = d.lastFcmSentAt?.toDate?.();
     const lastFcmOpenedAt = d.lastFcmOpenedAt?.toDate?.();
+    const phoneRaw = d.phone ?? '';
+    const phoneNorm = normalizePhone(phoneRaw);
+    const waitlistData = phoneToWaitlist.get(phoneNorm);
     return {
       id: uid,
-      phone: d.phone ?? '',
+      phone: phoneRaw,
       displayName: d.displayName ?? null,
+      name: (waitlistData?.name || d.displayName) ?? null,
+      email: waitlistData?.email ?? null,
       role,
       createdAt: createdAt ? createdAt.toISOString() : null,
       lastFcmSentAt: lastFcmSentAt ? lastFcmSentAt.toISOString() : null,
@@ -98,6 +118,8 @@ export async function GET() {
       guardianPhones: [...new Set([...(existing.guardianPhones ?? []), ...(u.guardianPhones ?? [])])].filter(Boolean),
       wardPhones: [...new Set([...(existing.wardPhones ?? []), ...(u.wardPhones ?? [])])].filter(Boolean),
       displayName: existing.displayName || u.displayName || null,
+      name: existing.name || u.name || null,
+      email: existing.email || u.email || null,
       createdAt:
         existing.createdAt && u.createdAt && new Date(u.createdAt) < new Date(existing.createdAt)
           ? u.createdAt

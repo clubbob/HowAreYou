@@ -22,10 +22,19 @@ const defaultStats: Stats = {
   serviceFeedbackCount: 0,
 };
 
+function formatRelativeTime(date: Date): string {
+  const sec = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (sec < 60) return '방금 전';
+  if (sec < 3600) return `${Math.floor(sec / 60)}분 전`;
+  if (sec < 86400) return `${Math.floor(sec / 3600)}시간 전`;
+  return `${Math.floor(sec / 86400)}일 전`;
+}
+
 export function AdminStats() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [lastLoadedAt, setLastLoadedAt] = useState<Date | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -35,6 +44,7 @@ export function AdminStats() {
       if (!res.ok) throw new Error('조회 실패');
       const data = await res.json();
       setStats(data);
+      setLastLoadedAt(new Date());
     } catch {
       setStats(defaultStats);
       setError(true);
@@ -49,7 +59,7 @@ export function AdminStats() {
 
   if (loading && !stats) {
     return (
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6 mb-6">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5 mb-6">
         {[1, 2, 3, 4, 5].map((i) => (
           <div key={i} className="p-4 bg-white rounded-xl border border-slate-200 animate-pulse">
             <div className="h-4 bg-slate-200 rounded w-20 mb-2" />
@@ -75,11 +85,6 @@ export function AdminStats() {
       highlight: displayStats.unansweredInquiriesCount > 0,
     },
     {
-      label: '전체 문의',
-      value: displayStats.inquiriesCount,
-      href: '/admin/inquiries',
-    },
-    {
       label: '공지사항',
       value: displayStats.announcementsCount,
       href: '/admin/announcements',
@@ -88,6 +93,7 @@ export function AdminStats() {
       label: '베타 1기 신청 리스트',
       value: displayStats.waitlistCount,
       href: '/admin/waitlist',
+      highlight: displayStats.waitlistCount > 0,
     },
     {
       label: '서비스 개선',
@@ -120,7 +126,21 @@ export function AdminStats() {
           </button>
         </div>
       )}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
+      <div className="mb-4 flex items-center justify-between">
+        {lastLoadedAt ? (
+          <span className="text-sm text-slate-500">마지막 조회: {formatRelativeTime(lastLoadedAt)}</span>
+        ) : (
+          <span />
+        )}
+        <button
+          onClick={load}
+          disabled={loading}
+          className="px-3 py-1.5 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 text-sm disabled:opacity-50"
+        >
+          {loading ? '새로고침 중...' : '새로고침'}
+        </button>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {cards.map((c) => (
           <Link
             key={c.label}

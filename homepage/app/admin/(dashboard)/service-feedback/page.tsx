@@ -7,6 +7,8 @@ type Feedback = {
   userId: string;
   userPhone: string | null;
   userDisplayName: string | null;
+  userName?: string | null;
+  userEmail?: string | null;
   source?: string;
   satisfaction: number;
   satisfactionLabel: string;
@@ -31,8 +33,10 @@ export default function AdminServiceFeedbackPage() {
   async function load() {
     setLoading(true);
     setError('');
+    const ctrl = new AbortController();
+    const timeout = setTimeout(() => ctrl.abort(), 30000);
     try {
-      const res = await fetch('/api/admin/service-feedback', { credentials: 'include' });
+      const res = await fetch('/api/admin/service-feedback', { credentials: 'include', signal: ctrl.signal });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         throw new Error(
@@ -45,9 +49,12 @@ export default function AdminServiceFeedbackPage() {
       setError(
         msg === 'Failed to fetch'
           ? '서버에 연결할 수 없습니다. 개발 서버가 실행 중인지 확인해 주세요.'
-          : msg
+          : (e instanceof Error && e.name === 'AbortError')
+            ? '요청 시간이 초과되었습니다. 새로고침해 주세요.'
+            : msg
       );
     } finally {
+      clearTimeout(timeout);
       setLoading(false);
     }
   }
@@ -104,12 +111,14 @@ export default function AdminServiceFeedbackPage() {
 
   const dateFiltered =
     dateCutoff === 0 ? list : list.filter((f) => new Date(f.createdAt).getTime() >= dateCutoff);
-  const phoneNorm = (s: string) => s.replace(/\D/g, '');
   const filteredList = phoneSearch.trim()
     ? dateFiltered.filter((f) => {
-        const p = (f.userPhone ?? '').replace(/\D/g, '');
-        const q = phoneNorm(phoneSearch);
-        return p.includes(q) || q.includes(p);
+        const q = phoneSearch.trim().toLowerCase();
+        const qDigits = q.replace(/\D/g, '');
+        const matchPhone = qDigits.length >= 4 && (f.userPhone ?? '').replace(/\D/g, '').includes(qDigits);
+        const matchName = (f.userName ?? f.userDisplayName ?? '').toLowerCase().includes(q);
+        const matchEmail = (f.userEmail ?? '').toLowerCase().includes(q);
+        return matchPhone || matchName || matchEmail;
       })
     : dateFiltered;
 
@@ -132,15 +141,15 @@ export default function AdminServiceFeedbackPage() {
       <div className="mb-4 flex flex-wrap gap-4 items-center">
         <div className="flex items-center gap-2">
           <label htmlFor="phone-search" className="text-sm text-slate-500">
-            전화번호:
+            검색:
           </label>
           <input
             id="phone-search"
             type="text"
             value={phoneSearch}
             onChange={(e) => setPhoneSearch(e.target.value)}
-            placeholder="번호로 검색"
-            className="px-3 py-1.5 border border-slate-300 rounded-lg text-sm w-40 focus:ring-2 focus:ring-blue-500"
+            placeholder="전화번호, 이름, 이메일"
+            className="px-3 py-1.5 border border-slate-300 rounded-lg text-sm w-48 focus:ring-2 focus:ring-blue-500"
           />
         </div>
         <div className="flex gap-2 items-center">
@@ -210,7 +219,7 @@ export default function AdminServiceFeedbackPage() {
                   </div>
                 </div>
                 <p className="text-xs text-slate-500 mt-1 truncate">
-                  {f.userPhone || f.userDisplayName || f.userId || '-'}
+                  {f.userName ?? f.userDisplayName ?? f.userPhone ?? f.userId ?? '-'}
                   {f.continueIntent && ` · ${f.continueIntent}`}
                 </p>
               </div>
@@ -220,7 +229,7 @@ export default function AdminServiceFeedbackPage() {
                 {list.length === 0
                   ? '피드백이 없습니다.'
                   : phoneSearch.trim()
-                    ? '해당 전화번호의 피드백이 없습니다.'
+                    ? '해당 검색 결과가 없습니다.'
                     : '해당 기간의 피드백이 없습니다.'}
               </div>
             )}

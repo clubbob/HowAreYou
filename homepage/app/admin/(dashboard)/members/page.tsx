@@ -6,6 +6,8 @@ type User = {
   id: string;
   phone: string;
   displayName: string | null;
+  name: string | null;
+  email: string | null;
   role: string;
   createdAt: string | null;
   lastFcmSentAt: string | null;
@@ -33,14 +35,20 @@ export default function AdminMembersPage() {
 
   function load() {
     setLoading(true);
-    fetch('/api/admin/users')
+    setError('');
+    const ctrl = new AbortController();
+    const timeout = setTimeout(() => ctrl.abort(), 30000);
+    fetch('/api/admin/users', { signal: ctrl.signal })
       .then((res) => {
         if (!res.ok) throw new Error('조회 실패');
         return res.json();
       })
       .then(setList)
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
+      .catch((e) => setError(e.name === 'AbortError' ? '요청 시간이 초과되었습니다. 새로고침해 주세요.' : e.message))
+      .finally(() => {
+        clearTimeout(timeout);
+        setLoading(false);
+      });
   }
 
   useEffect(() => {
@@ -56,7 +64,9 @@ export default function AdminMembersPage() {
       const matchSearch =
         !search.trim() ||
         u.phone.includes(search.trim()) ||
-        (u.displayName ?? '').toLowerCase().includes(search.trim().toLowerCase());
+        (u.displayName ?? '').toLowerCase().includes(search.trim().toLowerCase()) ||
+        (u.name ?? '').toLowerCase().includes(search.trim().toLowerCase()) ||
+        (u.email ?? '').toLowerCase().includes(search.trim().toLowerCase());
       const matchRole = !roleFilter || u.role === roleFilter;
       return matchSearch && matchRole;
     });
@@ -71,8 +81,8 @@ export default function AdminMembersPage() {
         const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
         return ta - tb;
       }
-      const na = (a.displayName ?? a.phone ?? '').toLowerCase();
-      const nb = (b.displayName ?? b.phone ?? '').toLowerCase();
+      const na = (a.name ?? a.displayName ?? a.phone ?? '').toLowerCase();
+      const nb = (b.name ?? b.displayName ?? b.phone ?? '').toLowerCase();
       if (sortKey === 'name-asc') return na.localeCompare(nb);
       return nb.localeCompare(na);
     });
@@ -179,7 +189,7 @@ export default function AdminMembersPage() {
       <div className="mb-6 flex flex-wrap gap-4 items-center">
         <input
           type="text"
-          placeholder="전화번호 또는 이름 검색"
+          placeholder="전화번호, 이름, 이메일 검색"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="px-4 py-2 border border-slate-300 rounded-lg w-64"
@@ -236,7 +246,9 @@ export default function AdminMembersPage() {
                 />
               </th>
               <th className="w-16 min-w-[4rem] text-left py-3 px-4 text-sm font-medium text-slate-600 whitespace-nowrap">번호</th>
+              <th className="text-left py-3 px-4 text-sm font-medium text-slate-600">이름</th>
               <th className="text-left py-3 px-4 text-sm font-medium text-slate-600">전화번호</th>
+              <th className="text-left py-3 px-4 text-sm font-medium text-slate-600">이메일</th>
               <th className="text-left py-3 px-4 text-sm font-medium text-slate-600">가입일시</th>
               <th className="text-left py-3 px-4 text-sm font-medium text-slate-600">역할</th>
               <th className="text-left py-3 px-4 text-sm font-medium text-slate-600">연결된 보호자</th>
@@ -262,7 +274,9 @@ export default function AdminMembersPage() {
                   />
                 </td>
                 <td className="w-16 min-w-[4rem] py-3 px-4 text-sm text-slate-600">{filtered.length - (page - 1) * PAGE_SIZE - idx}</td>
+                <td className="py-3 px-4 text-sm">{u.name ?? u.displayName ?? '-'}</td>
                 <td className="py-3 px-4 font-mono text-sm">{u.phone || '-'}</td>
+                <td className="py-3 px-4 text-sm text-slate-600">{u.email ?? '-'}</td>
                 <td className="py-3 px-4 text-sm text-slate-600">
                   {u.createdAt ? new Date(u.createdAt).toLocaleString('ko-KR') : '-'}
                 </td>
@@ -348,12 +362,16 @@ export default function AdminMembersPage() {
             </div>
             <dl className="space-y-3">
               <div>
+                <dt className="text-sm text-slate-500">이름</dt>
+                <dd>{selectedUser.name ?? selectedUser.displayName ?? '-'}</dd>
+              </div>
+              <div>
                 <dt className="text-sm text-slate-500">전화번호</dt>
                 <dd className="font-mono">{selectedUser.phone || '-'}</dd>
               </div>
               <div>
-                <dt className="text-sm text-slate-500">이름</dt>
-                <dd>{selectedUser.displayName ?? '-'}</dd>
+                <dt className="text-sm text-slate-500">이메일</dt>
+                <dd className="text-sm">{selectedUser.email ?? '-'}</dd>
               </div>
               <div>
                 <dt className="text-sm text-slate-500">역할</dt>
