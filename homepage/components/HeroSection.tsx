@@ -24,15 +24,21 @@ export function HeroSection() {
           />
           <span className="text-2xl font-bold text-navy-900 sm:text-3xl">오늘 어때?</span>
         </div>
+        <p className="mb-2 text-[13px] text-navy-500 sm:text-[14px]">떨어져 사는 가족을 위한 안심 루틴 앱</p>
         <h1 className="mb-4 text-[1.5rem] font-bold leading-[1.3] tracking-tight text-navy-900 sm:mb-5 sm:text-[2rem] md:text-[2.5rem]">
-          소중한 사람과 안부를 나누는 앱
+          전화 대신, 하루 한 번 3초 안부.
         </h1>
-        <p className="mb-8 text-base font-medium leading-[1.65] text-primary-400 sm:text-lg md:text-xl">
-          매일 전화하지 않아도, 안부는 전해집니다.
+        <p className="mb-4 text-base font-medium leading-[1.65] text-primary-400 sm:text-lg md:text-xl">
+          버튼 한 번이면 오늘의 안부는 끝납니다.
           <br className="hidden sm:block" />
-          <span className="sm:ml-1">작은 기록 하나로 서로의 안심을 확인하세요.</span>
+          <span className="sm:ml-1">부담 없이 이어지는 가족의 안심 루틴.</span>
         </p>
-        <p className="mb-8 text-[14px] text-navy-500 sm:text-[15px]">Android에서 먼저 시작합니다.</p>
+        <p className="mb-6 text-[12px] leading-[1.5] text-navy-400 sm:text-[13px]">
+          위치 추적 기능은 없습니다.
+          <br />
+          사용자가 직접 남긴 안부만 공유됩니다.
+        </p>
+        <p className="mb-8 text-[14px] text-navy-500 sm:text-[15px]">현재 Android에서 먼저 이용 가능합니다.</p>
 
         <div className="flex w-full max-w-sm flex-col items-center gap-4 sm:max-w-md sm:gap-5">
           <button
@@ -40,10 +46,12 @@ export function HeroSection() {
             onClick={() => setShowStartModal(true)}
             className="flex h-14 w-full items-center justify-center rounded-[16px] bg-primary-400 px-10 text-[18px] font-bold text-white shadow-[0_4px_20px_rgba(74,144,226,0.35)] transition-all hover:bg-primary-500 hover:shadow-[0_6px_24px_rgba(74,144,226,0.4)] active:scale-[0.98] sm:h-16 sm:text-[20px]"
           >
-            1개월 무료 체험하기
+            무료로 안심 시작하기
           </button>
-          <p className="whitespace-nowrap overflow-x-auto rounded-xl bg-primary-50/80 px-5 py-3 text-center text-[11px] font-bold text-primary-600 sm:px-6 sm:py-4 sm:text-[13px] md:text-[15px]">
-            베타 1기 선착순 100명 · 1년 무료 혜택 신청 가능
+          <p className="rounded-xl bg-primary-50/80 px-5 py-3 text-center text-[11px] font-bold leading-[1.5] text-primary-600 sm:px-6 sm:py-4 sm:text-[13px] md:text-[15px]">
+            1개월 무료 체험
+            <br />
+            베타 참여자에게는 1년 무료 혜택 제공
           </p>
         </div>
       </div>

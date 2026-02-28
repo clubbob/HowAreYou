@@ -10,7 +10,7 @@ const ITEMS = [
     ),
   },
   {
-    text: '일상을 감시하는 기능은 없습니다.',
+    text: '일상을 감시하지 않습니다.',
     icon: (
       <svg className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -20,7 +20,7 @@ const ITEMS = [
     ),
   },
   {
-    text: '누군가를 판단하거나 점수를 매기지 않습니다.',
+    text: '사람을 평가하거나 점수를 매기지 않습니다.',
     icon: (
       <svg className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
@@ -32,7 +32,7 @@ const ITEMS = [
 
 export function TrustSection() {
   return (
-    <section className="bg-navy-50 px-4 py-14 sm:px-6 sm:py-16 md:py-24">
+    <section className="bg-white px-4 py-14 sm:px-6 sm:py-16 md:py-24">
       <div className="mx-auto max-w-4xl">
         <h2 className="mb-4 text-center text-[1.375rem] font-bold leading-[1.4] text-navy-900 sm:text-[1.75rem]">
           우리가 하지 않는 것

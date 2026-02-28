@@ -1,9 +1,9 @@
 import { HeroSection } from '@/components/HeroSection';
 import { StatsSection } from '@/components/StatsSection';
 import { ProblemSection } from '@/components/ProblemSection';
+import { KakaoCompareSection } from '@/components/KakaoCompareSection';
 import { ServiceSection } from '@/components/ServiceSection';
 import { PricingSection } from '@/components/PricingSection';
-import { RecommendSection } from '@/components/RecommendSection';
 import { TrustSection } from '@/components/TrustSection';
 import { FaqSection } from '@/components/FaqSection';
 import { AnnouncementsSection } from '@/components/AnnouncementsSection';
@@ -22,12 +22,12 @@ export default function HomePage() {
       <FadeInSection>
         <ProblemSection />
       </FadeInSection>
+      <FadeInSection>
+        <KakaoCompareSection />
+      </FadeInSection>
       <ServiceSection />
       <FadeInSection>
         <PricingSection />
-      </FadeInSection>
-      <FadeInSection>
-        <RecommendSection />
       </FadeInSection>
       <FadeInSection>
         <TrustSection />

@@ -3,16 +3,19 @@
 import { useEffect, useRef, useState } from 'react';
 
 const STEPS = [
-  { title: '간단하게 남깁니다', subtitle: '버튼 한 번으로 오늘의 안부를 기록합니다. 길게 쓰지 않아도 괜찮습니다.' },
+  {
+    title: '간단하게 남깁니다',
+    subtitle: '버튼 한 번으로 오늘의 안부를 남깁니다.\n길게 쓰지 않아도 괜찮습니다.',
+  },
   {
     title: '필요한 순간에만 안내합니다',
     subtitle:
-      '기록을 하면 보호자에게 알림이 전달됩니다. 기록이 없을 때는 당일 저녁 7시에 안부 인사만 발송됩니다. 불필요한 알림은 보내지 않습니다.',
+      '기록하면 상대에게 알림이 전달됩니다.\n기록이 없으면 저녁 7시에만 한 번 안내합니다.\n불필요한 알림은 보내지 않습니다.',
   },
   {
     title: '3일 이상 신호가 없을 때',
     subtitle:
-      '3일 연속 기록이 없으면 보호자에게 알림이 전달됩니다. 조용하지만 놓치지 않는 구조입니다.',
+      '3일 연속 기록이 없으면 보호자에게 알림이 전달됩니다.\n조용하지만, 놓치지 않는 구조입니다.',
   },
 ];
 
@@ -118,7 +121,7 @@ export function ServiceSection() {
                 </span>
                 <span className="flex flex-col gap-1 transition-colors duration-300 group-hover:text-primary-600">
                   <span className="text-[18px] font-medium text-navy-800">{s.title}</span>
-                  <span className="text-[16px] text-navy-600">{s.subtitle}</span>
+                  <span className="whitespace-pre-line text-[16px] text-navy-600">{s.subtitle}</span>
                 </span>
               </div>
             </div>

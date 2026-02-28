@@ -49,7 +49,7 @@ export function StartModal({ open, onClose, onWaitlistClick }: Props) {
           onClick={(e) => e.stopPropagation()}
         >
           <div className="mb-5 flex items-center justify-between">
-            <h2 className="text-xl font-bold text-navy-900">안심 시작하기</h2>
+            <h2 className="text-xl font-bold text-navy-900">지금 안심 시작하기</h2>
             <button
               ref={closeBtnRef}
               type="button"
@@ -73,6 +73,7 @@ export function StartModal({ open, onClose, onWaitlistClick }: Props) {
               >
                 Android 앱 설치하기
               </a>
+              <p className="mt-2 text-center text-[14px] text-navy-500">Google Play로 이동합니다.</p>
             </div>
             <div>
               <button
@@ -80,9 +81,8 @@ export function StartModal({ open, onClose, onWaitlistClick }: Props) {
                 onClick={handleWaitlist}
                 className="flex h-[52px] w-full items-center justify-center rounded-[14px] border border-navy-200 py-4 text-[17px] font-medium text-navy-700 transition-colors hover:bg-navy-50 active:bg-navy-100"
               >
-                베타 1기 신청
+                베타로 1년 무료 참여하기
               </button>
-              <p className="mt-2 text-center text-[14px] text-navy-500">베타 1기 신청 시 1년 무료</p>
             </div>
           </div>
         </div>

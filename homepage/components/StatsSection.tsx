@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 const ITEMS = [
-  { value: '350만', label: '혼자 사는 노인', accent: 'border-l-primary-500' },
+  { value: '350만+', label: '혼자 사는 노인', accent: 'border-l-primary-500' },
   { value: '700만+', label: '1인 가구', accent: 'border-l-primary-600' },
   { value: '50만+', label: '자취·기숙 학생, 유학생', accent: 'border-l-primary-500' },
 ];
@@ -73,6 +73,8 @@ export function StatsSection() {
           }}
         >
           우리는 점점 혼자 살고 있습니다.
+          <br />
+          그래서, 걱정은 더 잦아졌습니다.
         </h2>
 
         <div className="grid grid-cols-1 gap-6 sm:gap-8 md:grid-cols-3 md:gap-6">
@@ -113,9 +115,7 @@ export function StatsSection() {
             transition: reduceMotion ? 'none' : `opacity 0.5s ease-out 0.5s`,
           }}
         >
-          우리는 점점 따로 살고 있습니다.
-          <br className="sm:hidden" />
-          <span className="sm:ml-1">그래서 안부를 전하는 방식도 달라져야 합니다.</span>
+          그래서, 안부를 전하는 방식은 바뀌어야 합니다.
         </p>
 
         <p className="mt-4 text-center text-[12px] text-navy-400">

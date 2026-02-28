@@ -106,7 +106,7 @@ export function BetaModal({ open, onClose }: Props) {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-5 flex items-center justify-between">
-          <h2 className="text-xl font-bold text-navy-900">{BETA.cohortName} {BETA.cohortActionLabel}</h2>
+          <h2 className="text-xl font-bold text-navy-900">1년 무료 베타 참여 신청</h2>
           <button
             ref={closeBtnRef}
             type="button"
@@ -220,10 +220,14 @@ export function BetaModal({ open, onClose }: Props) {
                 disabled={status === 'loading'}
                 className="w-full rounded-[14px] border border-navy-200 px-4 py-4 text-[17px] text-navy-900 placeholder:text-navy-400 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-400/20 disabled:bg-navy-50 disabled:opacity-70"
               />
-              <p className="text-[14px] text-red-600">"Play 스토어" 설치 시 사용하는 Google 이메일을 입력해 주세요.</p>
+              <p className="text-[14px] text-navy-700">
+                앱 설치 시 사용하는 Google 계정을 입력해 주세요.
+                <br />
+                베타 안내를 정확히 전달하기 위함입니다.
+              </p>
               <details open className="mt-2 rounded-xl border border-navy-100 bg-navy-50/50 px-4 py-3">
-                <summary className="cursor-pointer text-[14px] font-medium text-red-600 hover:text-red-700">
-                  Google 이메일 찾는 방법
+                <summary className="cursor-pointer text-[14px] font-medium text-primary-600 hover:text-primary-700">
+                  Google 계정 확인 방법
                 </summary>
                 <ul className="mt-3 space-y-1.5 text-[13px] leading-[1.5] text-navy-600">
                   <li>• <strong>Play 스토어</strong>: 앱 찾기 → 프로필 정보 → 이메일 확인</li>
@@ -242,7 +246,7 @@ export function BetaModal({ open, onClose }: Props) {
               </div>
             )}
             <p className="mt-4 text-[15px] leading-[1.5] text-navy-500">
-              입력하신 정보는 안내 목적으로만 사용됩니다.
+              입력하신 정보는 베타 안내 및 연락 목적 외에는 사용되지 않습니다.
             </p>
             <div className="mt-6 flex gap-3">
               <button

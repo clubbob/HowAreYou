@@ -1,15 +1,15 @@
 export function ProblemSection() {
   const items = [
-    '혼자 사는 부모님 또는 자녀가 걱정될 때',
-    '내가 혼자 사는데 연락할 보호자가 필요할 때',
-    '떨어져 있는 가족 또는 지인의 안부가 궁금할 때',
+    '혼자 사는 부모님이 걱정될 때',
+    '혼자 살며, 누군가와 안부를 나누고 싶을 때',
+    '떨어져 있는 가족의 안부가 궁금할 때',
   ];
 
   return (
     <section className="bg-navy-50 px-4 py-14 sm:px-6 sm:py-16 md:py-24">
       <div className="mx-auto max-w-5xl">
         <h2 className="mb-10 text-center text-[1.375rem] font-bold leading-[1.4] text-navy-900 sm:mb-14 sm:text-[1.75rem]">
-          이런 분들께 필요합니다
+          이런 분이라면 꼭 필요합니다
         </h2>
 
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
