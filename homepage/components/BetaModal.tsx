@@ -69,7 +69,7 @@ export function BetaModal({ open, onClose }: Props) {
       return;
     }
     if (!isGmailOrGoogle(trimmedEmail)) {
-      setErrorMsg('Play Store 테스터 등록을 위해 Gmail 주소를 입력해 주세요. (예: example@gmail.com)');
+      setErrorMsg('Play 스토어 테스터 등록을 위해 Gmail 주소를 입력해 주세요. (예: example@gmail.com)');
       return;
     }
     submittingRef.current = true;
@@ -220,15 +220,14 @@ export function BetaModal({ open, onClose }: Props) {
                 disabled={status === 'loading'}
                 className="w-full rounded-[14px] border border-navy-200 px-4 py-4 text-[17px] text-navy-900 placeholder:text-navy-400 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-400/20 disabled:bg-navy-50 disabled:opacity-70"
               />
-              <p className="text-[14px] text-red-600">Play Store 설치 시 사용하는 Google 이메일을 입력해 주세요.</p>
+              <p className="text-[14px] text-red-600">"Play 스토어" 설치 시 사용하는 Google 이메일을 입력해 주세요.</p>
               <details open className="mt-2 rounded-xl border border-navy-100 bg-navy-50/50 px-4 py-3">
                 <summary className="cursor-pointer text-[14px] font-medium text-red-600 hover:text-red-700">
                   Google 이메일 찾는 방법
                 </summary>
                 <ul className="mt-3 space-y-1.5 text-[13px] leading-[1.5] text-navy-600">
-                  <li>• <strong>Play Store</strong>: 앱 실행 → 우측 상단 프로필 아이콘 → 맨 위에 표시</li>
-                  <li>• <strong>Gmail</strong>: 앱 실행 → 우측 상단 프로필 아이콘 → 이메일 확인</li>
-                  <li>• <strong>설정</strong>: 설정 → Google → 계정 관리 → 이메일 확인</li>
+                  <li>• <strong>Play 스토어</strong>: 앱 찾기 → 프로필 정보 → 이메일 확인</li>
+                  <li>• <strong>설정</strong>: 설정 → 프로필 정보 → 이메일 확인</li>
                 </ul>
               </details>
             </div>
