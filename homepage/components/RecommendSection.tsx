@@ -15,9 +15,9 @@ export function RecommendSection() {
           {ITEMS.map((item, i) => (
             <li
               key={i}
-              className="flex items-center gap-3 rounded-xl border border-primary-100 bg-white px-5 py-4 text-[17px] text-navy-800 shadow-[0_2px_12px_rgba(0,0,0,0.04)]"
+              className="group flex items-center gap-3 rounded-xl border border-primary-100 bg-white px-5 py-4 text-[17px] text-navy-800 shadow-[0_2px_12px_rgba(0,0,0,0.04)] transition-all duration-300 hover:border-primary-200 hover:shadow-[0_6px_20px_rgba(0,0,0,0.08)]"
             >
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-100 text-primary-600">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-100 text-primary-600 transition-colors duration-300 group-hover:bg-primary-200 group-hover:text-primary-700">
                 ✓
               </span>
               {item}
