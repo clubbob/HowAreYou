@@ -5,7 +5,7 @@ export const BETA = {
   /** 기수 표시명 */
   cohortName: '베타 1기',
   /** CTA 버튼 문구 */
-  cohortActionLabel: '1년 무료 혜택 신청',
+  cohortActionLabel: '테스터 1년 무료 혜택 신청',
   /** 선착순 제한 인원 */
   limit: 100,
   /** Google Play 앱 상세 페이지 (정식 출시) */

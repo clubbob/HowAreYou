@@ -40,7 +40,7 @@ export function HeroSection() {
             onClick={() => setShowStartModal(true)}
             className="flex h-14 w-full items-center justify-center rounded-[16px] bg-primary-400 px-10 text-[18px] font-bold text-white shadow-[0_4px_20px_rgba(74,144,226,0.35)] transition-all hover:bg-primary-500 hover:shadow-[0_6px_24px_rgba(74,144,226,0.4)] active:scale-[0.98] sm:h-16 sm:text-[20px]"
           >
-            1개월 무료로 안심 시작하기
+            1개월 무료 체험하기
           </button>
           <p className="whitespace-nowrap overflow-x-auto rounded-xl bg-primary-50/80 px-5 py-3 text-center text-[11px] font-bold text-primary-600 sm:px-6 sm:py-4 sm:text-[13px] md:text-[15px]">
             베타 1기 선착순 100명 · 1년 무료 혜택 신청 가능

@@ -63,7 +63,7 @@ export function PricingSection() {
             onClick={() => setShowStartModal(true)}
             className="flex h-[52px] w-full items-center justify-center rounded-[14px] bg-primary-400 text-[17px] font-semibold text-white transition-colors hover:bg-primary-500 active:bg-primary-600"
           >
-            1개월 무료로 안심 시작하기
+            1개월 무료 체험하기
           </button>
         </div>
       </div>

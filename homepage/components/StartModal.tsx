@@ -80,7 +80,6 @@ export function StartModal({ open, onClose, onWaitlistClick }: Props) {
               </a>
             </div>
             <div>
-              <p className="mb-2 text-[15px] font-medium text-navy-600">1년 무료 혜택 신청 (선착순 {BETA.limit}명)</p>
               <button
                 type="button"
                 onClick={handleWaitlist}
@@ -88,6 +87,7 @@ export function StartModal({ open, onClose, onWaitlistClick }: Props) {
               >
                 {BETA.cohortName} {BETA.cohortActionLabel}
               </button>
+              <p className="mt-2 text-center text-[14px] text-navy-500">선착순 {BETA.limit}명</p>
             </div>
           </div>
         </div>
