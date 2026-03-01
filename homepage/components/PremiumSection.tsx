@@ -5,7 +5,7 @@ const COMPARE_ROWS = [
   { feature: '자동 알림 안내', basic: '✓', premium: '✓', premiumBold: false, featureBold: false },
   { feature: '3일 이상 미기록 알림', basic: '✓', premium: '✓', premiumBold: false, featureBold: false },
   { feature: '보호대상자 등록', basic: '2명까지', premium: '무제한', premiumBold: true, featureBold: true },
-  { feature: '위험 신호 조기 감지 알림', basic: '–', premium: '✓', premiumBold: false, featureBold: true },
+  { feature: '스마트 이상 감지 알림', basic: '–', premium: '✓', premiumBold: false, featureBold: true },
 ];
 
 export function PremiumSection() {
@@ -64,6 +64,18 @@ export function PremiumSection() {
           ))}
         </div>
 
+        {/* 프리미엄 기능 설명 */}
+        <div className="mb-8 space-y-3">
+          <p className="text-[13px] leading-[1.6] text-navy-600 sm:text-[14px]">
+            <span className="font-medium text-navy-700">스마트 이상 감지 알림</span>
+            <span className="ml-1">보호자가 확인하지 않아도, 스마트 감지 시스템이 움직임을 분석해 이상 상황을 자동으로 알려드립니다.</span>
+          </p>
+          <p className="text-[13px] leading-[1.6] text-navy-600 sm:text-[14px]">
+            <span className="font-medium text-navy-700">보호대상자 무제한</span>
+            <span className="ml-1">멀리 사는 부모님, 형제님, 배우자까지… 한 번에 모두 안심하세요.</span>
+          </p>
+        </div>
+
         {/* 가격 */}
         <div className="mb-8 rounded-xl border border-navy-100 bg-navy-50/30 px-5 py-4 text-center sm:px-6 sm:py-5">
           <p className="text-[17px] font-semibold text-navy-800 sm:text-[18px]">
@@ -71,6 +83,9 @@ export function PremiumSection() {
           </p>
           <p className="mt-1.5 text-[15px] text-navy-600 sm:text-[16px]">
             연 15,000원 (약 17% 할인)
+          </p>
+          <p className="mt-2 text-[14px] text-primary-600 font-medium">
+            하루 한 잔 커피 값으로, 더 큰 안심을.
           </p>
           <p className="mt-3 text-[13px] text-navy-500 sm:text-[14px]">
             보호자만 결제합니다.
