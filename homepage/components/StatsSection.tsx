@@ -3,9 +3,9 @@
 import { useEffect, useRef, useState } from 'react';
 
 const ITEMS = [
-  { value: '350만+', label: '혼자 사는 노인', accent: 'border-l-primary-500' },
-  { value: '700만+', label: '1인 가구', accent: 'border-l-primary-600' },
-  { value: '50만+', label: '자취·기숙 학생, 유학생', accent: 'border-l-primary-500' },
+  { value: '350만+', label: '혼자 사는 부모님', accent: 'border-l-primary-500' },
+  { value: '700만+', label: '혼자 지내는 가족', accent: 'border-l-primary-600' },
+  { value: '50만+', label: '멀리 떨어진 가족', accent: 'border-l-primary-500' },
 ];
 
 export function StatsSection() {
@@ -115,7 +115,7 @@ export function StatsSection() {
             transition: reduceMotion ? 'none' : `opacity 0.5s ease-out 0.5s`,
           }}
         >
-          그래서, 안부를 전하는 방식은 바뀌어야 합니다.
+          그래서, 안부는 더 간단해야 합니다.
         </p>
 
         <p className="mt-4 text-center text-[12px] text-navy-400">

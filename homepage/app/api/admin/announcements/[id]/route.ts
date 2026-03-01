@@ -32,7 +32,11 @@ export async function PATCH(
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
 
-  const updates: Record<string, unknown> = { updatedAt: new Date() };
+  const now = new Date();
+  const updates: Record<string, unknown> = {
+    updatedAt: now,
+    createdAt: now, // 수정 시 표시 날짜 갱신 (홈페이지·정렬 반영)
+  };
   if (typeof body.title === 'string' && body.title.trim()) updates.title = body.title.trim();
   if (typeof body.content === 'string') updates.content = body.content.trim();
   if (typeof body.pinned === 'boolean') updates.pinned = body.pinned;

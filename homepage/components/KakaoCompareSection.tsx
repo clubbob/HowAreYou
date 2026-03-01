@@ -1,8 +1,8 @@
 const COMPARE_ROWS = [
-  { kakao: '매번 먼저 연락해야 합니다', ours: '버튼 한 번이면 충분합니다' },
-  { kakao: '답장이 늦으면 더 불안해집니다', ours: '기록이 없으면 자동 알림이 갑니다' },
-  { kakao: '대화가 길어지기 쉽습니다', ours: '3초면 끝납니다' },
-  { kakao: '감정이 소모됩니다', ours: '부담 없이 루틴으로 이어집니다' },
+  { kakao: '먼저 연락해야 합니다', ours: '버튼 한 번이면 충분합니다' },
+  { kakao: '답장이 늦으면 괜히 걱정됩니다', ours: '기록이 없으면 자동으로 알려줍니다' },
+  { kakao: '대화가 길어지기도 합니다', ours: '3초면 끝납니다' },
+  { kakao: '감정이 소모됩니다', ours: '부담 없이 이어집니다' },
 ];
 
 export function KakaoCompareSection() {
@@ -18,7 +18,7 @@ export function KakaoCompareSection() {
             먼저 연락하기는 망설여지고,
           </p>
           <p className="mt-1 text-[15px] leading-[1.7] text-navy-700 sm:text-[16px]">
-            답장이 없으면 더 불안해집니다.
+            답장이 없으면 괜히 걱정됩니다.
           </p>
         </div>
 
@@ -48,7 +48,7 @@ export function KakaoCompareSection() {
 
         <div className="border-l-4 border-primary-400 bg-primary-50/60 pl-5 py-3 sm:pl-6">
           <p className="text-[15px] font-bold leading-[1.6] text-navy-900 sm:text-[16px]">
-            그래서, 안부는 더 간단해져야 합니다.
+            그래서, 안부는 더 간단해야 합니다.
           </p>
         </div>
       </div>

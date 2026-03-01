@@ -83,14 +83,14 @@ export function AdminStats() {
       highlight: displayStats.unansweredInquiriesCount > 0,
     },
     {
-      label: '공지사항',
-      value: displayStats.announcementsCount,
-      href: '/admin/announcements',
-    },
-    {
       label: '서비스 개선',
       value: displayStats.serviceFeedbackCount,
       href: '/admin/service-feedback',
+    },
+    {
+      label: '공지사항',
+      value: displayStats.announcementsCount,
+      href: '/admin/announcements',
     },
   ];
 

@@ -8,6 +8,7 @@ const CONTINUE_INTENTS = [
   '고민 중입니다',
   '사용하지 않을 것 같습니다',
 ] as const;
+const NEEDS_REASON_INTENTS = ['고민 중입니다', '사용하지 않을 것 같습니다'];
 
 export async function POST(request: Request) {
   try {
@@ -17,13 +18,42 @@ export async function POST(request: Request) {
       inconvenience,
       improvementIdea,
       continueIntent,
+      retentionReason,
       userPhone,
       userDisplayName,
     } = body;
 
     const sat = parseInt(satisfaction, 10);
     if (!SATISFACTION_VALUES.includes(sat as (typeof SATISFACTION_VALUES)[number])) {
-      return NextResponse.json({ error: '만족도 평가를 선택해 주세요.' }, { status: 400 });
+      return NextResponse.json({ error: '사용 경험을 선택해 주세요.' }, { status: 400 });
+    }
+
+    const intent =
+      continueIntent &&
+      typeof continueIntent === 'string' &&
+      CONTINUE_INTENTS.includes(continueIntent as (typeof CONTINUE_INTENTS)[number])
+        ? continueIntent
+        : null;
+    if (!intent) {
+      return NextResponse.json(
+        { error: '계속 사용하실 의향을 선택해 주세요.' },
+        { status: 400 }
+      );
+    }
+
+    const needsReason = NEEDS_REASON_INTENTS.includes(intent);
+    if (needsReason && (!retentionReason || typeof retentionReason !== 'string' || !retentionReason.trim())) {
+      return NextResponse.json(
+        { error: '이유를 입력해 주세요.' },
+        { status: 400 }
+      );
+    }
+
+    if ((sat === 1 || sat === 2) && (!inconvenience || typeof inconvenience !== 'string' || !inconvenience.trim())) {
+      return NextResponse.json(
+        { error: '가장 아쉬웠던 점을 입력해 주세요.' },
+        { status: 400 }
+      );
     }
 
     const db = getAdminFirestore();
@@ -53,12 +83,9 @@ export async function POST(request: Request) {
     if (improvementIdea && typeof improvementIdea === 'string' && improvementIdea.trim()) {
       doc.improvementIdea = improvementIdea.trim().slice(0, 1000);
     }
-    if (
-      continueIntent &&
-      typeof continueIntent === 'string' &&
-      CONTINUE_INTENTS.includes(continueIntent as (typeof CONTINUE_INTENTS)[number])
-    ) {
-      doc.continueIntent = continueIntent;
+    doc.continueIntent = intent;
+    if (retentionReason && typeof retentionReason === 'string' && retentionReason.trim()) {
+      doc.retentionReason = retentionReason.trim().slice(0, 500);
     }
 
     await db.collection('service_feedback').add(doc);

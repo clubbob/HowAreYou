@@ -3,7 +3,7 @@ import { StatsSection } from '@/components/StatsSection';
 import { ProblemSection } from '@/components/ProblemSection';
 import { KakaoCompareSection } from '@/components/KakaoCompareSection';
 import { ServiceSection } from '@/components/ServiceSection';
-import { TrustSection } from '@/components/TrustSection';
+import { PremiumSection } from '@/components/PremiumSection';
 import { FaqSection } from '@/components/FaqSection';
 import { AnnouncementsSection } from '@/components/AnnouncementsSection';
 import { CtaSection } from '@/components/CtaSection';
@@ -26,7 +26,7 @@ export default function HomePage() {
       </FadeInSection>
       <ServiceSection />
       <FadeInSection>
-        <TrustSection />
+        <PremiumSection />
       </FadeInSection>
       <FadeInSection>
         <FaqSection />

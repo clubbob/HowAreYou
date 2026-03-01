@@ -160,7 +160,7 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> with 
     return statuses;
   }
 
-  Future<void> _addSubject(BuildContext context, String userId) async {
+  Future<void> _addSubject(BuildContext context, String userId, {int currentSubjectCount = 0}) async {
     if (_nameController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('이름을 입력해주세요.')),
@@ -170,6 +170,26 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> with 
     if (_phoneController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('핸드폰 번호를 입력해주세요.')),
+      );
+      return;
+    }
+    if (currentSubjectCount >= 2) {
+      await showDialog<void>(
+        context: context,
+        builder: (c) => AlertDialog(
+          icon: Icon(Icons.info_outline, color: Colors.blue[700], size: 48),
+          title: const Text('보호 대상 추가 제한'),
+          content: const Text(
+            '무료 플랜에서는 보호대상자 2명까지 등록할 수 있습니다.\n\n'
+            '3명 이상 추가를 원하시면 프리미엄 기능이 필요합니다.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(c),
+              child: const Text('확인'),
+            ),
+          ],
+        ),
       );
       return;
     }
@@ -234,7 +254,7 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> with 
         } else if (e is FirebaseException) {
           final fe = e as FirebaseException;
           if (fe.code == 'permission-denied') {
-            message = '접근 권한이 없습니다. Firestore 규칙을 확인해 주세요.';
+            message = '일시적인 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.';
           } else {
             message = fe.message ?? fe.code;
           }
@@ -243,9 +263,15 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> with 
         } else {
           final str = e.toString();
           if (str.startsWith('Exception: ')) {
-            message = str.substring('Exception: '.length).split('\n').first.trim();
-          } else if (str.contains('permission-denied')) {
-            message = '접근 권한이 없습니다. Firestore 규칙을 확인해 주세요.';
+            final extracted = str.substring('Exception: '.length).split('\n').first.trim();
+            // 접근 권한 등 기술적 메시지는 사용자 친화적으로 변환
+            if (extracted.contains('접근 권한')) {
+              message = '일시적인 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.';
+            } else {
+              message = extracted;
+            }
+          } else if (str.contains('permission-denied') || str.contains('접근 권한')) {
+            message = '일시적인 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.';
           } else if (str.contains('이미 보호 대상') || str.contains('이미 등록')) {
             message = '이미 보호 대상으로 등록된 분입니다.';
           } else if (str.contains('본인 핸드폰 번호')) {
@@ -255,23 +281,13 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> with 
             if (first.length > 0 && first.length < 200) message = first;
           }
         }
-        // 실제 오류 원인 표시 (진단용 - 다음 등록 시도 시 원인 확인)
-        final rawError = e.toString().split('\n').first;
         await showDialog<void>(
           context: context,
           builder: (c) => AlertDialog(
             icon: Icon(Icons.warning_amber_rounded, color: Colors.orange[700], size: 48),
             title: const Text('보호 대상 추가 실패'),
             content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(message),
-                  const SizedBox(height: 12),
-                  Text('오류: $rawError', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-                ],
-              ),
+              child: Text(message),
             ),
             actions: [
               TextButton(
@@ -880,7 +896,7 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> with 
                         SizedBox(
                           height: _inputMinHeight,
                           child: ElevatedButton(
-                            onPressed: _isAdding ? null : () => _addSubject(context, userId),
+                            onPressed: _isAdding ? null : () => _addSubject(context, userId, currentSubjectCount: subjectIds.length),
                             style: AppButtonStyles.primaryElevated,
                             child: _isAdding
                                 ? const SizedBox(
@@ -1105,7 +1121,7 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> with 
                     SizedBox(
                       height: _inputMinHeight,
                       child: ElevatedButton(
-                        onPressed: _isAdding ? null : () => _addSubject(context, userId),
+                        onPressed: _isAdding ? null : () => _addSubject(context, userId, currentSubjectCount: subjectIds.length),
                         style: AppButtonStyles.primaryElevated,
                         child: _isAdding
                             ? const SizedBox(
@@ -1901,6 +1917,7 @@ class _GuardianSettingsScreenState extends State<GuardianSettingsScreen> {
     );
     if (confirmDelete != true || !context.mounted) return;
 
+    final authService = Provider.of<AuthService>(context, listen: false);
     var error = await authService.deleteAccount();
     if (!context.mounted) return;
 

@@ -12,7 +12,7 @@ export function CtaSection() {
         <h2 className="mb-2 text-center text-[1.375rem] font-bold leading-[1.4] text-navy-900 sm:text-[1.75rem]">
           오늘부터 안심 시작하기
         </h2>
-        <p className="mb-4 text-center text-[14px] text-navy-500 sm:text-[15px]">지금은 모든 기능을 무료로 제공합니다.</p>
+        <p className="mb-4 text-center text-[14px] text-navy-500 sm:text-[15px]">누구나 무료로 시작할 수 있습니다.</p>
         <div className="flex w-full max-w-sm flex-col items-center gap-4 sm:max-w-md sm:gap-5">
           <button
             type="button"
@@ -22,7 +22,7 @@ export function CtaSection() {
             무료로 시작하기
           </button>
           <p className="rounded-xl bg-primary-50/80 px-5 py-3 text-center text-[11px] font-bold leading-[1.5] text-primary-600 sm:px-6 sm:py-4 sm:text-[13px] md:text-[15px]">
-            지금은 모든 기능을 무료로 제공합니다.
+            누구나 무료로 시작할 수 있습니다.
           </p>
         </div>
       </div>

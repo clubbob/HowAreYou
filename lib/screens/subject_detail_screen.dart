@@ -240,8 +240,6 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
               ],
             ),
           );
-            },
-          );
         },
       ),
     );

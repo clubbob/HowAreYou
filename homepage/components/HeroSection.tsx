@@ -29,16 +29,9 @@ export function HeroSection() {
         <p className="mb-4 text-base font-medium leading-[1.65] text-primary-400 sm:text-lg md:text-xl">
           버튼 한 번이면 오늘의 안부는 끝납니다.
           <br className="hidden sm:block" />
-          <span className="sm:ml-1">부담 없이 이어지는 가족의 안심 루틴.</span>
+          <span className="sm:ml-1">연락이 없을 때 괜히 더 걱정되는 가족을 위해.</span>
         </p>
-        <p className="mb-6 text-[12px] leading-[1.5] text-navy-400 sm:text-[13px]">
-          위치 추적 기능은 없습니다.
-          <br />
-          사용자가 직접 남긴 안부만 공유됩니다.
-        </p>
-        <p className="mb-8 text-[14px] text-navy-500 sm:text-[15px]">지금은 모든 기능을 무료로 제공합니다.</p>
-
-        <div className="flex w-full max-w-sm flex-col items-center gap-4 sm:max-w-md sm:gap-5">
+        <div className="mt-8 flex w-full max-w-sm flex-col items-center gap-4 sm:max-w-md sm:gap-5">
           <button
             type="button"
             onClick={() => setShowStartModal(true)}
@@ -46,9 +39,6 @@ export function HeroSection() {
           >
             무료로 안심 시작하기
           </button>
-          <p className="rounded-xl bg-primary-50/80 px-5 py-3 text-center text-[11px] font-bold leading-[1.5] text-primary-600 sm:px-6 sm:py-4 sm:text-[13px] md:text-[15px]">
-            지금은 모든 기능을 무료로 제공합니다.
-          </p>
         </div>
       </div>
 

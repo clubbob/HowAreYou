@@ -52,6 +52,7 @@ export async function GET() {
           inconvenience: d.inconvenience ?? null,
           improvementIdea: d.improvementIdea ?? null,
           continueIntent: d.continueIntent ?? null,
+          retentionReason: d.retentionReason ?? null,
           createdAt: createdAt.toISOString(),
         };
       } catch (e) {
@@ -70,6 +71,7 @@ export async function GET() {
           inconvenience: null,
           improvementIdea: null,
           continueIntent: null,
+          retentionReason: null,
           createdAt: new Date().toISOString(),
         };
       }

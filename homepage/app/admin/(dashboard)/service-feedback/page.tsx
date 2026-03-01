@@ -16,6 +16,7 @@ type Feedback = {
   inconvenience: string | null;
   improvementIdea: string | null;
   continueIntent: string | null;
+  retentionReason: string | null;
   createdAt: string;
 };
 
@@ -289,9 +290,19 @@ export default function AdminServiceFeedbackPage() {
                   </div>
                 )}
 
+                {selected.retentionReason && (
+                  <div>
+                    <div className="text-xs font-medium text-slate-500 mb-1">이유 (고민 중/이탈)</div>
+                    <p className="text-slate-800 whitespace-pre-wrap p-3 bg-slate-50 rounded-lg text-sm">
+                      {selected.retentionReason}
+                    </p>
+                  </div>
+                )}
+
                 {!selected.inconvenience &&
                   !selected.improvementIdea &&
-                  !selected.continueIntent && (
+                  !selected.continueIntent &&
+                  !selected.retentionReason && (
                     <p className="text-slate-500 text-sm">추가 의견 없음</p>
                   )}
 

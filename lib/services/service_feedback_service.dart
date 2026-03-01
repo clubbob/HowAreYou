@@ -33,6 +33,7 @@ class ServiceFeedbackModel {
   final String? inconvenience;
   final String? improvementIdea;
   final String? continueIntent;
+  final String? retentionReason;
   final DateTime createdAt;
 
   ServiceFeedbackModel({
@@ -43,6 +44,7 @@ class ServiceFeedbackModel {
     this.inconvenience,
     this.improvementIdea,
     this.continueIntent,
+    this.retentionReason,
     required this.createdAt,
   });
 
@@ -57,6 +59,7 @@ class ServiceFeedbackModel {
     if (inconvenience != null && inconvenience!.isNotEmpty) map['inconvenience'] = inconvenience;
     if (improvementIdea != null && improvementIdea!.isNotEmpty) map['improvementIdea'] = improvementIdea;
     if (continueIntent != null && continueIntent!.isNotEmpty) map['continueIntent'] = continueIntent;
+    if (retentionReason != null && retentionReason!.isNotEmpty) map['retentionReason'] = retentionReason!.length > 500 ? retentionReason!.substring(0, 500) : retentionReason;
     return map;
   }
 }

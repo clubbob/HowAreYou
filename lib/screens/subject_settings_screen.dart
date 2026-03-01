@@ -197,6 +197,7 @@ class _SubjectSettingsScreenState extends State<SubjectSettingsScreen> {
     );
     if (confirmDelete != true || !context.mounted) return;
 
+    final authService = Provider.of<AuthService>(context, listen: false);
     var error = await authService.deleteAccount();
     if (!context.mounted) return;
 
