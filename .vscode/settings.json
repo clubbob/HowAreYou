@@ -6,5 +6,16 @@
   "dart.flutterCreateIOSLanguage": "swift",
   "dart.flutterCreatePlatforms": ["android", "ios", "web"],
   "debug.console.fontSize": 12,
-  "debug.console.wordWrap": true
+  "debug.console.wordWrap": true,
+  "files.watcherExclude": {
+    "**/node_modules/**": true,
+    "**/.git/**": true,
+    "**/build/**": true,
+    "**/.next/**": true
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/build": true,
+    "**/.next": true
+  }
 }

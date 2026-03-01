@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server';
 import { verifyAdminSession } from '@/lib/admin-auth';
 import { getAdminFirestore } from '@/lib/firebase-admin';
-import { normalizePhone } from '@/lib/phone';
-
 const SATISFACTION_LABELS: Record<number, string> = {
   5: '매우 만족',
   4: '만족',
@@ -21,23 +19,7 @@ export async function GET() {
   }
 
   try {
-    const [feedbackSnap, waitlistSnap] = await Promise.all([
-      db.collection('service_feedback').orderBy('createdAt', 'desc').limit(200).get(),
-      db.collection('waitlist').limit(500).get(),
-    ]);
-
-    const phoneToWaitlist = new Map<string, { name: string; email: string }>();
-    waitlistSnap.docs.forEach((doc) => {
-      const d = doc.data();
-      const phone = normalizePhone((d.phone ?? '').toString());
-      if (phone.length >= 10) {
-        phoneToWaitlist.set(phone, {
-          name: (d.name ?? '').toString().trim(),
-          email: (d.email ?? '').toString().trim(),
-        });
-      }
-    });
-
+    const feedbackSnap = await db.collection('service_feedback').orderBy('createdAt', 'desc').limit(200).get();
     const list = feedbackSnap.docs.map((doc) => {
       try {
         const d = doc.data();
@@ -56,15 +38,13 @@ export async function GET() {
         }
         const satisfaction = typeof d.satisfaction === 'number' ? d.satisfaction : 0;
         const userPhone = d.userPhone ?? '';
-        const phoneNorm = normalizePhone(userPhone);
-        const waitlistData = phoneToWaitlist.get(phoneNorm);
         return {
           id: doc.id,
           userId: d.userId ?? '',
           userPhone: userPhone || null,
           userDisplayName: d.userDisplayName ?? null,
-          userName: (waitlistData?.name || d.userDisplayName) ?? null,
-          userEmail: waitlistData?.email ?? null,
+          userName: d.userDisplayName ?? null,
+          userEmail: null,
           source: d.source ?? 'app',
           satisfaction,
           reviewedAt: reviewedAt ? reviewedAt.toISOString() : null,

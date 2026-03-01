@@ -8,7 +8,6 @@ type Stats = {
   inquiriesCount: number;
   unansweredInquiriesCount: number;
   announcementsCount: number;
-  waitlistCount: number;
   serviceFeedbackCount: number;
   firebaseConfigured?: boolean;
 };
@@ -18,7 +17,6 @@ const defaultStats: Stats = {
   inquiriesCount: 0,
   unansweredInquiriesCount: 0,
   announcementsCount: 0,
-  waitlistCount: 0,
   serviceFeedbackCount: 0,
 };
 
@@ -88,12 +86,6 @@ export function AdminStats() {
       label: '공지사항',
       value: displayStats.announcementsCount,
       href: '/admin/announcements',
-    },
-    {
-      label: '1년 무료 혜택 신청 리스트',
-      value: displayStats.waitlistCount,
-      href: '/admin/waitlist',
-      highlight: displayStats.waitlistCount > 0,
     },
     {
       label: '서비스 개선',

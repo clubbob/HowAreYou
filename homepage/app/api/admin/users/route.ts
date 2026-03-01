@@ -12,24 +12,10 @@ export async function GET() {
     return NextResponse.json({ error: 'Firestore not configured' }, { status: 500 });
   }
 
-  const [usersSnap, subjectsSnap, waitlistSnap] = await Promise.all([
+  const [usersSnap, subjectsSnap] = await Promise.all([
     db.collection('users').limit(500).get(),
     db.collection('subjects').get(),
-    db.collection('waitlist').limit(500).get(),
   ]);
-
-  // 1년 무료 혜택 신청(waitlist) 데이터: 전화번호 → { name, email }
-  const phoneToWaitlist = new Map<string, { name: string; email: string }>();
-  waitlistSnap.docs.forEach((doc) => {
-    const d = doc.data();
-    const phone = toE164((d.phone ?? '').toString());
-    if (phone.length >= 12) {
-      phoneToWaitlist.set(phone, {
-        name: (d.name ?? '').toString().trim(),
-        email: (d.email ?? '').toString().trim(),
-      });
-    }
-  });
 
   const uidToPhone = new Map<string, string>();
   usersSnap.docs.forEach((doc) => {
@@ -78,14 +64,13 @@ export async function GET() {
     const lastFcmSentAt = d.lastFcmSentAt?.toDate?.();
     const lastFcmOpenedAt = d.lastFcmOpenedAt?.toDate?.();
     const phoneRaw = d.phone ?? '';
-    const phoneNorm = toE164(phoneRaw);
-    const waitlistData = phoneToWaitlist.get(phoneNorm);
+    const subjectData = subjectsSnap.docs.find((s) => s.id === uid)?.data();
     return {
       id: uid,
       phone: phoneRaw,
       displayName: d.displayName ?? null,
-      name: (waitlistData?.name || d.displayName) ?? null,
-      email: waitlistData?.email ?? null,
+      name: (subjectData?.displayName || d.displayName) ?? null,
+      email: null,
       role,
       createdAt: createdAt ? createdAt.toISOString() : null,
       lastFcmSentAt: lastFcmSentAt ? lastFcmSentAt.toISOString() : null,

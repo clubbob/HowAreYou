@@ -24,7 +24,7 @@ class _SubjectSettingsScreenState extends State<SubjectSettingsScreen> {
   bool _notificationSoundEnabled = true;
   bool _isLoading = true;
   String _appVersion = '-';
-  ({String phone, DateTime? createdAt, String subscriptionStatus, DateTime? subscriptionExpiry, String? betaCohort})? _accountInfo;
+  ({String phone, DateTime? createdAt})? _accountInfo;
 
   @override
   void initState() {
@@ -71,10 +71,6 @@ class _SubjectSettingsScreenState extends State<SubjectSettingsScreen> {
               '가입일',
               info.createdAt != null ? dateFormat.format(info.createdAt!) : '-',
             ),
-            const Divider(height: 24),
-            _buildAccountInfoRow(Icons.credit_card_outlined, '결제 상태', '무료'),
-            const Divider(height: 24),
-            _buildAccountInfoRow(Icons.event_outlined, '다음 결제일', '해당 없음'),
           ],
         ),
       ),
@@ -136,153 +132,33 @@ class _SubjectSettingsScreenState extends State<SubjectSettingsScreen> {
     }
   }
 
-  Future<void> _openSubscriptionManagement() async {
-    if (!mounted) return;
-    final choice = await showModalBottomSheet<String>(
-      context: context,
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                '구독 관리로 이동',
-                style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 16),
-              ListTile(
-                leading: const Icon(Icons.apple),
-                title: const Text('App Store'),
-                subtitle: const Text('iOS 구독 관리'),
-                onTap: () => Navigator.of(ctx).pop('apple'),
-              ),
-              ListTile(
-                leading: const Icon(Icons.android),
-                title: const Text('Google Play'),
-                subtitle: const Text('Android 구독 관리'),
-                onTap: () => Navigator.of(ctx).pop('play'),
-              ),
-              const SizedBox(height: 8),
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(),
-                child: const Text('취소'),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-    if (choice == null || !mounted) return;
-    final url = choice == 'apple'
-        ? 'https://apps.apple.com/account/subscriptions'
-        : 'https://play.google.com/store/account/subscriptions';
-    await _launchUrl(url);
-  }
-
   Future<void> _showDeleteAccountDialog(BuildContext context) async {
     // 1단계: 탈퇴 안내
-    final firstChoice = await showDialog<String>(
+    final firstChoice = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('회원 탈퇴'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text(
-              '탈퇴하면 데이터는 삭제됩니다.\n\n'
-              '• 사용자 정보 삭제\n'
-              '• 보호대상자/보호자 연결 해제\n'
-              '• 기록 데이터 삭제\n\n'
-              '연 결제(12,000원)는 스토어에서 자동 갱신됩니다. '
-              '탈퇴만 하면 결제는 멈추지 않습니다. 과금 멈추려면 스토어에서 직접 취소하세요.',
-            ),
-            const SizedBox(height: 24),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                OutlinedButton(
-                  onPressed: () => Navigator.of(ctx).pop('store'),
-                  child: const Text('스토어에서 결제 취소'),
-                ),
-                const SizedBox(height: 12),
-                ElevatedButton(
-                  onPressed: () => Navigator.of(ctx).pop('continue'),
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                  child: const Text('탈퇴'),
-                ),
-              ],
-            ),
-          ],
+        content: const Text(
+          '탈퇴하면 데이터는 삭제됩니다.\n\n'
+          '• 사용자 정보 삭제\n'
+          '• 보호대상자/보호자 연결 해제\n'
+          '• 기록 데이터 삭제\n\n'
+          '정말 탈퇴하시겠습니까?',
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(ctx).pop('cancel'),
+            onPressed: () => Navigator.of(ctx).pop(false),
             child: Text('취소', style: TextStyle(color: Colors.grey.shade700)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('탈퇴'),
           ),
         ],
       ),
     );
-    if (firstChoice == null || firstChoice == 'cancel' || !context.mounted) return;
-
-    if (firstChoice == 'store') {
-      await _openSubscriptionManagement();
-      return;
-    }
-
-    // 2단계: 유료 결제 중이면 한 번 더 확인
-    final authService = Provider.of<AuthService>(context, listen: false);
-    final accountInfo = await authService.getAccountInfo();
-    final isSubscriptionActive = accountInfo.subscriptionStatus == '활성' ||
-        accountInfo.subscriptionStatus == '만료 예정';
-
-    if (isSubscriptionActive && context.mounted) {
-      final secondChoice = await showDialog<String>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('연 결제가 진행 중입니다'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Text('탈퇴해도 결제는 멈추지 않습니다. 계속하시겠습니까?'),
-              const SizedBox(height: 24),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  OutlinedButton(
-                    onPressed: () => Navigator.of(ctx).pop('store'),
-                    child: const Text('스토어에서 결제 취소'),
-                  ),
-                  const SizedBox(height: 12),
-                  ElevatedButton(
-                    onPressed: () => Navigator.of(ctx).pop('delete'),
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                    child: const Text('탈퇴'),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop('cancel'),
-              child: Text('취소', style: TextStyle(color: Colors.grey.shade700)),
-            ),
-          ],
-        ),
-      );
-      if (secondChoice == null || secondChoice == 'cancel' || !context.mounted) return;
-      if (secondChoice == 'store') {
-        await _openSubscriptionManagement();
-        return;
-      }
-    }
-
-    if (!context.mounted) return;
+    if (firstChoice != true || !context.mounted) return;
 
     // 최종 확인: 정말 탈퇴하시겠습니까?
     final confirmDelete = await showDialog<bool>(

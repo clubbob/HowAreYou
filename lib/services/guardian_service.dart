@@ -441,17 +441,6 @@ class GuardianService {
     return snapshot.docs.map((d) => d.id).toList();
   }
 
-  /// 보호자 구독 상태 (users/{guardianUid}). 'active'=유료, 그 외=무료
-  Future<String> getGuardianSubscriptionStatusRaw(String guardianUid) async {
-    try {
-      final doc = await _firestore.collection(AppConstants.usersCollection).doc(guardianUid).get();
-      final raw = doc.data()?['subscriptionStatus'] as String?;
-      return raw ?? 'trial';
-    } catch (_) {
-      return 'trial';
-    }
-  }
-
   /// 보호자 표시 이름 (users 문서 displayName, 없으면 '보호자')
   Future<String> getGuardianDisplayName(String guardianUid) async {
     try {

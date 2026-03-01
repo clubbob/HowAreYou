@@ -3,7 +3,6 @@ import { StatsSection } from '@/components/StatsSection';
 import { ProblemSection } from '@/components/ProblemSection';
 import { KakaoCompareSection } from '@/components/KakaoCompareSection';
 import { ServiceSection } from '@/components/ServiceSection';
-import { PricingSection } from '@/components/PricingSection';
 import { TrustSection } from '@/components/TrustSection';
 import { FaqSection } from '@/components/FaqSection';
 import { AnnouncementsSection } from '@/components/AnnouncementsSection';
@@ -26,9 +25,6 @@ export default function HomePage() {
         <KakaoCompareSection />
       </FadeInSection>
       <ServiceSection />
-      <FadeInSection>
-        <PricingSection />
-      </FadeInSection>
       <FadeInSection>
         <TrustSection />
       </FadeInSection>

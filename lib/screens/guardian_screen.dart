@@ -943,7 +943,6 @@ class _GuardianListCard extends StatefulWidget {
 
 class _GuardianListCardState extends State<_GuardianListCard> {
   late final Future<bool> _isStillConnectedFuture;
-  late final Future<String> _subscriptionStatusFuture;
 
   @override
   void initState() {
@@ -952,19 +951,14 @@ class _GuardianListCardState extends State<_GuardianListCard> {
       widget.guardianUid,
       widget.subjectId,
     );
-    _subscriptionStatusFuture = widget.guardianService.getGuardianSubscriptionStatusRaw(
-      widget.guardianUid,
-    );
   }
 
   @override
   Widget build(BuildContext context) {
     return FutureBuilder(
-      future: Future.wait([_isStillConnectedFuture, _subscriptionStatusFuture]),
+      future: _isStillConnectedFuture,
       builder: (context, snapshot) {
-        final isConnected = snapshot.data != null ? (snapshot.data! as List)[0] as bool : true;
-        final subRaw = snapshot.data != null ? (snapshot.data! as List)[1] as String : 'trial';
-        final isPaid = subRaw == 'active';
+        final isConnected = snapshot.data ?? true;
 
         return Card(
           margin: const EdgeInsets.only(bottom: 12),
@@ -972,23 +966,10 @@ class _GuardianListCardState extends State<_GuardianListCard> {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             child: Row(
               children: [
-                // 상태 배지 (연결/비연결, 유료/무료) - 아이콘+텍스트
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _StatusChip(
-                      icon: isConnected ? Icons.check_circle : Icons.cancel,
-                      label: isConnected ? '연결' : '비연결',
-                      color: isConnected ? Colors.green : Colors.orange,
-                    ),
-                    const SizedBox(height: 4),
-                    _StatusChip(
-                      icon: isPaid ? Icons.workspace_premium : Icons.card_giftcard,
-                      label: isPaid ? '유료' : '무료',
-                      color: isPaid ? Colors.blue : Colors.grey,
-                    ),
-                  ],
+                _StatusChip(
+                  icon: isConnected ? Icons.check_circle : Icons.cancel,
+                  label: isConnected ? '연결' : '비연결',
+                  color: isConnected ? Colors.green : Colors.orange,
                 ),
                 const SizedBox(width: 12),
                 // 이름, 전화번호 (overflow 방지)

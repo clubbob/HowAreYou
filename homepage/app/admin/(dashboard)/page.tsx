@@ -35,13 +35,6 @@ export default function AdminDashboardPage() {
           <h2 className="font-semibold text-slate-800">공지사항</h2>
           <p className="text-sm text-slate-500 mt-1">공지사항 등록 및 관리</p>
         </Link>
-        <Link
-          href="/admin/waitlist"
-          className="block p-6 bg-white rounded-xl shadow border border-slate-200 hover:border-blue-300 transition"
-        >
-          <h2 className="font-semibold text-slate-800">1년 무료 혜택 신청 리스트</h2>
-          <p className="text-sm text-slate-500 mt-1">1년 무료 혜택 신청 목록 조회</p>
-        </Link>
       </div>
     </div>
   );

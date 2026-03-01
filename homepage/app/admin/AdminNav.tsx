@@ -10,7 +10,6 @@ const menus = [
   { href: '/admin/inquiries', label: '1:1 문의', badgeKey: 'unansweredInquiriesCount' as const },
   { href: '/admin/service-feedback', label: '서비스 개선', badgeKey: 'serviceFeedbackCount' as const },
   { href: '/admin/announcements', label: '공지사항' },
-  { href: '/admin/waitlist', label: '1년 무료 혜택 신청 리스트' },
 ];
 
 export default function AdminNav() {

@@ -10,7 +10,6 @@ import 'package:intl/intl.dart';
 import '../services/auth_service.dart';
 import '../services/guardian_service.dart';
 import '../services/mood_service.dart';
-import '../services/subscription_service.dart';
 import '../services/fcm_service.dart';
 import '../utils/permission_helper.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -44,7 +43,6 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> with 
   final GuardianService _guardianService = GuardianService();
   final MoodService _moodService = MoodService();
   Future<List<String>>? _subjectIdsFuture;
-  Future<SubscriptionState>? _subscriptionStateFuture;
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
   bool _isAdding = false;
@@ -446,16 +444,6 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> with 
             onTimeout: () => <String>[],
           );
     }
-    if (_subscriptionStateFuture == null) {
-      _subscriptionStateFuture = authService.getAccountInfo().then(
-            (info) => SubscriptionState.evaluate(
-              subscriptionStatus: info.subscriptionStatus,
-              createdAt: info.createdAt,
-              subscriptionExpiry: info.subscriptionExpiry,
-              betaCohort: info.betaCohort,
-            ),
-          );
-    }
 
     return Scaffold(
       appBar: AppBar(
@@ -562,26 +550,11 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> with 
         ],
       ),
       body: SafeArea(
-        child: FutureBuilder<SubscriptionState>(
-          future: _subscriptionStateFuture,
-          builder: (context, subSnapshot) {
-            if (subSnapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            final subState = subSnapshot.data ?? SubscriptionState.evaluate(
-              subscriptionStatus: '무료 체험 중',
-              createdAt: null,
-              subscriptionExpiry: null,
-            );
-            if (subState.isRestricted) {
-              return _buildUpgradeOverlay(context);
-            }
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (_notificationPermissionGranted == false) _buildPermissionDeniedBanner(context),
-                if (subState.isGracePeriod) _buildGraceBanner(context, subState),
-                Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (_notificationPermissionGranted == false) _buildPermissionDeniedBanner(context),
+            Expanded(
                   child: FutureBuilder<List<String>>(
                     future: _subjectIdsFuture,
                     builder: (context, snapshot) {
@@ -614,89 +587,8 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> with 
                     },
                   ),
                 ),
-              ],
-            );
-          },
+          ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildUpgradeOverlay(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.card_membership, size: 64, color: Colors.teal.shade700),
-          const SizedBox(height: 16),
-          Text(
-            '알림·기록 열람이 제한되었습니다',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey.shade800),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '1개월 무료 체험이 종료되었습니다.\n연 결제를 진행하시면 다시 이용하실 수 있습니다.',
-            style: TextStyle(fontSize: 15, color: Colors.grey.shade600, height: 1.5),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 24),
-          ElevatedButton.icon(
-            onPressed: () async {
-              final uri = Uri.parse(AppConstants.upgradeUrl);
-              if (await canLaunchUrl(uri)) {
-                await launchUrl(uri, mode: LaunchMode.externalApplication);
-              }
-            },
-            icon: const Icon(Icons.arrow_forward),
-            label: const Text('연 결제하기 (연 12,000원)'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.teal.shade700,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-              textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-            ),
-          ),
-          const SizedBox(height: 12),
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pushReplacement(
-                MaterialPageRoute(builder: (_) => const GuardianModeScreen()),
-              );
-            },
-            child: const Text('뒤로'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildGraceBanner(BuildContext context, SubscriptionState state) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      color: Colors.orange.shade50,
-      child: Row(
-        children: [
-          Icon(Icons.info_outline, size: 22, color: Colors.orange.shade800),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              state.message,
-              style: TextStyle(fontSize: 14, color: Colors.orange.shade900),
-            ),
-          ),
-          TextButton(
-            onPressed: () async {
-              final uri = Uri.parse(AppConstants.upgradeUrl);
-              if (await canLaunchUrl(uri)) {
-                await launchUrl(uri, mode: LaunchMode.externalApplication);
-              }
-            },
-            child: Text('결제하기', style: TextStyle(fontWeight: FontWeight.w600, color: Colors.orange.shade800)),
-          ),
-        ],
       ),
     );
   }
@@ -1919,7 +1811,7 @@ class _GuardianSettingsScreenState extends State<GuardianSettingsScreen> {
   bool _notificationSoundEnabled = true;
   bool _isLoading = true;
   String _appVersion = '-';
-  ({String phone, DateTime? createdAt, String subscriptionStatus, DateTime? subscriptionExpiry, String? betaCohort})? _accountInfo;
+  ({String phone, DateTime? createdAt})? _accountInfo;
 
   @override
   void initState() {
@@ -1948,99 +1840,27 @@ class _GuardianSettingsScreenState extends State<GuardianSettingsScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('회원 탈퇴'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text(
-              '탈퇴하면 데이터는 삭제됩니다.\n\n'
-              '• 사용자 정보 삭제\n'
-              '• 보호대상자/보호자 연결 해제\n'
-              '• 기록 데이터 삭제\n\n'
-              '연 결제(12,000원)는 스토어에서 자동 갱신됩니다. '
-              '탈퇴만 하면 결제는 멈추지 않습니다. 과금 멈추려면 스토어에서 직접 취소하세요.',
-            ),
-            const SizedBox(height: 24),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                OutlinedButton(
-                  onPressed: () => Navigator.of(ctx).pop('store'),
-                  child: const Text('스토어에서 결제 취소'),
-                ),
-                const SizedBox(height: 12),
-                ElevatedButton(
-                  onPressed: () => Navigator.of(ctx).pop('continue'),
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                  child: const Text('탈퇴'),
-                ),
-              ],
-            ),
-          ],
+        content: const Text(
+          '탈퇴하면 데이터는 삭제됩니다.\n\n'
+          '• 사용자 정보 삭제\n'
+          '• 보호대상자/보호자 연결 해제\n'
+          '• 기록 데이터 삭제\n\n'
+          '정말 탈퇴하시겠습니까?',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop('cancel'),
             child: Text('취소', style: TextStyle(color: Colors.grey.shade700)),
           ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop('continue'),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('탈퇴'),
+          ),
         ],
       ),
     );
     if (firstChoice == null || firstChoice == 'cancel' || !context.mounted) return;
-
-    if (firstChoice == 'store') {
-      await _openSubscriptionManagement();
-      return;
-    }
-
-    // 2단계: 유료 결제 중이면 한 번 더 확인
-    final authService = Provider.of<AuthService>(context, listen: false);
-    final accountInfo = await authService.getAccountInfo();
-    final isSubscriptionActive = accountInfo.subscriptionStatus == '활성' ||
-        accountInfo.subscriptionStatus == '만료 예정';
-
-    if (isSubscriptionActive && context.mounted) {
-      final secondChoice = await showDialog<String>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('연 결제가 진행 중입니다'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Text('탈퇴해도 결제는 멈추지 않습니다. 계속하시겠습니까?'),
-              const SizedBox(height: 24),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  OutlinedButton(
-                    onPressed: () => Navigator.of(ctx).pop('store'),
-                    child: const Text('스토어에서 결제 취소'),
-                  ),
-                  const SizedBox(height: 12),
-                  ElevatedButton(
-                    onPressed: () => Navigator.of(ctx).pop('delete'),
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                    child: const Text('탈퇴'),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop('cancel'),
-              child: Text('취소', style: TextStyle(color: Colors.grey.shade700)),
-            ),
-          ],
-        ),
-      );
-      if (secondChoice == null || secondChoice == 'cancel' || !context.mounted) return;
-      if (secondChoice == 'store') {
-        await _openSubscriptionManagement();
-        return;
-      }
-    }
 
     if (!context.mounted) return;
 
@@ -2241,18 +2061,6 @@ class _GuardianSettingsScreenState extends State<GuardianSettingsScreen> {
                 _buildSettingsSectionHeader('계정 정보'),
                 _buildAccountInfoCard(),
                 const SizedBox(height: 24),
-                // [ 결제 ]
-                _buildSettingsSectionHeader('결제'),
-                Card(
-                  child: ListTile(
-                    leading: const Icon(Icons.credit_card_outlined),
-                    title: const Text('스토어에서 결제 취소'),
-                    subtitle: const Text('연 12,000원 자동 갱신. 취소는 스토어에서 직접'),
-                    trailing: const Icon(Icons.open_in_new),
-                    onTap: () => _openSubscriptionManagement(),
-                  ),
-                ),
-                const SizedBox(height: 24),
                 // [ 알림 설정 ]
                 _buildSettingsSectionHeader('알림 설정'),
                 Card(
@@ -2392,18 +2200,6 @@ class _GuardianSettingsScreenState extends State<GuardianSettingsScreen> {
               '가입일',
               info.createdAt != null ? dateFormat.format(info.createdAt!) : '-',
             ),
-            const Divider(height: 24),
-            _buildAccountInfoRow(
-              Icons.credit_card_outlined,
-              '결제 상태',
-              info.subscriptionStatus,
-            ),
-            const Divider(height: 24),
-            _buildAccountInfoRow(
-              Icons.event_outlined,
-              '다음 결제일',
-              info.subscriptionExpiry != null ? dateFormat.format(info.subscriptionExpiry!) : '-',
-            ),
           ],
         ),
       ),
@@ -2445,70 +2241,6 @@ class _GuardianSettingsScreenState extends State<GuardianSettingsScreen> {
         ),
       ),
     );
-  }
-
-  Future<void> _openSubscriptionManagement() async {
-    if (!mounted) return;
-    final choice = await showModalBottomSheet<String>(
-      context: context,
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                '구독 관리로 이동',
-                style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 16),
-              ListTile(
-                leading: const Icon(Icons.apple),
-                title: const Text('App Store'),
-                subtitle: const Text('iOS 구독 관리'),
-                onTap: () => Navigator.of(ctx).pop('apple'),
-              ),
-              ListTile(
-                leading: const Icon(Icons.android),
-                title: const Text('Google Play'),
-                subtitle: const Text('Android 구독 관리'),
-                onTap: () => Navigator.of(ctx).pop('play'),
-              ),
-              const SizedBox(height: 8),
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(),
-                child: const Text('취소'),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-    if (choice == null || !mounted) return;
-    final url = choice == 'apple'
-        ? 'https://apps.apple.com/account/subscriptions'
-        : 'https://play.google.com/store/account/subscriptions';
-    await _launchSettingsUrl(url);
-  }
-
-  Future<void> _launchSettingsUrl(String url) async {
-    final uri = Uri.parse(url);
-    try {
-      final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
-      if (!launched && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('링크를 열 수 없습니다.')),
-        );
-      }
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('링크를 열 수 없습니다.')),
-        );
-      }
-    }
   }
 
 }

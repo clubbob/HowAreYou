@@ -3,11 +3,9 @@
 import Image from 'next/image';
 import { useState } from 'react';
 import { StartModal } from './StartModal';
-import { BetaModal } from './BetaModal';
 
 export function HeroSection() {
   const [showStartModal, setShowStartModal] = useState(false);
-  const [showBetaModal, setShowBetaModal] = useState(false);
 
   return (
     <section className="relative overflow-hidden bg-[#F7F8FA] px-4 py-16 sm:px-6 sm:py-20 md:py-28">
@@ -38,7 +36,7 @@ export function HeroSection() {
           <br />
           사용자가 직접 남긴 안부만 공유됩니다.
         </p>
-        <p className="mb-8 text-[14px] text-navy-500 sm:text-[15px]">현재 Android에서 먼저 이용 가능합니다.</p>
+        <p className="mb-8 text-[14px] text-navy-500 sm:text-[15px]">지금은 모든 기능을 무료로 제공합니다.</p>
 
         <div className="flex w-full max-w-sm flex-col items-center gap-4 sm:max-w-md sm:gap-5">
           <button
@@ -49,22 +47,12 @@ export function HeroSection() {
             무료로 안심 시작하기
           </button>
           <p className="rounded-xl bg-primary-50/80 px-5 py-3 text-center text-[11px] font-bold leading-[1.5] text-primary-600 sm:px-6 sm:py-4 sm:text-[13px] md:text-[15px]">
-            1개월 무료 체험
-            <br />
-            출시 기념 참여자에게는 1년 무료 혜택 제공
+            지금은 모든 기능을 무료로 제공합니다.
           </p>
         </div>
       </div>
 
-      <StartModal
-        open={showStartModal}
-        onClose={() => setShowStartModal(false)}
-        onWaitlistClick={() => {
-          setShowStartModal(false);
-          setTimeout(() => setShowBetaModal(true), 150);
-        }}
-      />
-      <BetaModal open={showBetaModal} onClose={() => setShowBetaModal(false)} />
+      <StartModal open={showStartModal} onClose={() => setShowStartModal(false)} />
     </section>
   );
 }

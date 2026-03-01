@@ -5,7 +5,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'dart:io' show Platform;
-import 'package:http/http.dart' as http;
 import '../models/user_model.dart';
 import '../utils/constants.dart';
 import 'fcm_service.dart';
@@ -32,23 +31,11 @@ class AuthService extends ChangeNotifier {
   UserModel? get userModel => _userModel;
   bool get isAuthenticated => _user != null;
 
-  /// 계정 정보 (휴대폰 번호, 가입일, 구독 상태, 구독 만료일, 베타 기수)
-  Future<({
-    String phone,
-    DateTime? createdAt,
-    String subscriptionStatus,
-    DateTime? subscriptionExpiry,
-    String? betaCohort,
-  })> getAccountInfo() async {
+  /// 계정 정보 (휴대폰 번호, 가입일) - 무료 전환으로 구독/베타 필드 제거
+  Future<({String phone, DateTime? createdAt})> getAccountInfo() async {
     final uid = _user?.uid;
     if (uid == null) {
-      return (
-        phone: '',
-        createdAt: null,
-        subscriptionStatus: '무료 체험 중',
-        subscriptionExpiry: null,
-        betaCohort: null,
-      );
+      return (phone: '', createdAt: null);
     }
     try {
       final doc = await _firestore.collection('users').doc(uid).get();
@@ -63,8 +50,7 @@ class AuthService extends ChangeNotifier {
         createdAt = _parseTimestamp(subDoc.data()?['createdAt']);
       }
       if (createdAt == null) {
-        final termsTs = data?['termsAgreedAt'];
-        createdAt = _parseTimestamp(termsTs);
+        createdAt = _parseTimestamp(data?['termsAgreedAt']);
       }
       if (createdAt == null) {
         createdAt = _parseTimestamp(data?['privacyAgreedAt']);
@@ -72,70 +58,10 @@ class AuthService extends ChangeNotifier {
       if (createdAt == null && _user?.metadata.creationTime != null) {
         createdAt = _user!.metadata.creationTime;
       }
-      final statusRaw = data?['subscriptionStatus'] as String?;
-      final expiryTs = data?['subscriptionExpiryAt'] as Timestamp?;
-      final betaCohort = data?['betaCohort'] as String?;
-      DateTime? expiry = expiryTs?.toDate();
-      String subscriptionStatus = '무료 체험 중';
-      if (statusRaw != null && statusRaw.isNotEmpty) {
-        switch (statusRaw) {
-          case 'active':
-            subscriptionStatus = '활성';
-            break;
-          case 'expiring_soon':
-            subscriptionStatus = '만료 예정';
-            break;
-          case 'expired':
-            subscriptionStatus = '만료됨';
-            break;
-          default:
-            subscriptionStatus = statusRaw;
-        }
-      }
-      return (
-        phone: phone,
-        createdAt: createdAt,
-        subscriptionStatus: subscriptionStatus,
-        subscriptionExpiry: expiry,
-        betaCohort: betaCohort,
-      );
+      return (phone: phone, createdAt: createdAt);
     } catch (e) {
       debugPrint('getAccountInfo 오류: $e');
-      return (
-        phone: _user?.phoneNumber ?? _userModel?.phone ?? '',
-        createdAt: null,
-        subscriptionStatus: '무료 체험 중',
-        subscriptionExpiry: null,
-        betaCohort: null,
-      );
-    }
-  }
-
-  /// 휴대폰 번호가 베타 1기 waitlist에 있는지 확인 후 betaCohort 부여
-  /// Firebase ID token으로 서버 호출 → 토큰의 phone_number로 매칭 (클라이언트 조작 불가)
-  Future<void> _checkAndSetBetaCohort(User user) async {
-    if (user.phoneNumber == null || user.phoneNumber!.trim().length < 10) return;
-    try {
-      final token = await user.getIdToken();
-      if (token == null || token.isEmpty) return;
-      final uri = Uri.parse(AppConstants.waitlistCheckUrl);
-      final res = await http
-          .post(
-            uri,
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $token',
-            },
-          )
-          .timeout(const Duration(seconds: 5));
-      if (res.statusCode != 200) return;
-      final body = res.body;
-      if (body.contains('"isBeta":true')) {
-        await _firestore.collection('users').doc(user.uid).update({'betaCohort': '1'});
-        debugPrint('betaCohort 부여 완료: ${user.uid}');
-      }
-    } catch (e) {
-      debugPrint('베타 확인 API 오류 (무시): $e');
+      return (phone: _user?.phoneNumber ?? _userModel?.phone ?? '', createdAt: null);
     }
   }
 
@@ -263,10 +189,6 @@ class AuthService extends ChangeNotifier {
     await addAgreedPhone(phoneNumber);
     FCMService.instance.initialize(user.uid).catchError((e) {
       debugPrint('FCM 초기화 지연/실패 (무시): $e');
-    });
-    // 베타 1기 waitlist 확인 후 betaCohort 부여 (1년 무료 혜택)
-    _checkAndSetBetaCohort(user).catchError((e) {
-      debugPrint('베타 확인 지연/실패 (무시): $e');
     });
   }
 
