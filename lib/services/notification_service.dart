@@ -223,8 +223,8 @@ class NotificationService {
         return;
       }
       // FCM 보호자 알림 (RESPONSE_RECEIVED 등)
-      if (payload == 'RESPONSE_RECEIVED' || payload == 'UNREACHABLE' || payload == 'ESCALATION_3DAYS' ||
-          (payload != null && (payload.startsWith('RESPONSE_RECEIVED') || payload.startsWith('UNREACHABLE') || payload.startsWith('ESCALATION_3DAYS')))) {
+      if (payload == 'RESPONSE_RECEIVED' || payload == 'UNREACHABLE' || payload == 'ESCALATION_3DAYS' || payload == 'INACTIVITY_ALERT' || payload == 'NO_RESPONSE_ALERT' ||
+          (payload != null && (payload.startsWith('RESPONSE_RECEIVED') || payload.startsWith('UNREACHABLE') || payload.startsWith('ESCALATION_3DAYS') || payload.startsWith('INACTIVITY_ALERT') || payload.startsWith('NO_RESPONSE_ALERT')))) {
         debugPrint('[알림] ✅ 보호자 FCM 알림 탭 - 상세 화면으로 이동');
         if (response.id != null) await _notifications.cancel(response.id!);
         _navigateToGuardianDashboard(payload);

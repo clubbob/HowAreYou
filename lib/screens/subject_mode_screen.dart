@@ -36,6 +36,7 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> with WidgetsBindi
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final authService = Provider.of<AuthService>(context, listen: false);
       // 환영 다이얼로그와 알림 권한 요청을 순차적으로 처리
       final shouldShowWelcome = await _checkAndShowWelcomeDialog();
       if (shouldShowWelcome && mounted) {
@@ -49,6 +50,7 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> with WidgetsBindi
         await _requestNotificationPermission();
         // 보호대상자 역할 활성 플래그 설정 (스케줄은 Splash/포그라운드 복귀에서만)
         await ModeService.setSubjectEnabled(true);
+        // MovementDetectionService는 앱 부팅/로그인 시 상시 유지 (main.dart _AppLifecycleHandler)
       }
     });
   }
@@ -282,34 +284,49 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> with WidgetsBindi
                 ),
               ],
               const SizedBox(height: 24),
-              FutureBuilder<({int currentStreak, int longestStreak})?>(
+              FutureBuilder<({bool hasToday, int currentStreak})>(
                 future: authService.user?.uid != null
-                    ? _moodService.getStreak(authService.user!.uid)
-                    : Future.value(null),
+                    ? () async {
+                        final uid = authService.user!.uid;
+                        final hasToday = await _moodService.hasRespondedToday(subjectId: uid);
+                        final streakData = await _moodService.getStreak(uid);
+                        return (hasToday: hasToday, currentStreak: streakData?.currentStreak ?? 0);
+                      }()
+                    : Future.value((hasToday: false, currentStreak: 0)),
                 builder: (context, snapshot) {
+                  final hasToday = snapshot.data?.hasToday ?? false;
                   final streak = snapshot.data?.currentStreak ?? 0;
-                  if (streak < 1) return const SizedBox.shrink();
-                  final message = streak == 1 ? '오늘 기록했어요' : '$streak일 연속 기록 중';
+                  final String message;
+                  final String icon;
+                  if (hasToday) {
+                    message = streak == 1 ? '오늘 기록했어요' : '$streak일 연속 기록 중';
+                    icon = '🔥';
+                  } else {
+                    message = '오늘 기록 안했어요';
+                    icon = '⏳';
+                  }
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 16),
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       decoration: BoxDecoration(
-                        color: Colors.orange.shade50,
+                        color: hasToday ? Colors.orange.shade50 : Colors.grey.shade100,
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: Colors.orange.shade200),
+                        border: Border.all(
+                          color: hasToday ? Colors.orange.shade200 : Colors.grey.shade300,
+                        ),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text('🔥', style: const TextStyle(fontSize: 18)),
+                          Text(icon, style: const TextStyle(fontSize: 18)),
                           const SizedBox(width: 6),
                           Text(
                             message,
                             style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w600,
-                              color: Colors.orange.shade800,
+                              color: hasToday ? Colors.orange.shade800 : Colors.grey.shade700,
                             ),
                           ),
                         ],
@@ -322,7 +339,7 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> with WidgetsBindi
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(
-                    '오늘도 잘 지내고 계신가요?',
+                    '오늘 컨디션은 어떤가요?',
                     style: theme.textTheme.headlineLarge?.copyWith(
                       fontWeight: FontWeight.bold,
                       fontSize: 36,
@@ -394,7 +411,7 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> with WidgetsBindi
                     }
                   },
                   icon: const Icon(Icons.history_rounded, size: 22),
-                  label: const Text('최근 컨디션'),
+                  label: const Text('지난 기록 보기'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: primaryColor,
                     side: const BorderSide(color: primaryColor, width: 1.5),
@@ -434,48 +451,6 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> with WidgetsBindi
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              // 안내 문구
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.blue.shade200, width: 1),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(Icons.favorite_outline, color: Colors.blue.shade700, size: 20),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '하루 한 번, 버튼만 누르면 안부가 전달돼요.',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.blue.shade900,
-                              height: 1.4,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            '보호자에게 기록 내용은 공유되지 않으며, 안부가 전달되었는지만 표시됩니다.',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.blue.shade800,
-                              height: 1.4,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
                 ),
               ),
             ],

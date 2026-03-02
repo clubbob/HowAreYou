@@ -71,6 +71,7 @@ class MoodService {
         'mood': response.mood.value,
         if (note != null && note!.isNotEmpty) 'note': note!,
       });
+      // lastInactivityAlert* 리셋은 서버(onResponseCreated/Updated) 전용. Rules에서 클라 쓰기 차단.
       batch.set(subjectRef, {
         'lastResponseAt': Timestamp.fromDate(now),
         'lastResponseDate': dateStr,

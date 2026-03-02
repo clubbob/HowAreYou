@@ -350,7 +350,7 @@ class FCMService {
       );
       return;
     }
-    if (type == 'RESPONSE_RECEIVED' || type == 'UNREACHABLE' || type == 'ESCALATION_3DAYS') {
+    if (type == 'RESPONSE_RECEIVED' || type == 'UNREACHABLE' || type == 'ESCALATION_3DAYS' || type == 'INACTIVITY_ALERT' || type == 'NO_RESPONSE_ALERT') {
       // subjectId가 있고 현재 사용자가 보호자인 경우 상세 화면으로 이동
       if (subjectId != null && subjectId.toString().isNotEmpty) {
         final user = FirebaseAuth.instance.currentUser;

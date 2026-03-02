@@ -4,6 +4,7 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:intl/intl.dart';
 import 'package:timezone/timezone.dart' as tz;
 import '../utils/constants.dart';
+import 'subscription_service.dart';
 
 /// 보호 대상자 전화번호로 사용자를 찾지 못했을 때 (앱 미설치·미로그인)
 class NoSubjectUserException implements Exception {
@@ -33,6 +34,28 @@ class PendingInviteCreatedException implements Exception {
 /// PRD §9: subjects/{subjectUid} 문서 ID = 보호대상자 Firebase Auth UID (users/{uid}와 동일).
 class GuardianService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  /// 보호자 구독 상태. 프리미엄이면 isRestricted: false (보호대상자 무제한)
+  Future<SubscriptionState> getSubscriptionState(String guardianUid) async {
+    try {
+      final doc = await _firestore.collection(AppConstants.usersCollection).doc(guardianUid).get();
+      final data = doc.data();
+      final status = data?['subscriptionStatus'] is String ? data!['subscriptionStatus'] as String : '';
+      DateTime? expiry;
+      final exp = data?['subscriptionExpiry'];
+      if (exp != null) {
+        if (exp is Timestamp) expiry = exp.toDate();
+        else if (exp is DateTime) expiry = exp;
+      }
+      return SubscriptionState.evaluate(
+        subscriptionStatus: status,
+        subscriptionExpiry: expiry,
+      );
+    } catch (e) {
+      debugPrint('getSubscriptionState 오류: $e');
+      return SubscriptionState.evaluate(subscriptionStatus: '');
+    }
+  }
 
   /// 보호자가 보호대상자와 연결된 날짜 (yyyy-MM-dd). 없으면 null (기존 데이터 호환).
   Future<String?> getGuardianPairedAt(String subjectId, String guardianUid) async {
@@ -180,9 +203,7 @@ class GuardianService {
 
   static Timestamp _epochTimestamp() => Timestamp.fromDate(DateTime(1970, 1, 1));
 
-  /// 보호 대상(대상자) 전화번호로 나를 보호자로 등록 → 보호 대상 목록에 추가.
-  /// [subjectPhone] 대상자 전화번호. users 쿼리로 찾은 uid = subjectUid 로 subjects 문서 사용 (PRD §9).
-  /// 성공 시 추가된 보호대상자 uid(subjectUid) 반환.
+  /// 보호 대상(대상자) 전화번호로 나를 보호자로 등록 → Callable Function 호출 (서버 레벨 제한 적용)
   Future<String> addMeAsGuardianToSubject({
     required String subjectPhone,
     required String guardianUid,
@@ -192,7 +213,6 @@ class GuardianService {
     debugPrint('GuardianService: 보호대상자 등록 시도 subjectPhone=$subjectPhone guardianUid=$guardianUid');
     final usersQuery = await _findUserByPhone(subjectPhone.trim());
     if (usersQuery.docs.isEmpty) {
-      // 미가입 시 대기 등록 → 가입 시 자동 연결
       await _createPendingGuardianInvite(
         subjectPhone: subjectPhone.trim(),
         guardianUid: guardianUid,
@@ -204,104 +224,38 @@ class GuardianService {
         '가입하시면 자동으로 연결됩니다.',
       );
     }
-    final subjectDoc = usersQuery.docs.first;
-    final subjectId = subjectDoc.id;
-    final subjectData = subjectDoc.data() as Map<String, dynamic>? ?? {};
-    debugPrint('GuardianService: 보호대상자 uid=$subjectId, subjects 문서 읽기 시도');
-
-    // 본인 체크: 프로덕션 모드에서는 본인을 보호대상으로 추가할 수 없음
-    // 개발 모드(kDebugMode)에서는 테스트를 위해 허용
-    if (subjectId == guardianUid) {
-      if (kDebugMode) {
-        // 개발 모드: 허용 (테스트 편의)
-        debugPrint('[개발 모드] 본인을 보호대상으로 추가합니다. (프로덕션에서는 차단됨)');
-      } else {
-        // 프로덕션 모드: 차단
-        throw Exception('본인 핸드폰 번호는 추가할 수 없습니다. 보호할 분(대상자)의 핸드폰 번호를 입력해 주세요.');
-      }
+    final subjectId = usersQuery.docs.first.id;
+    if (subjectId == guardianUid && !kDebugMode) {
+      throw Exception('본인 핸드폰 번호는 추가할 수 없습니다. 보호할 분(대상자)의 핸드폰 번호를 입력해 주세요.');
     }
 
-    final docRef = _firestore
-        .collection(AppConstants.subjectsCollection)
-        .doc(subjectId);
-    DocumentSnapshot docSnap;
     try {
-      docSnap = await docRef.get();
-    } catch (e) {
-      debugPrint('GuardianService: subjects 문서 읽기 실패 → $e');
-      if (e.toString().contains('permission-denied') || e.toString().contains('PERMISSION_DENIED')) {
-        throw Exception('접근 권한이 없습니다. 잠시 후 다시 시도해 주세요.');
-      }
-      rethrow;
-    }
-    final existingData = docSnap.data() as Map<String, dynamic>?;
-    final existingInfosRaw = existingData?['guardianInfos'];
-    final existingInfos = existingInfosRaw is Map
-        ? Map<String, dynamic>.from(
-            (existingInfosRaw as Map).map((k, v) => MapEntry(
-                  k.toString(),
-                  v is Map ? Map<String, dynamic>.from(v) : v,
-                )))
-        : <String, dynamic>{};
-    final paired = List<String>.from(existingData?['pairedGuardianUids'] ?? []);
-    if (paired.contains(guardianUid)) {
-      throw Exception('이미 보호 대상으로 등록된 분입니다.');
-    }
-    existingInfos[guardianUid] = {
-      'phone': guardianPhone,
-      'displayName': guardianDisplayName?.trim() ?? '',
-      'pairedAt': DateFormat('yyyy-MM-dd').format(DateTime.now()),
-    };
-
-    // pairedGuardianUids에 보호자 UID 추가 (명시적으로 배열 구성)
-    paired.add(guardianUid);
-    
-    // 보호 대상자 정보 가져오기 (displayName, phone)
-    final subjectDisplayName = subjectData['displayName'] is String
-        ? (subjectData['displayName'] as String).trim()
-        : '';
-    final subjectPhoneNormalized = subjectData['phone'] is String
-        ? (subjectData['phone'] as String).trim()
-        : subjectPhone.trim();
-    
-    // 문서가 존재하면 update 사용, 없으면 set 사용
-    // update() 사용 시에도 규칙이 작동하도록 항상 pairedGuardianUids와 guardianInfos만 업데이트
-    try {
-      if (docSnap.exists) {
-        debugPrint('GuardianService: subjects 문서 업데이트 시도');
-        await docRef.update({
-          'pairedGuardianUids': paired,
-          'guardianInfos': existingInfos,
-        });
-      } else {
-        debugPrint('GuardianService: subjects 새 문서 생성 시도');
-        final newData = <String, dynamic>{
-          'pairedGuardianUids': paired,
-          'guardianInfos': existingInfos,
-          'lastResponseAt': _epochTimestamp(),
-          'createdAt': FieldValue.serverTimestamp(),
-        };
-        if (subjectDisplayName.isNotEmpty) {
-          newData['displayName'] = subjectDisplayName;
-        }
-        if (subjectPhoneNormalized.isNotEmpty) {
-          newData['phone'] = subjectPhoneNormalized;
-        }
-        await docRef.set(newData);
-      }
-      debugPrint('GuardianService: 보호대상자 등록 완료 subjectId=$subjectId');
-      return subjectId;
-    } catch (e) {
-      debugPrint('GuardianService: subjects 쓰기 실패 → $e');
-      if (e.toString().contains('permission-denied') || e.toString().contains('PERMISSION_DENIED')) {
-        throw Exception('접근 권한이 없습니다. 잠시 후 다시 시도해 주세요.');
-      }
-      rethrow;
+      final callable = FirebaseFunctions.instance.httpsCallable('addGuardianToSubject');
+      final result = await callable.call({
+        'subjectPhone': subjectPhone.trim(),
+        'guardianPhone': guardianPhone,
+        'guardianDisplayName': guardianDisplayName?.trim() ?? '',
+      });
+      final data = result.data as Map;
+      final id = data['subjectId'] as String?;
+      debugPrint('GuardianService: 보호대상자 등록 완료 subjectId=$id');
+      return id ?? subjectId;
+    } on FirebaseFunctionsException catch (e) {
+      debugPrint('GuardianService: addGuardianToSubject 실패 $e');
+      final msg = switch (e.code) {
+        'unauthenticated' => '로그인이 필요합니다.',
+        'invalid-argument' => e.message ?? '잘못된 요청입니다.',
+        'permission-denied' => '권한이 없습니다.',
+        'resource-exhausted' => e.message ?? '무료 플랜에서는 보호대상자 2명까지 등록할 수 있습니다.',
+        'failed-precondition' => e.message ?? '이 분이 아직 앱에 가입하지 않았습니다.',
+        _ => e.message ?? '등록에 실패했습니다. 잠시 후 다시 시도해 주세요.',
+      };
+      throw Exception(msg);
     }
   }
 
   /// 초대 링크로 들어온 보호자가 로그인 후 보호대상자와 연결 (보호자로 등록)
-  /// 보호대상자가 링크를 보냈을 때, 링크를 연 보호자 측에서 호출.
+  /// Callable addGuardianToSubject 호출 (서버 레벨 제한 적용)
   Future<void> acceptInviteAsGuardian({
     required String guardianUid,
     required String guardianPhone,
@@ -309,38 +263,47 @@ class GuardianService {
     required String subjectId,
   }) async {
     if (guardianUid == subjectId) return;
-    final docRef = _firestore.collection(AppConstants.subjectsCollection).doc(subjectId);
-    final docSnap = await docRef.get();
-    final existingData = docSnap.data() as Map<String, dynamic>?;
-    final existingInfosRaw = existingData?['guardianInfos'];
-    final existingInfos = existingInfosRaw is Map
-        ? Map<String, dynamic>.from(
-            (existingInfosRaw as Map).map((k, v) => MapEntry(
-                  k.toString(),
-                  v is Map ? Map<String, dynamic>.from(v) : v,
-                )))
-        : <String, dynamic>{};
-    final paired = List<String>.from(existingData?['pairedGuardianUids'] ?? []);
-    if (paired.contains(guardianUid)) return;
-    existingInfos[guardianUid] = {
-      'phone': guardianPhone,
-      'displayName': guardianDisplayName?.trim() ?? '',
-      'pairedAt': DateFormat('yyyy-MM-dd').format(DateTime.now()),
-    };
-    paired.add(guardianUid);
-    if (docSnap.exists) {
-      await docRef.update({'pairedGuardianUids': paired, 'guardianInfos': existingInfos});
-    } else {
-      await docRef.set({
-        'pairedGuardianUids': paired,
-        'guardianInfos': existingInfos,
-        'lastResponseAt': _epochTimestamp(),
-        'createdAt': FieldValue.serverTimestamp(),
+    try {
+      final callable = FirebaseFunctions.instance.httpsCallable('addGuardianToSubject');
+      await callable.call({
+        'subjectId': subjectId,
+        'guardianPhone': guardianPhone,
+        'guardianDisplayName': guardianDisplayName?.trim() ?? '',
       });
+    } on FirebaseFunctionsException catch (e) {
+      if (e.code == 'resource-exhausted') {
+        throw Exception(e.message ?? '무료 플랜에서는 보호대상자 2명까지 등록할 수 있습니다.');
+      }
+      rethrow;
     }
   }
 
   /// 초대 링크로 들어온 사용자가 로그인 후 보호자와 연결 (보호대상자로 등록)
+  /// 보호대상자가 전화번호로 찾은 보호자를 추가 (Callable addGuardianToSubjectBySubjectInvite)
+  /// - subject = caller, guardianUid = 추가할 보호자 (프리미엄 체크 적용)
+  Future<void> addGuardianBySubjectInvite({
+    required String guardianUid,
+    String? subjectPhone,
+    String? subjectDisplayName,
+    String? guardianDisplayName,
+  }) async {
+    try {
+      final callable = FirebaseFunctions.instance.httpsCallable('addGuardianToSubjectBySubjectInvite');
+      await callable.call({
+        'guardianUid': guardianUid,
+        if (subjectPhone != null && subjectPhone.isNotEmpty) 'subjectPhone': subjectPhone.trim(),
+        if (subjectDisplayName != null && subjectDisplayName.isNotEmpty) 'subjectDisplayName': subjectDisplayName.trim(),
+        if (guardianDisplayName != null && guardianDisplayName.isNotEmpty) 'guardianDisplayName': guardianDisplayName.trim(),
+      });
+    } on FirebaseFunctionsException catch (e) {
+      if (e.code == 'resource-exhausted') {
+        throw Exception(e.message ?? '무료 플랜에서는 보호대상자 2명까지 등록할 수 있습니다.');
+      }
+      rethrow;
+    }
+  }
+
+  /// 보호대상자가 초대 링크로 보호자 추가 (Callable addGuardianToSubjectBySubjectInvite 호출)
   Future<void> acceptInviteAsSubject({
     required String subjectUid,
     required String subjectPhone,
@@ -348,46 +311,38 @@ class GuardianService {
     required String guardianUid,
   }) async {
     if (subjectUid == guardianUid) return;
-    final guardianDoc = await _firestore.collection(AppConstants.usersCollection).doc(guardianUid).get();
-    final guardianData = guardianDoc.data();
-    final guardianPhone = (guardianData?['phone'] as String?)?.trim() ?? '';
-    final guardianDisplayName = (guardianData?['displayName'] as String?)?.trim() ?? '';
-
-    final docRef = _firestore.collection(AppConstants.subjectsCollection).doc(subjectUid);
-    final docSnap = await docRef.get();
-    final existingData = docSnap.data() as Map<String, dynamic>?;
-    final existingInfosRaw = existingData?['guardianInfos'];
-    final existingInfos = existingInfosRaw is Map
-        ? Map<String, dynamic>.from(
-            (existingInfosRaw as Map).map((k, v) => MapEntry(
-                  k.toString(),
-                  v is Map ? Map<String, dynamic>.from(v) : v,
-                )))
-        : <String, dynamic>{};
-    final paired = List<String>.from(existingData?['pairedGuardianUids'] ?? []);
-    if (paired.contains(guardianUid)) return;
-    existingInfos[guardianUid] = {
-      'phone': guardianPhone,
-      'displayName': guardianDisplayName,
-    };
-    paired.add(guardianUid);
-
-    final newData = <String, dynamic>{
-      'pairedGuardianUids': paired,
-      'guardianInfos': existingInfos,
-    };
-    if (subjectDisplayName != null && subjectDisplayName.trim().isNotEmpty) {
-      newData['displayName'] = subjectDisplayName.trim();
+    try {
+      final callable = FirebaseFunctions.instance.httpsCallable('addGuardianToSubjectBySubjectInvite');
+      await callable.call({
+        'guardianUid': guardianUid,
+        'subjectPhone': subjectPhone.trim(),
+        'subjectDisplayName': subjectDisplayName?.trim() ?? '',
+      });
+    } on FirebaseFunctionsException catch (e) {
+      if (e.code == 'resource-exhausted') {
+        throw Exception(e.message ?? '무료 플랜에서는 보호대상자 2명까지 등록할 수 있습니다.');
+      }
+      rethrow;
     }
-    if (subjectPhone.isNotEmpty) {
-      newData['phone'] = subjectPhone;
-    }
-    if (docSnap.exists) {
-      await docRef.update({'pairedGuardianUids': paired, 'guardianInfos': existingInfos});
-    } else {
-      newData['lastResponseAt'] = _epochTimestamp();
-      newData['createdAt'] = FieldValue.serverTimestamp();
-      await docRef.set(newData);
+  }
+
+  /// 보호대상자가 보호자를 자신의 목록에서 제거 (Callable removeGuardianFromSubjectBySubject)
+  Future<void> removeGuardianBySubject({
+    required String subjectUid,
+    required String guardianUid,
+  }) async {
+    if (subjectUid == guardianUid) return;
+    try {
+      final callable = FirebaseFunctions.instance.httpsCallable('removeGuardianFromSubjectBySubject');
+      await callable.call({'guardianUid': guardianUid});
+    } on FirebaseFunctionsException catch (e) {
+      debugPrint('GuardianService: removeGuardianBySubject 실패 $e');
+      final msg = switch (e.code) {
+        'unauthenticated' => '로그인이 필요합니다.',
+        'invalid-argument' => e.message ?? '잘못된 요청입니다.',
+        _ => e.message ?? '삭제에 실패했습니다. 잠시 후 다시 시도해 주세요.',
+      };
+      throw Exception(msg);
     }
   }
 

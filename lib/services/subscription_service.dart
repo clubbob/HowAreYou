@@ -1,4 +1,6 @@
-/// 보호자 구독 상태 (무료 전환: 모든 사용자 전체 기능 사용)
+/// 보호자 구독 상태
+/// - 프리미엄(isRestricted: false): 보호대상자 무제한
+/// - 무료(isRestricted: true): 보호대상자 2명까지
 class SubscriptionState {
   const SubscriptionState._({
     required this.phase,
@@ -19,15 +21,27 @@ class SubscriptionState {
   bool get isActive => phase == SubscriptionPhase.active;
   bool get isExpired => phase == SubscriptionPhase.expired;
 
-  /// 무료 전환: 항상 전체 기능 사용 가능
+  /// 구독 상태 평가. 프리미엄이면 isRestricted: false (보호대상자 무제한)
   static SubscriptionState evaluate({
     String subscriptionStatus = '',
     DateTime? createdAt,
     DateTime? subscriptionExpiry,
   }) {
+    final now = DateTime.now();
+    final status = (subscriptionStatus ?? '').toString().toLowerCase();
+    final isActive = status == 'active' || status == 'premium';
+    final notExpired = subscriptionExpiry == null || subscriptionExpiry.isAfter(now);
+
+    if (isActive && notExpired) {
+      return SubscriptionState._(
+        phase: SubscriptionPhase.active,
+        isRestricted: false,
+        message: '프리미엄 이용 중',
+      );
+    }
     return SubscriptionState._(
       phase: SubscriptionPhase.active,
-      isRestricted: false,
+      isRestricted: true,
       message: '무료 이용 중',
     );
   }

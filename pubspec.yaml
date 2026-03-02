@@ -21,7 +21,10 @@ dependencies:
   # 로컬 알림
   flutter_local_notifications: ^18.0.1
   permission_handler: ^11.3.1
-  
+
+  # 핸드폰 이동 감지 (프리미엄 무활동 알림용)
+  activity_recognition_flutter: ^6.0.0
+
   # 상태 관리
   provider: ^6.1.2
   
@@ -38,8 +41,10 @@ dependencies:
   share_plus: ^10.0.2
   app_links: ^6.3.2
   url_launcher: ^6.2.0
+  android_intent_plus: ^5.1.0
   in_app_review: ^2.0.9
   http: ^1.2.0
+  in_app_purchase: ^3.2.0
 
 dev_dependencies:
   flutter_test:

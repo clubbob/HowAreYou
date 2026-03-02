@@ -219,6 +219,34 @@ class _HomeScreenState extends State<HomeScreen> {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 48),
+              // 보호자 모드 버튼 (초록색) - 위로
+              SizedBox(
+                width: double.infinity,
+                height: 140,
+                child: FilledButton.icon(
+                  onPressed: () => _selectMode(ModeService.modeGuardian),
+                  icon: const Icon(Icons.visibility, size: 56),
+                  label: const Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('보호자', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+                      SizedBox(height: 6),
+                      Text('소중한 사람의 상태를 확인해요.', style: TextStyle(fontSize: 16)),
+                    ],
+                  ),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF4CAF50), // 초록색
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.all(28),
+                    elevation: 8,
+                    shadowColor: const Color(0xFF4CAF50).withOpacity(0.5),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
               // 보호대상자 모드 버튼 (파란색)
               SizedBox(
                 width: double.infinity,
@@ -231,7 +259,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       Text('보호대상자', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
                       SizedBox(height: 6),
-                      Text('안부를 남겨요.', style: TextStyle(fontSize: 16)),
+                      Text('하루 한 번 안부를 전해요.', style: TextStyle(fontSize: 16)),
                     ],
                   ),
                   style: FilledButton.styleFrom(
@@ -240,34 +268,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     padding: const EdgeInsets.all(28),
                     elevation: 8,
                     shadowColor: const Color(0xFF2196F3).withOpacity(0.5),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              // 보호자 모드 버튼 (초록색)
-              SizedBox(
-                width: double.infinity,
-                height: 140,
-                child: FilledButton.icon(
-                  onPressed: () => _selectMode(ModeService.modeGuardian),
-                  icon: const Icon(Icons.visibility, size: 56),
-                  label: const Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text('보호자', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
-                      SizedBox(height: 6),
-                      Text('전달된 안부를 확인해요.', style: TextStyle(fontSize: 16)),
-                    ],
-                  ),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF4CAF50), // 초록색
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.all(28),
-                    elevation: 8,
-                    shadowColor: const Color(0xFF4CAF50).withOpacity(0.5),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(24),
                     ),

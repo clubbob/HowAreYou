@@ -27,6 +27,7 @@ import 'guardian_mode_screen.dart';
 import 'inquiry_screen.dart';
 import 'announcements_screen.dart';
 import 'service_improvement_screen.dart';
+import 'paywall_screen.dart';
 
 class GuardianDashboardScreen extends StatefulWidget {
   const GuardianDashboardScreen({super.key, this.initialTabIndex = 0});
@@ -173,7 +174,9 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> with 
       );
       return;
     }
-    if (currentSubjectCount >= 2) {
+    // 무료: 2명까지. 프리미엄: 무제한
+    final subscriptionState = await _guardianService.getSubscriptionState(userId);
+    if (subscriptionState.isRestricted && currentSubjectCount >= 2) {
       await showDialog<void>(
         context: context,
         builder: (c) => AlertDialog(
@@ -187,6 +190,15 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> with 
             TextButton(
               onPressed: () => Navigator.pop(c),
               child: const Text('확인'),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.pop(c);
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const PaywallScreen()),
+                );
+              },
+              child: const Text('프리미엄 시작'),
             ),
           ],
         ),
@@ -2077,6 +2089,22 @@ class _GuardianSettingsScreenState extends State<GuardianSettingsScreen> {
                 // [ 계정 정보 ]
                 _buildSettingsSectionHeader('계정 정보'),
                 _buildAccountInfoCard(),
+                const SizedBox(height: 24),
+                // [ 프리미엄 ]
+                _buildSettingsSectionHeader('프리미엄'),
+                Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.workspace_premium, color: Color(0xFF4285F4)),
+                    title: const Text('프리미엄 구독'),
+                    subtitle: const Text('보호대상자 무제한 · 6/9/12h 무이동 알림'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const PaywallScreen()),
+                      );
+                    },
+                  ),
+                ),
                 const SizedBox(height: 24),
                 // [ 알림 설정 ]
                 _buildSettingsSectionHeader('알림 설정'),

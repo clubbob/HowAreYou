@@ -18,6 +18,7 @@ import 'services/invite_pending_service.dart';
 import 'services/auth_service.dart';
 import 'services/notification_service.dart';
 import 'services/fcm_service.dart';
+import 'services/movement_detection_service.dart';
 import 'screens/splash_screen.dart';
 import 'screens/auth_screen.dart';
 import 'screens/home_screen.dart';
@@ -322,6 +323,31 @@ class _AppLifecycleHandlerState extends State<_AppLifecycleHandler>
     with WidgetsBindingObserver {
   /// 포그라운드 복귀 시 연속 이벤트 디바운스 (2초)
   Timer? _resumeDebounceTimer;
+  /// 이동 감지 서비스 자기복구: 10분마다 health check
+  Timer? _movementHealthCheckTimer;
+  AuthService? _auth;
+  bool _authListenerAdded = false;
+
+  void _ensureMovementService() {
+    if (!mounted) {
+      MovementDetectionService.instance.stop();
+      _movementHealthCheckTimer?.cancel();
+      _movementHealthCheckTimer = null;
+      return;
+    }
+    final auth = _auth ?? context.read<AuthService>();
+    if (auth.isAuthenticated) {
+      final uid = auth.user?.uid;
+      if (uid != null) {
+        MovementDetectionService.instance.start(uid);
+        _startMovementHealthCheck();
+      }
+    } else {
+      MovementDetectionService.instance.stop();
+      _movementHealthCheckTimer?.cancel();
+      _movementHealthCheckTimer = null;
+    }
+  }
 
   @override
   void initState() {
@@ -329,11 +355,39 @@ class _AppLifecycleHandlerState extends State<_AppLifecycleHandler>
     WidgetsBinding.instance.addObserver(this);
   }
 
+  void _startMovementHealthCheck() {
+    _movementHealthCheckTimer?.cancel();
+    _movementHealthCheckTimer = Timer.periodic(const Duration(minutes: 10), (_) {
+      if (!mounted) return;
+      final auth = _auth ?? context.read<AuthService>();
+      if (auth.isAuthenticated && !MovementDetectionService.instance.isRunning) {
+        debugPrint('[이동감지] health check: 서비스 미동작 → 재시작');
+        _ensureMovementService();
+      }
+    });
+  }
+
   @override
   void dispose() {
     _resumeDebounceTimer?.cancel();
+    _movementHealthCheckTimer?.cancel();
+    _auth?.removeListener(_ensureMovementService);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_authListenerAdded) {
+      _auth = context.read<AuthService>();
+      _auth!.addListener(_ensureMovementService);
+      _authListenerAdded = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _ensureMovementService();
+        _startMovementHealthCheck();
+      });
+    }
   }
 
   @override
@@ -348,6 +402,8 @@ class _AppLifecycleHandlerState extends State<_AppLifecycleHandler>
           NotificationService.instance.scheduleDailyRemindersByRole().catchError((e) {
             debugPrint('알림 스케줄링 오류 (무시): $e');
           });
+          _ensureMovementService();
+          _startMovementHealthCheck();
         }
       });
     }

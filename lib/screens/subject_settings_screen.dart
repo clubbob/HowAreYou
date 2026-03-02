@@ -1,8 +1,10 @@
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:android_intent_plus/android_intent.dart';
 import '../services/auth_service.dart';
 import '../services/fcm_service.dart';
 import '../utils/constants.dart';
@@ -97,6 +99,63 @@ class _SubjectSettingsScreenState extends State<SubjectSettingsScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Future<void> _openBatteryOptimizationSettings() async {
+    try {
+      final packageInfo = await PackageInfo.fromPlatform();
+      final intent = AndroidIntent(
+        action: 'android.settings.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS',
+        data: 'package:${packageInfo.packageName}',
+      );
+      await intent.launch();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('설정을 열 수 없습니다: $e')),
+        );
+      }
+    }
+  }
+
+  Widget _buildBatteryOptimizationCard() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.battery_charging_full, color: Colors.amber.shade700),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    '배터리 최적화 제외',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '6시간/9시간/12시간 무이동 알림이 안정적으로 동작하려면, 배터리 최적화에서 이 앱을 제외해 주세요. '
+              '기기 재부팅·백그라운드 제한 시에도 이동 감지가 유지됩니다.',
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade700, height: 1.4),
+            ),
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: _openBatteryOptimizationSettings,
+                icon: const Icon(Icons.settings, size: 18),
+                label: const Text('설정으로 이동'),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -335,6 +394,11 @@ class _SubjectSettingsScreenState extends State<SubjectSettingsScreen> {
                     ),
                   ),
                 ),
+                if (Platform.isAndroid) ...[
+                  const SizedBox(height: 16),
+                  _buildBatteryOptimizationCard(),
+                  const SizedBox(height: 8),
+                ],
                 const SizedBox(height: 24),
                 // [ 고객지원 ]
                 _buildSectionHeader('고객지원'),

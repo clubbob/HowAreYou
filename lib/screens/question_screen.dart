@@ -10,6 +10,7 @@ import '../widgets/mood_face_icon.dart';
 import '../utils/button_styles.dart';
 import 'subject_mode_screen.dart';
 import 'subject_settings_screen.dart';
+import '../services/movement_detection_service.dart';
 
 class QuestionScreen extends StatefulWidget {
   final TimeSlot timeSlot;
@@ -372,6 +373,8 @@ class _QuestionScreenState extends State<QuestionScreen> {
         mood: _selectedMood!,
         note: memo,
       );
+      // 컨디션 기록 = 터치 = 핸드폰 이동으로 간주
+      MovementDetectionService.reportMovement(userId);
 
       if (!mounted) return;
 

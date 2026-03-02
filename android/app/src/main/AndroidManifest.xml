@@ -26,6 +26,13 @@
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
     <!-- 알림이 화면에 계속 표시되도록 하기 위함 -->
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT"/>
+    <!-- 핸드폰 이동 감지 (프리미엄 무활동 알림용) -->
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
+    <uses-permission android:name="com.google.android.gms.permission.ACTIVITY_RECOGNITION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_HEALTH" />
+    <!-- 배터리 최적화 제외 요청 (이동 감지 서비스 안정화) -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
     <application
         android:label="오늘 어때?"
@@ -58,5 +65,15 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        <!-- activity_recognition_flutter -->
+        <receiver android:name="dk.cachet.activity_recognition_flutter.ActivityRecognizedBroadcastReceiver"/>
+        <service
+            android:name="dk.cachet.activity_recognition_flutter.ActivityRecognizedService"
+            android:permission="android.permission.BIND_JOB_SERVICE"
+            android:exported="true"/>
+        <service
+            android:name="dk.cachet.activity_recognition_flutter.ForegroundService"
+            android:foregroundServiceType="health"
+            android:exported="false" />
     </application>
 </manifest>

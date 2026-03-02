@@ -346,7 +346,7 @@ class _GuardianModeScreenState extends State<GuardianModeScreen> with WidgetsBin
                     );
                   },
                   icon: const Icon(Icons.visibility_outlined, size: 40),
-                  label: const Text('안부 확인'),
+                  label: const Text('오늘 안부 보기'),
                   style: FilledButton.styleFrom(
                     backgroundColor: primaryColor,
                     foregroundColor: Colors.white,
@@ -391,49 +391,6 @@ class _GuardianModeScreenState extends State<GuardianModeScreen> with WidgetsBin
                   ),
                 ),
               ),
-              const SizedBox(height: 32),
-              // 안내 문구 (보호대상자 화면과 동일 스타일)
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.blue.shade200, width: 1),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(Icons.info_outline, color: Colors.blue.shade700, size: 20),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '보호대상자의 안부를 확인할 수 있어요.',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.blue.shade900,
-                              height: 1.4,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            '기록 내용(기분, 메모)은 공유되지 않으며, 안부가 전달되었는지만 표시됩니다.',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.blue.shade800,
-                              height: 1.4,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
             ],
           ),
         ),

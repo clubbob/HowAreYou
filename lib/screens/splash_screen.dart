@@ -77,7 +77,7 @@ class _SplashScreenState extends State<SplashScreen> {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const GuardianDashboardScreen(initialTabIndex: 0)),
         );
-      } else if (type == 'RESPONSE_RECEIVED' || type == 'UNREACHABLE' || type == 'ESCALATION_3DAYS') {
+      } else if (type == 'RESPONSE_RECEIVED' || type == 'UNREACHABLE' || type == 'ESCALATION_3DAYS' || type == 'INACTIVITY_ALERT' || type == 'NO_RESPONSE_ALERT') {
         // 알림으로 앱 시작 시 보호자 대시보드 또는 상세 화면으로
         final subjectId = data?['subjectId']?.toString();
         final user = authService.user;

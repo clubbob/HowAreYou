@@ -360,76 +360,32 @@ class _GuardianScreenState extends State<GuardianScreen> {
       }
 
       final guardianId = guardianDoc.id;
-      final guardianData = guardianDoc.data() as Map<String, dynamic>? ?? {};
-      final guardianPhone = guardianData['phone'] is String
-          ? (guardianData['phone'] as String)
-          : '';
 
       // 본인 체크: 프로덕션 모드에서는 본인을 보호자로 추가할 수 없음
-      // 개발 모드(kDebugMode)에서는 테스트를 위해 허용
       if (guardianId == userId) {
         if (kDebugMode) {
-          // 개발 모드: 허용 (테스트 편의)
           debugPrint('[개발 모드] 본인을 보호자로 추가합니다. (프로덕션에서는 차단됨)');
         } else {
-          // 프로덕션 모드: 차단
           throw Exception('본인 핸드폰 번호는 추가할 수 없습니다.');
         }
       }
 
-      final docRef = _firestore.collection(AppConstants.subjectsCollection).doc(userId);
-      // 기존 데이터를 먼저 읽어서 중복 확인
-      final docSnap = await docRef.get();
-      final existingData = docSnap.data() as Map<String, dynamic>?;
-      final existingPairedUids = List<String>.from(existingData?['pairedGuardianUids'] ?? []);
-      
-      // 이미 등록된 보호자인지 확인
-      if (existingPairedUids.contains(guardianId)) {
-        throw Exception('이미 등록된 보호자입니다.');
-      }
-
-      // 입력한 이름 그대로 저장 (한 글자 "박" 등도 반드시 표시)
+      // Callable 호출 (서버 레벨 프리미엄 체크 + guardianSubjectCount 동기화)
+      final subjectPhone = authService.user?.phoneNumber ?? authService.userModel?.phone ?? '';
+      final subjectDisplayName = authService.userModel?.displayName ?? '';
+      final guardianData = guardianDoc.data() as Map<String, dynamic>? ?? {};
       final nameInput = _nameController.text.trim();
       final guardianDisplayName = nameInput.isNotEmpty
           ? nameInput
           : (guardianData['displayName'] is String
               ? (guardianData['displayName'] as String).trim()
               : '');
-
-      // 기존 guardianInfos를 읽어서 새 지정자 정보를 넣은 뒤 통째로 저장 (이름이 확실히 반영되도록)
-      final existingInfosRaw = existingData?['guardianInfos'];
-      final existingInfos = existingInfosRaw is Map
-          ? Map<String, dynamic>.from(
-              (existingInfosRaw as Map).map((k, v) => MapEntry(
-                    k.toString(),
-                    v is Map ? Map<String, dynamic>.from(v) : v,
-                  )))
-          : <String, dynamic>{};
-      
-      // 새 보호자 정보 추가 (중복 확인 완료 후)
-      existingInfos[guardianId] = {
-        'phone': guardianPhone,
-        'displayName': guardianDisplayName, // 항상 문자열로 저장 (빈 문자열 가능)
-        'pairedAt': DateFormat('yyyy-MM-dd').format(DateTime.now()),
-      };
-      
-      // pairedGuardianUids에 새 보호자 추가 (중복 확인 완료했으므로 바로 추가)
-      existingPairedUids.add(guardianId);
-
-      // 문서가 있으면 update, 없으면 set 사용
-      if (docSnap.exists) {
-        await docRef.update({
-          'displayName': authService.userModel?.displayName ?? '',
-          'pairedGuardianUids': existingPairedUids,
-          'guardianInfos': existingInfos,
-        });
-      } else {
-        await docRef.set({
-          'displayName': authService.userModel?.displayName ?? '',
-          'pairedGuardianUids': existingPairedUids,
-          'guardianInfos': existingInfos,
-        });
-      }
+      await _guardianService.addGuardianBySubjectInvite(
+        guardianUid: guardianId,
+        subjectPhone: subjectPhone.isNotEmpty ? subjectPhone : null,
+        subjectDisplayName: subjectDisplayName?.isNotEmpty == true ? subjectDisplayName : null,
+        guardianDisplayName: guardianDisplayName.isNotEmpty ? guardianDisplayName : null,
+      );
 
       if (mounted) {
         FocusScope.of(context).unfocus(); // 키보드 닫아 상단 보이게
@@ -645,13 +601,10 @@ class _GuardianScreenState extends State<GuardianScreen> {
                               );
                               if (confirm != true) return;
                               try {
-                                await _firestore
-                                    .collection(AppConstants.subjectsCollection)
-                                    .doc(userId)
-                                    .update({
-                                  'pairedGuardianUids': FieldValue.arrayRemove([uid]),
-                                  'guardianInfos.$uid': FieldValue.delete(),
-                                });
+                                await _guardianService.removeGuardianBySubject(
+                                  subjectUid: userId,
+                                  guardianUid: uid,
+                                );
                                 if (mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
@@ -662,9 +615,10 @@ class _GuardianScreenState extends State<GuardianScreen> {
                                 }
                               } catch (e) {
                                 if (mounted) {
+                                  final msg = e.toString().replaceFirst('Exception: ', '').split('\n').first.trim();
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('삭제에 실패했습니다. 잠시 후 다시 시도해 주세요.'),
+                                    SnackBar(
+                                      content: Text(msg.isNotEmpty ? msg : '삭제에 실패했습니다. 잠시 후 다시 시도해 주세요.'),
                                     ),
                                   );
                                 }
