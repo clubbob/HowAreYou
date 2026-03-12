@@ -231,7 +231,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       Text('보호자', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
                       SizedBox(height: 6),
-                      Text('소중한 사람의 상태를 확인해요.', style: TextStyle(fontSize: 16)),
+                      Text('소중한 분의 상태를 확인해요.', style: TextStyle(fontSize: 16)),
                     ],
                   ),
                   style: FilledButton.styleFrom(
