@@ -2,7 +2,7 @@ const COMPARE_ROWS = [
   { kakao: '먼저 연락해야 합니다', ours: '버튼 한 번이면 충분합니다' },
   { kakao: '답장이 늦으면 괜히 걱정됩니다', ours: '기록이 없으면 자동으로 알려줍니다' },
   { kakao: '대화가 길어지기도 합니다', ours: '3초면 끝납니다' },
-  { kakao: '감정이 소모됩니다', ours: '부담 없이 이어집니다' },
+  { kakao: '계속 확인하게 됩니다', ours: '부담 없이 이어집니다' },
 ];
 
 export function KakaoCompareSection() {
