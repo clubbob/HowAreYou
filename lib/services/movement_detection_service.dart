@@ -19,14 +19,14 @@ class MovementDetectionService {
   final ActivityRecognition _activityRecognition = ActivityRecognition();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  /// 이동으로 간주하는 활동 (STILL, UNKNOWN 제외)
+  /// 이동으로 간주하는 활동 (STILL, UNKNOWN 제외) — 플러그인 5.x enum (UPPER_CASE)
   static const _movementTypes = {
-    ActivityType.walking,
-    ActivityType.running,
-    ActivityType.onFoot,
-    ActivityType.inVehicle,
-    ActivityType.onBicycle,
-    ActivityType.tilting,
+    ActivityType.WALKING,
+    ActivityType.RUNNING,
+    ActivityType.ON_FOOT,
+    ActivityType.IN_VEHICLE,
+    ActivityType.ON_BICYCLE,
+    ActivityType.TILTING,
   };
 
   /// 최소 신뢰도 (%)

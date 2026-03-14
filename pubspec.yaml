@@ -22,8 +22,9 @@ dependencies:
   flutter_local_notifications: ^18.0.1
   permission_handler: ^11.3.1
 
-  # 핸드폰 이동 감지 (프리미엄 무활동 알림용)
-  activity_recognition_flutter: ^6.0.0
+  # 핸드폰 이동 감지 (프리미엄 무활동 알림용, 로컬 수정: 알림 문구 한글화)
+  activity_recognition_flutter:
+    path: ./plugins/flutter-plugins/packages/activity_recognition_flutter
 
   # 상태 관리
   provider: ^6.1.2

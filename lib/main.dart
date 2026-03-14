@@ -66,93 +66,91 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   debugPrint('알림 내용: ${message.notification?.body}');
 }
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  
-  // 디버그 시각적 도구 및 출력 비활성화
-  _disableDebugVisuals();
+void main() {
+  runZonedGuarded(() async {
+    WidgetsFlutterBinding.ensureInitialized();
 
-  // 한국 시간 사용을 위해 timezone 초기화 (MoodService 등에서 사용)
-  tz_data.initializeTimeZones();
-  tz.setLocalLocation(tz.getLocation('Asia/Seoul'));
+    // 디버그 시각적 도구 및 출력 비활성화
+    _disableDebugVisuals();
 
-  // 한국어 날짜 포맷 (보호자 대시보드 7일 이력 등)
-  await initializeDateFormatting('ko_KR', null);
+    // 한국 시간 사용을 위해 timezone 초기화 (MoodService 등에서 사용)
+    tz_data.initializeTimeZones();
+    tz.setLocalLocation(tz.getLocation('Asia/Seoul'));
 
-  // Firebase 초기화 (모바일 플랫폼만)
-  if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
-    try {
-      await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform,
-      );
-      FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+    // 한국어 날짜 포맷 (보호자 대시보드 7일 이력 등)
+    await initializeDateFormatting('ko_KR', null);
 
-      // Crashlytics: 프로덕션에서만 수집 (디버그 시 대시보드 오염 방지)
-      await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(!kDebugMode);
-      FlutterError.onError = (details) {
-        FlutterError.presentError(details);
-        FirebaseCrashlytics.instance.recordFlutterFatalError(details);
-      };
-      PlatformDispatcher.instance.onError = (error, stack) {
-        FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
-        return true;
-      };
-    } catch (e) {
-      debugPrint('Firebase 초기화 오류: $e');
-      MyApp.firebaseInitFailed = true;
-    }
-    try {
-      await NotificationService.instance.initialize();
-    } catch (e) {
-      debugPrint('알림 서비스 초기화 오류 (앱은 계속 실행됩니다): $e');
-    }
-  } else if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-    // 데스크톱 플랫폼에서는 Firebase 초기화 시도 (선택적)
-    try {
-      await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform,
-      );
-    } catch (e) {
-      debugPrint('Firebase 초기화 실패 (데스크톱): $e');
-      debugPrint('데스크톱에서는 Firebase 기능이 제한될 수 있습니다.');
-    }
-  }
+    // Firebase 초기화 (모바일 플랫폼만)
+    if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
+      try {
+        await Firebase.initializeApp(
+          options: DefaultFirebaseOptions.currentPlatform,
+        );
+        FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
-  // 초대 링크로 앱이 열렸는지 확인 (딥링크 g= 보호자 UID, s= 보호대상자 UID)
-  try {
-    final appLinks = AppLinks();
-    final uri = await appLinks.getInitialLink();
-    if (uri != null) {
-      final g = uri.queryParameters['g'];
-      if (g != null && g.isNotEmpty) {
-        await InvitePendingService.setPendingInviterId(g);
+        // Crashlytics: 프로덕션에서만 수집 (디버그 시 대시보드 오염 방지)
+        await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(!kDebugMode);
+        FlutterError.onError = (details) {
+          FlutterError.presentError(details);
+          FirebaseCrashlytics.instance.recordFlutterFatalError(details);
+        };
+        PlatformDispatcher.instance.onError = (error, stack) {
+          FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+          return true;
+        };
+      } catch (e) {
+        debugPrint('Firebase 초기화 오류: $e');
+        MyApp.firebaseInitFailed = true;
       }
-      final s = uri.queryParameters['s'];
-      if (s != null && s.isNotEmpty) {
-        await InvitePendingService.setPendingSubjectId(s);
+      try {
+        await NotificationService.instance.initialize();
+      } catch (e) {
+        debugPrint('알림 서비스 초기화 오류 (앱은 계속 실행됩니다): $e');
+      }
+    } else if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      try {
+        await Firebase.initializeApp(
+          options: DefaultFirebaseOptions.currentPlatform,
+        );
+      } catch (e) {
+        debugPrint('Firebase 초기화 실패 (데스크톱): $e');
       }
     }
-  } catch (_) {}
 
-  // 미설치 → 스토어 설치 → 앱 첫 실행: Install Referrer에서 inviterId/subjectId 복원
-  if (!kIsWeb && Platform.isAndroid) {
+    // 초대 링크로 앱이 열렸는지 확인
     try {
-      const channel = MethodChannel('howareyou/install_referrer');
-      final referrer = await channel.invokeMethod<String>('getInstallReferrer');
-      if (referrer != null && referrer.isNotEmpty) {
-        final inviterId = _parseInviterIdFromReferrer(referrer);
-        if (inviterId != null && inviterId.isNotEmpty) {
-          await InvitePendingService.setPendingInviterId(inviterId);
+      final appLinks = AppLinks();
+      final uri = await appLinks.getInitialLink();
+      if (uri != null) {
+        final g = uri.queryParameters['g'];
+        if (g != null && g.isNotEmpty) {
+          await InvitePendingService.setPendingInviterId(g);
         }
-        final subjectId = _parseSubjectIdFromReferrer(referrer);
-        if (subjectId != null && subjectId.isNotEmpty) {
-          await InvitePendingService.setPendingSubjectId(subjectId);
+        final s = uri.queryParameters['s'];
+        if (s != null && s.isNotEmpty) {
+          await InvitePendingService.setPendingSubjectId(s);
         }
       }
     } catch (_) {}
-  }
 
-  runZonedGuarded(() {
+    // Install Referrer에서 inviterId/subjectId 복원
+    if (!kIsWeb && Platform.isAndroid) {
+      try {
+        const channel = MethodChannel('howareyou/install_referrer');
+        final referrer = await channel.invokeMethod<String>('getInstallReferrer');
+        if (referrer != null && referrer.isNotEmpty) {
+          final inviterId = _parseInviterIdFromReferrer(referrer);
+          if (inviterId != null && inviterId.isNotEmpty) {
+            await InvitePendingService.setPendingInviterId(inviterId);
+          }
+          final subjectId = _parseSubjectIdFromReferrer(referrer);
+          if (subjectId != null && subjectId.isNotEmpty) {
+            await InvitePendingService.setPendingSubjectId(subjectId);
+          }
+        }
+      } catch (_) {}
+    }
+
     runApp(const MyApp());
   }, (error, stack) {
     if (!kIsWeb && (Platform.isAndroid || Platform.isIOS) && !MyApp.firebaseInitFailed) {

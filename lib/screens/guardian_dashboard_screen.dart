@@ -945,7 +945,7 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> with 
                           child: OutlinedButton.icon(
                             onPressed: () => _showInviteBottomSheet(context, userId),
                             icon: const Icon(Icons.link, size: 22),
-                            label: const Text('보호 대상에게 초대 링크 보내기'),
+                            label: const Text('보호 대상 초대 링크'),
                             style: OutlinedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                               alignment: Alignment.centerLeft,
@@ -955,6 +955,7 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> with 
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
+                              textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                             ),
                           ),
                         ),
@@ -1170,7 +1171,7 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> with 
                       child: OutlinedButton.icon(
                         onPressed: () => _showInviteBottomSheet(context, userId),
                         icon: const Icon(Icons.link, size: 22),
-                        label: const Text('보호 대상에게 초대 링크 보내기'),
+                        label: const Text('보호 대상 초대 링크'),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                           alignment: Alignment.centerLeft,
@@ -1180,6 +1181,7 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> with 
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
+                          textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                         ),
                       ),
                     ),
