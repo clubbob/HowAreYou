@@ -10,6 +10,7 @@ import '../services/mood_service.dart';
 import '../utils/permission_helper.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../utils/button_styles.dart';
+import '../utils/constants.dart';
 import '../main.dart';
 import 'guardian_dashboard_screen.dart';
 import 'home_screen.dart';
@@ -116,7 +117,6 @@ class _GuardianModeScreenState extends State<GuardianModeScreen> with WidgetsBin
   @override
   Widget build(BuildContext context) {
     final authService = Provider.of<AuthService>(context);
-    const primaryColor = Color(0xFF5C6BC0);
     const surfaceColor = Color(0xFFF5F5F9);
 
     return Scaffold(
@@ -277,7 +277,7 @@ class _GuardianModeScreenState extends State<GuardianModeScreen> with WidgetsBin
                     message = '오늘 기록이 있어요';
                     icon = Icons.check_circle_outline;
                   } else {
-                    message = '오늘 기록이 없어요';
+                    message = '오늘 안부가 아직 없어요';
                     icon = Icons.schedule_outlined;
                   }
                   return Padding(
@@ -286,7 +286,7 @@ class _GuardianModeScreenState extends State<GuardianModeScreen> with WidgetsBin
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       decoration: BoxDecoration(
                         color: hasToday ? Colors.green.shade50 : Colors.blue.shade50,
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(AppConstants.buttonBorderRadius),
                         border: Border.all(
                           color: hasToday ? Colors.green.shade200 : Colors.blue.shade200,
                         ),
@@ -336,7 +336,7 @@ class _GuardianModeScreenState extends State<GuardianModeScreen> with WidgetsBin
               const SizedBox(height: 40),
               SizedBox(
                 width: double.infinity,
-                height: 88,
+                height: AppConstants.primaryButtonHeight,
                 child: FilledButton.icon(
                   onPressed: () {
                     Navigator.of(context).push(
@@ -346,15 +346,15 @@ class _GuardianModeScreenState extends State<GuardianModeScreen> with WidgetsBin
                     );
                   },
                   icon: const Icon(Icons.visibility_outlined, size: 40),
-                  label: const Text('오늘 안부 보기'),
+                  label: const Text('오늘 안부 확인'),
                   style: FilledButton.styleFrom(
-                    backgroundColor: primaryColor,
+                    backgroundColor: AppConstants.primaryColor,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 32),
                     elevation: 6,
-                    shadowColor: primaryColor.withOpacity(0.5),
+                    shadowColor: AppConstants.primaryColor.withOpacity(0.5),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(AppConstants.buttonBorderRadius),
                     ),
                     textStyle: const TextStyle(
                       fontSize: 24,
@@ -367,7 +367,8 @@ class _GuardianModeScreenState extends State<GuardianModeScreen> with WidgetsBin
               const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
-                child: OutlinedButton.icon(
+                height: AppConstants.primaryButtonHeight,
+                child: FilledButton.icon(
                   onPressed: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
@@ -375,18 +376,21 @@ class _GuardianModeScreenState extends State<GuardianModeScreen> with WidgetsBin
                       ),
                     );
                   },
-                  icon: const Icon(Icons.people_outline, size: 22),
+                  icon: const Icon(Icons.people_outline, size: 40),
                   label: const Text('보호 대상 관리'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: primaryColor,
-                    side: BorderSide(color: primaryColor, width: 1.5),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppConstants.primaryColor,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 32),
+                    elevation: 6,
+                    shadowColor: AppConstants.primaryColor.withOpacity(0.5),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(AppConstants.buttonBorderRadius),
                     ),
                     textStyle: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1,
                     ),
                   ),
                 ),

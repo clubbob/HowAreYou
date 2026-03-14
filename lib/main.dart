@@ -14,6 +14,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:app_links/app_links.dart';
 import 'firebase_options.dart';
+import 'utils/constants.dart';
 import 'services/invite_pending_service.dart';
 import 'services/auth_service.dart';
 import 'services/notification_service.dart';
@@ -209,7 +210,7 @@ class MyApp extends StatelessWidget {
         theme: ThemeData(
           useMaterial3: true,
           colorScheme: ColorScheme.fromSeed(
-            seedColor: const Color(0xFF4285F4), // Google Blue (Pixel 6)
+            seedColor: AppConstants.primaryColor,
             brightness: Brightness.light,
           ),
           scaffoldBackgroundColor: const Color(0xFFF5F5F5), // Pixel 6 background
@@ -273,15 +274,33 @@ class MyApp extends StatelessWidget {
           ),
           filledButtonTheme: FilledButtonThemeData(
             style: FilledButton.styleFrom(
+              backgroundColor: AppConstants.primaryColor,
+              foregroundColor: Colors.white,
+              elevation: 6,
+              shadowColor: AppConstants.primaryColor.withOpacity(0.5),
+              padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 24),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(24),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              textStyle: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1,
               ),
             ),
           ),
           outlinedButtonTheme: OutlinedButtonThemeData(
             style: OutlinedButton.styleFrom(
+              foregroundColor: AppConstants.primaryColor,
+              side: BorderSide(color: AppConstants.primaryColor, width: 1.5),
+              padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 24),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(24),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              textStyle: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1,
               ),
             ),
           ),

@@ -8,6 +8,7 @@ import '../services/mood_service.dart';
 import '../services/mode_service.dart';
 import '../models/mood_response_model.dart';
 import '../utils/button_styles.dart';
+import '../utils/constants.dart';
 import '../utils/permission_helper.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../main.dart';
@@ -142,7 +143,6 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> with WidgetsBindi
   Widget build(BuildContext context) {
     final authService = Provider.of<AuthService>(context);
     final theme = Theme.of(context);
-    const primaryColor = Color(0xFF5C6BC0);
     const surfaceColor = Color(0xFFF5F5F9);
 
     return Scaffold(
@@ -299,7 +299,7 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> with WidgetsBindi
                   final String message;
                   final String icon;
                   if (hasToday) {
-                    message = streak == 1 ? '오늘 기록했어요' : '$streak일 연속 기록 중';
+                    message = streak == 1 ? '오늘 안부를 전했어요' : '$streak일 연속 기록 중';
                     icon = '🔥';
                   } else {
                     message = '오늘 기록 안했어요';
@@ -311,7 +311,7 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> with WidgetsBindi
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       decoration: BoxDecoration(
                         color: hasToday ? Colors.orange.shade50 : Colors.grey.shade100,
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(AppConstants.buttonBorderRadius),
                         border: Border.all(
                           color: hasToday ? Colors.orange.shade200 : Colors.grey.shade300,
                         ),
@@ -362,17 +362,17 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> with WidgetsBindi
               const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
-                height: 88,
+                height: AppConstants.primaryButtonHeight,
                 child: FilledButton(
                   onPressed: () => _navigateToQuestion(),
                   style: FilledButton.styleFrom(
-                    backgroundColor: primaryColor,
+                    backgroundColor: AppConstants.primaryColor,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 24),
                     elevation: 6,
-                    shadowColor: primaryColor.withOpacity(0.5),
+                    shadowColor: AppConstants.primaryColor.withOpacity(0.5),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(AppConstants.buttonBorderRadius),
                     ),
                   ),
                   child: FittedBox(
@@ -384,7 +384,7 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> with WidgetsBindi
                         const Icon(Icons.sentiment_satisfied_rounded, size: 40),
                         const SizedBox(width: 12),
                         Text(
-                          '오늘 컨디션 기록하기',
+                          '오늘 컨디션 전하기',
                           style: const TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
@@ -399,7 +399,8 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> with WidgetsBindi
               const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
-                child: OutlinedButton.icon(
+                height: AppConstants.primaryButtonHeight,
+                child: FilledButton.icon(
                   onPressed: () {
                     final userId = authService.user?.uid;
                     if (userId != null) {
@@ -410,18 +411,21 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> with WidgetsBindi
                       );
                     }
                   },
-                  icon: const Icon(Icons.history_rounded, size: 22),
-                  label: const Text('지난 기록 보기'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: primaryColor,
-                    side: const BorderSide(color: primaryColor, width: 1.5),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  icon: const Icon(Icons.history_rounded, size: 40),
+                  label: const Text('지난 컨디션 보기'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppConstants.primaryColor,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 24),
+                    elevation: 6,
+                    shadowColor: AppConstants.primaryColor.withOpacity(0.5),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(AppConstants.buttonBorderRadius),
                     ),
                     textStyle: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1,
                     ),
                   ),
                 ),
@@ -429,7 +433,8 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> with WidgetsBindi
               const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
-                child: OutlinedButton.icon(
+                height: AppConstants.primaryButtonHeight,
+                child: FilledButton.icon(
                   onPressed: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
@@ -437,18 +442,21 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> with WidgetsBindi
                       ),
                     );
                   },
-                  icon: const Icon(Icons.person_add_rounded, size: 22),
+                  icon: const Icon(Icons.person_add_rounded, size: 40),
                   label: const Text('보호자 관리'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: primaryColor,
-                    side: const BorderSide(color: primaryColor, width: 1.5),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppConstants.primaryColor,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 24),
+                    elevation: 6,
+                    shadowColor: AppConstants.primaryColor.withOpacity(0.5),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(AppConstants.buttonBorderRadius),
                     ),
                     textStyle: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1,
                     ),
                   ),
                 ),
@@ -505,23 +513,39 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> with WidgetsBindi
     if (hasResponded && mounted) {
       final choice = await showDialog<String>(
         context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('오늘 안부는 이미 전달됐어요'),
-          content: const Text(
-            '오늘 기록은 이미 보호자에게 전달되었습니다.\n'
-            '필요하다면 다시 선택할 수 있어요.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop('close'),
-              child: const Text('닫기'),
+        builder: (ctx) {
+          final primary = Theme.of(ctx).colorScheme.primary;
+          return AlertDialog(
+            title: const Text('오늘 안부는 이미 전달됐어요'),
+            content: const Text(
+              '오늘 기록은 이미 보호자에게 전달되었습니다.\n'
+              '필요하다면 다시 선택할 수 있어요.',
             ),
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop('retry'),
-              child: const Text('다시 선택하기'),
-            ),
-          ],
-        ),
+            actionsAlignment: MainAxisAlignment.center,
+            actions: [
+              OutlinedButton(
+                onPressed: () => Navigator.of(ctx).pop('close'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.grey.shade700,
+                  side: BorderSide(color: Colors.grey.shade400),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                ),
+                child: const Text('닫기'),
+              ),
+              const SizedBox(width: 12),
+              FilledButton(
+                onPressed: () => Navigator.of(ctx).pop('retry'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: primary,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                ),
+                child: const Text('다시 선택하기'),
+              ),
+            ],
+          );
+        },
       );
       if (choice != 'retry' || !mounted) return;
       // "다시 선택하기"를 선택한 경우, 삭제하지 않고 화면만 열기

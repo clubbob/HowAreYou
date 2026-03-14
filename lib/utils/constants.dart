@@ -1,4 +1,13 @@
+import 'package:flutter/material.dart' show Color;
+
 class AppConstants {
+  /// 앱 메인 컬러 (버튼·강조 통일)
+  static const Color primaryColor = Color(0xFF5C6BC0);
+  /// 메인 버튼 모서리 반경
+  static const double buttonBorderRadius = 20.0;
+  /// 메인 버튼 높이
+  static const double primaryButtonHeight = 88.0;
+
   /// 보호대상자 초대 링크 베이스 (딥링크 + 미설치 시 웹에서 Play Store 유도)
   static const String inviteBaseUrl = 'https://howareyou-1c5de.web.app/invite';
 

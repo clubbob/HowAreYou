@@ -7,6 +7,7 @@ import '../services/guardian_service.dart';
 import '../services/notification_service.dart';
 import '../services/fcm_service.dart';
 import '../utils/button_styles.dart';
+import '../utils/constants.dart';
 import '../utils/permission_helper.dart';
 import '../main.dart';
 import 'subject_mode_screen.dart';
@@ -91,7 +92,6 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final authService = Provider.of<AuthService>(context);
-    const primaryColor = Color(0xFF5C6BC0);
     const surfaceColor = Color(0xFFF5F5F9);
 
     if (_isLoading) {
@@ -219,57 +219,59 @@ class _HomeScreenState extends State<HomeScreen> {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 48),
-              // 보호자 모드 버튼 (초록색) - 위로
+              // 보호자 모드 버튼
               SizedBox(
                 width: double.infinity,
-                height: 140,
+                height: 108,
                 child: FilledButton.icon(
                   onPressed: () => _selectMode(ModeService.modeGuardian),
-                  icon: const Icon(Icons.visibility, size: 56),
+                  icon: const Icon(Icons.visibility, size: 40),
                   label: const Column(
                     mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text('보호자', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
-                      SizedBox(height: 6),
-                      Text('소중한 분의 상태를 확인해요.', style: TextStyle(fontSize: 16)),
+                      Text('보호자', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                      SizedBox(height: 2),
+                      Text('소중한 분의 안부 확인', style: TextStyle(fontSize: 13)),
                     ],
                   ),
                   style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF4CAF50), // 초록색
+                    backgroundColor: AppConstants.primaryColor,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.all(28),
-                    elevation: 8,
-                    shadowColor: const Color(0xFF4CAF50).withOpacity(0.5),
+                    padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                    elevation: 6,
+                    shadowColor: AppConstants.primaryColor.withOpacity(0.5),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(24),
+                      borderRadius: BorderRadius.circular(AppConstants.buttonBorderRadius),
                     ),
                   ),
                 ),
               ),
               const SizedBox(height: 24),
-              // 보호대상자 모드 버튼 (파란색)
+              // 보호대상자 모드 버튼
               SizedBox(
                 width: double.infinity,
-                height: 140,
+                height: 108,
                 child: FilledButton.icon(
                   onPressed: () => _selectMode(ModeService.modeSubject),
-                  icon: const Icon(Icons.person, size: 56),
+                  icon: const Icon(Icons.person, size: 40),
                   label: const Column(
                     mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text('보호대상자', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
-                      SizedBox(height: 6),
-                      Text('하루 한 번 안부를 전해요.', style: TextStyle(fontSize: 16)),
+                      Text('보호대상자', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                      SizedBox(height: 2),
+                      Text('나의 안부 전달', style: TextStyle(fontSize: 13)),
                     ],
                   ),
                   style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF2196F3), // 파란색
+                    backgroundColor: AppConstants.primaryColor,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.all(28),
-                    elevation: 8,
-                    shadowColor: const Color(0xFF2196F3).withOpacity(0.5),
+                    padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                    elevation: 6,
+                    shadowColor: AppConstants.primaryColor.withOpacity(0.5),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(24),
+                      borderRadius: BorderRadius.circular(AppConstants.buttonBorderRadius),
                     ),
                   ),
                 ),
