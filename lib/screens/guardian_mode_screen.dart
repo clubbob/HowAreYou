@@ -68,7 +68,7 @@ class _GuardianModeScreenState extends State<GuardianModeScreen> with WidgetsBin
     if (state == AppLifecycleState.resumed && Platform.isAndroid) {
       PermissionHelper.isNotificationPermissionGranted().then((granted) {
         if (mounted) setState(() => _notificationPermissionGranted = granted);
-      });
+      }).catchError((_) {});
     }
   }
 
@@ -336,7 +336,7 @@ class _GuardianModeScreenState extends State<GuardianModeScreen> with WidgetsBin
               const SizedBox(height: 40),
               SizedBox(
                 width: double.infinity,
-                height: AppConstants.primaryButtonHeight,
+                height: 52,
                 child: FilledButton.icon(
                   onPressed: () {
                     Navigator.of(context).push(
@@ -345,29 +345,23 @@ class _GuardianModeScreenState extends State<GuardianModeScreen> with WidgetsBin
                       ),
                     );
                   },
-                  icon: const Icon(Icons.visibility_outlined, size: 40),
+                  icon: const Icon(Icons.visibility_outlined, size: 22),
                   label: const Text('오늘 안부 확인'),
                   style: FilledButton.styleFrom(
                     backgroundColor: AppConstants.primaryColor,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 32),
-                    elevation: 6,
-                    shadowColor: AppConstants.primaryColor.withOpacity(0.5),
+                    padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(AppConstants.buttonBorderRadius),
                     ),
-                    textStyle: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1,
-                    ),
+                    textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
-                height: AppConstants.primaryButtonHeight,
+                height: 52,
                 child: FilledButton.icon(
                   onPressed: () {
                     Navigator.of(context).push(
@@ -376,22 +370,16 @@ class _GuardianModeScreenState extends State<GuardianModeScreen> with WidgetsBin
                       ),
                     );
                   },
-                  icon: const Icon(Icons.people_outline, size: 40),
+                  icon: const Icon(Icons.people_outline, size: 22),
                   label: const Text('보호 대상 관리'),
                   style: FilledButton.styleFrom(
                     backgroundColor: AppConstants.primaryColor,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 32),
-                    elevation: 6,
-                    shadowColor: AppConstants.primaryColor.withOpacity(0.5),
+                    padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(AppConstants.buttonBorderRadius),
                     ),
-                    textStyle: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1,
-                    ),
+                    textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                   ),
                 ),
               ),

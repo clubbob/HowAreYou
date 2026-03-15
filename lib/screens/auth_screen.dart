@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../services/guardian_service.dart';
 import '../services/invite_pending_service.dart';
+import '../utils/constants.dart';
 import '../utils/legal_dialog.dart';
 import 'home_screen.dart';
 import 'subject_mode_screen.dart';
@@ -916,56 +917,81 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                         ),
                       ),
                 const SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: _isLoading ? null : _verifyOTP,
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                SizedBox(
+                  height: 52,
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : _verifyOTP,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppConstants.primaryColor,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppConstants.buttonBorderRadius),
+                      ),
+                      textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                     ),
+                    child: _isLoading
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          )
+                        : const Text('인증하기'),
                   ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                          ),
-                        )
-                      : const Text('인증하기'),
                 ),
                 const SizedBox(height: 12),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    OutlinedButton(
-                      onPressed: () {
-                        setState(() {
-                          _codeSent = false;
-                          _codeController.clear();
-                          _errorMessage = null;
-                        });
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          if (mounted) {
-                            _phoneFocusNode.requestFocus();
-                            _phoneController.selection = TextSelection.collapsed(offset: 0);
-                          }
-                        });
-                      },
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                    SizedBox(
+                      height: 52,
+                      child: OutlinedButton(
+                        onPressed: () {
+                          setState(() {
+                            _codeSent = false;
+                            _codeController.clear();
+                            _errorMessage = null;
+                          });
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (mounted) {
+                              _phoneFocusNode.requestFocus();
+                              _phoneController.selection = TextSelection.collapsed(offset: 0);
+                            }
+                          });
+                        },
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppConstants.primaryColor,
+                          side: const BorderSide(color: AppConstants.primaryColor, width: 1.5),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(AppConstants.buttonBorderRadius),
+                          ),
+                          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                        ),
+                        child: const Text('핸드폰 번호 다시 입력'),
                       ),
-                      child: const Text('핸드폰 번호 다시 입력'),
                     ),
                     if (_canResend) ...[
                       const SizedBox(height: 8),
-                      OutlinedButton(
-                        onPressed: _isLoading ? null : _resendCode,
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
+                      SizedBox(
+                        height: 52,
+                        child: OutlinedButton(
+                          onPressed: _isLoading ? null : _resendCode,
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppConstants.primaryColor,
+                            side: const BorderSide(color: AppConstants.primaryColor, width: 1.5),
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(AppConstants.buttonBorderRadius),
+                            ),
+                            textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                          ),
+                          child: const Text('인증번호 다시 받기'),
                         ),
-                        child: const Text('인증번호 다시 받기'),
                       ),
                     ],
                   ],

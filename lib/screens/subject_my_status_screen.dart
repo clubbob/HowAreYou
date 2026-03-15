@@ -5,6 +5,7 @@ import '../services/mood_service.dart';
 import '../services/auth_service.dart';
 import '../services/guardian_service.dart';
 import '../models/mood_response_model.dart';
+import '../utils/constants.dart';
 import '../widgets/mood_face_icon.dart';
 import '../widgets/status_display_widgets.dart';
 import '../main.dart';
@@ -282,15 +283,22 @@ class _SubjectMyStatusScreenState extends State<SubjectMyStatusScreen> {
                           // 더 보기 버튼 (7일만 보여줄 때만 표시)
                           if (!_showExtendedHistory && _historyResponses!.length == 7) ...[
                             const SizedBox(height: 16),
-                            Center(
-                              child: OutlinedButton.icon(
-                                onPressed: _loadExtendedHistory,
-                                icon: const Icon(Icons.expand_more, size: 18),
-                                label: const Text('더 보기 (최근 30일)'),
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: const Color(0xFF5C6BC0),
-                                  side: const BorderSide(color: Color(0xFF5C6BC0), width: 1.5),
-                                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                            SizedBox(
+                              height: 52,
+                              child: Center(
+                                child: OutlinedButton.icon(
+                                  onPressed: _loadExtendedHistory,
+                                  icon: const Icon(Icons.expand_more, size: 22),
+                                  label: const Text('더 보기 (최근 30일)'),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: AppConstants.primaryColor,
+                                    side: const BorderSide(color: AppConstants.primaryColor, width: 1.5),
+                                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(AppConstants.buttonBorderRadius),
+                                    ),
+                                    textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                                  ),
                                 ),
                               ),
                             ),

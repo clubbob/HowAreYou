@@ -74,7 +74,7 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> with 
     if (state == AppLifecycleState.resumed && Platform.isAndroid) {
       PermissionHelper.isNotificationPermissionGranted().then((granted) {
         if (mounted) setState(() => _notificationPermissionGranted = granted);
-      });
+      }).catchError((_) {});
     }
   }
 

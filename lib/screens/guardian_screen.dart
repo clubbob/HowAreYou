@@ -766,7 +766,10 @@ class _GuardianScreenState extends State<GuardianScreen> {
                             }
                           },
                           icon: const Icon(Icons.link, size: 22),
-                          label: const Text('보호자에게 초대 링크 보내기'),
+                          label: const Text(
+                            '보호자 초대 링크',
+                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                          ),
                           style: OutlinedButton.styleFrom(
                             padding: _inputPadding,
                             alignment: Alignment.centerLeft,

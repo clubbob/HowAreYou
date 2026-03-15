@@ -19,7 +19,6 @@ import 'services/invite_pending_service.dart';
 import 'services/auth_service.dart';
 import 'services/notification_service.dart';
 import 'services/fcm_service.dart';
-import 'services/movement_detection_service.dart';
 import 'screens/splash_screen.dart';
 import 'screens/auth_screen.dart';
 import 'screens/home_screen.dart';
@@ -66,37 +65,100 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   debugPrint('알림 내용: ${message.notification?.body}');
 }
 
+/// 초기화 실패 시 표시하는 최소 화면 (앱이 꺼지지 않도록)
+Widget _buildFallbackApp(String message) {
+  return MaterialApp(
+    title: '오늘 어때?',
+    home: Scaffold(
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.info_outline, size: 48, color: Colors.grey),
+                const SizedBox(height: 16),
+                Text(message, textAlign: TextAlign.center, style: const TextStyle(fontSize: 16)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
 void main() {
   runZonedGuarded(() async {
-    WidgetsFlutterBinding.ensureInitialized();
+    try {
+      WidgetsFlutterBinding.ensureInitialized();
 
-    // 디버그 시각적 도구 및 출력 비활성화
-    _disableDebugVisuals();
+      // 디버그 시각적 도구 및 출력 비활성화
+      _disableDebugVisuals();
 
-    // 한국 시간 사용을 위해 timezone 초기화 (MoodService 등에서 사용)
-    tz_data.initializeTimeZones();
-    tz.setLocalLocation(tz.getLocation('Asia/Seoul'));
+      // 위젯 빌드 오류 시 앱이 꺼지지 않도록 안전한 오류 위젯 사용
+      ErrorWidget.builder = (FlutterErrorDetails details) {
+        return Material(
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.warning_amber_rounded, size: 48, color: Colors.orange),
+                    const SizedBox(height: 16),
+                    const Text(
+                      '일시적인 화면 오류가 발생했습니다.\n다른 화면으로 이동해 주세요.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 14),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      };
 
-    // 한국어 날짜 포맷 (보호자 대시보드 7일 이력 등)
-    await initializeDateFormatting('ko_KR', null);
+      // 한국 시간 사용을 위해 timezone 초기화 (실패해도 앱은 계속 실행)
+      try {
+        tz_data.initializeTimeZones();
+        tz.setLocalLocation(tz.getLocation('Asia/Seoul'));
+      } catch (_) {}
 
-    // Firebase 초기화 (모바일 플랫폼만)
-    if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
+      // 한국어 날짜 포맷 (보호자 대시보드 7일 이력 등)
+      try {
+        await initializeDateFormatting('ko_KR', null);
+      } catch (_) {}
+
+      // Firebase 초기화 (모바일 플랫폼만)
+      if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
       try {
         await Firebase.initializeApp(
           options: DefaultFirebaseOptions.currentPlatform,
         );
         FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
-        // Crashlytics: 프로덕션에서만 수집 (디버그 시 대시보드 오염 방지)
+        // Firebase Crashlytics 초기화 (Firebase.initializeApp 이후)
         await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(!kDebugMode);
-        FlutterError.onError = (details) {
-          FlutterError.presentError(details);
-          FirebaseCrashlytics.instance.recordFlutterFatalError(details);
+
+        // FlutterError.onError → Crashlytics 연결 (Flutter 프레임워크 오류 수집)
+        FlutterError.onError = (FlutterErrorDetails details) {
+          if (!MyApp.firebaseInitFailed) {
+            FirebaseCrashlytics.instance.recordFlutterFatalError(details);
+          }
+          if (kDebugMode) {
+            FlutterError.presentError(details);
+          }
+          // 릴리즈에서는 presentError 호출 안 함 → 앱 종료 방지
         };
-        PlatformDispatcher.instance.onError = (error, stack) {
-          FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
-          return true;
+        PlatformDispatcher.instance.onError = (Object error, StackTrace stack) {
+          if (!MyApp.firebaseInitFailed) {
+            FirebaseCrashlytics.instance.recordError(error, stack, fatal: false);
+          }
+          return true; // 오류 처리함 → 앱 종료하지 않음
         };
       } catch (e) {
         debugPrint('Firebase 초기화 오류: $e');
@@ -151,11 +213,20 @@ void main() {
       } catch (_) {}
     }
 
-    runApp(const MyApp());
+      runApp(const MyApp());
+    } catch (e, stack) {
+      if (!kIsWeb && (Platform.isAndroid || Platform.isIOS) && !MyApp.firebaseInitFailed) {
+        try {
+          FirebaseCrashlytics.instance.recordError(e, stack, fatal: false);
+        } catch (_) {}
+      }
+      runApp(_buildFallbackApp('일시적인 오류가 발생했습니다.\n앱을 다시 실행해 주세요.'));
+    }
   }, (error, stack) {
     if (!kIsWeb && (Platform.isAndroid || Platform.isIOS) && !MyApp.firebaseInitFailed) {
-      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+      FirebaseCrashlytics.instance.recordError(error, stack, fatal: false);
     }
+    // zone 비동기 오류: 처리했으므로 앱 종료하지 않음 (rethrow 안 함)
   });
 }
 
@@ -340,31 +411,6 @@ class _AppLifecycleHandlerState extends State<_AppLifecycleHandler>
     with WidgetsBindingObserver {
   /// 포그라운드 복귀 시 연속 이벤트 디바운스 (2초)
   Timer? _resumeDebounceTimer;
-  /// 이동 감지 서비스 자기복구: 10분마다 health check
-  Timer? _movementHealthCheckTimer;
-  AuthService? _auth;
-  bool _authListenerAdded = false;
-
-  void _ensureMovementService() {
-    if (!mounted) {
-      MovementDetectionService.instance.stop();
-      _movementHealthCheckTimer?.cancel();
-      _movementHealthCheckTimer = null;
-      return;
-    }
-    final auth = _auth ?? context.read<AuthService>();
-    if (auth.isAuthenticated) {
-      final uid = auth.user?.uid;
-      if (uid != null) {
-        MovementDetectionService.instance.start(uid);
-        _startMovementHealthCheck();
-      }
-    } else {
-      MovementDetectionService.instance.stop();
-      _movementHealthCheckTimer?.cancel();
-      _movementHealthCheckTimer = null;
-    }
-  }
 
   @override
   void initState() {
@@ -372,39 +418,11 @@ class _AppLifecycleHandlerState extends State<_AppLifecycleHandler>
     WidgetsBinding.instance.addObserver(this);
   }
 
-  void _startMovementHealthCheck() {
-    _movementHealthCheckTimer?.cancel();
-    _movementHealthCheckTimer = Timer.periodic(const Duration(minutes: 10), (_) {
-      if (!mounted) return;
-      final auth = _auth ?? context.read<AuthService>();
-      if (auth.isAuthenticated && !MovementDetectionService.instance.isRunning) {
-        debugPrint('[이동감지] health check: 서비스 미동작 → 재시작');
-        _ensureMovementService();
-      }
-    });
-  }
-
   @override
   void dispose() {
     _resumeDebounceTimer?.cancel();
-    _movementHealthCheckTimer?.cancel();
-    _auth?.removeListener(_ensureMovementService);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (!_authListenerAdded) {
-      _auth = context.read<AuthService>();
-      _auth!.addListener(_ensureMovementService);
-      _authListenerAdded = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _ensureMovementService();
-        _startMovementHealthCheck();
-      });
-    }
   }
 
   @override
@@ -419,8 +437,6 @@ class _AppLifecycleHandlerState extends State<_AppLifecycleHandler>
           NotificationService.instance.scheduleDailyRemindersByRole().catchError((e) {
             debugPrint('알림 스케줄링 오류 (무시): $e');
           });
-          _ensureMovementService();
-          _startMovementHealthCheck();
         }
       });
     }

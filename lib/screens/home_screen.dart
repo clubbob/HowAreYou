@@ -116,7 +116,6 @@ class _HomeScreenState extends State<HomeScreen> {
         foregroundColor: Colors.black87,
         automaticallyImplyLeading: false, // 뒤로 가기 버튼 숨김 (최상위 화면)
         actions: [
-          // 로그아웃 버튼 (테스트용)
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: '로그아웃',

@@ -12,10 +12,11 @@ packages:
   activity_recognition_flutter:
     dependency: "direct main"
     description:
-      path: "plugins/flutter-plugins/packages/activity_recognition_flutter"
-      relative: true
-    source: path
-    version: "5.0.0"
+      name: activity_recognition_flutter
+      sha256: b15ed1b89029b2557cbc5ed449a574d58452d4f76b3479d891ac2a12d513f0ac
+      url: "https://pub.dev"
+    source: hosted
+    version: "6.0.0"
   android_intent_plus:
     dependency: "direct main"
     description:

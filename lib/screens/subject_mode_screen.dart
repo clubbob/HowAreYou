@@ -12,6 +12,7 @@ import '../utils/constants.dart';
 import '../utils/permission_helper.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../main.dart';
+import '../services/movement_detection_service.dart';
 import 'question_screen.dart';
 import 'guardian_screen.dart';
 import 'home_screen.dart';
@@ -51,13 +52,24 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> with WidgetsBindi
         await _requestNotificationPermission();
         // 보호대상자 역할 활성 플래그 설정 (스케줄은 Splash/포그라운드 복귀에서만)
         await ModeService.setSubjectEnabled(true);
-        // MovementDetectionService는 앱 부팅/로그인 시 상시 유지 (main.dart _AppLifecycleHandler)
+        // 이동 감지: 이 화면에 있을 때만 실행 (앱 시작 시 크래시 방지)
+        final uid = authService.user?.uid;
+        if (uid != null) {
+          try {
+            await MovementDetectionService.instance.start(uid);
+          } catch (e) {
+            debugPrint('[이동감지] 시작 실패: $e');
+          }
+        }
       }
     });
   }
 
   @override
   void dispose() {
+    try {
+      MovementDetectionService.instance.stop();
+    } catch (_) {}
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -67,7 +79,7 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> with WidgetsBindi
     if (state == AppLifecycleState.resumed && Platform.isAndroid) {
       PermissionHelper.isNotificationPermissionGranted().then((granted) {
         if (mounted) setState(() => _notificationPermissionGranted = granted);
-      });
+      }).catchError((_) {});
     }
   }
 
@@ -362,44 +374,26 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> with WidgetsBindi
               const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
-                height: AppConstants.primaryButtonHeight,
-                child: FilledButton(
+                height: 52,
+                child: FilledButton.icon(
                   onPressed: () => _navigateToQuestion(),
+                  icon: const Icon(Icons.sentiment_satisfied_rounded, size: 22),
+                  label: const Text('오늘 컨디션 전하기'),
                   style: FilledButton.styleFrom(
                     backgroundColor: AppConstants.primaryColor,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 24),
-                    elevation: 6,
-                    shadowColor: AppConstants.primaryColor.withOpacity(0.5),
+                    padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(AppConstants.buttonBorderRadius),
                     ),
-                  ),
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.sentiment_satisfied_rounded, size: 40),
-                        const SizedBox(width: 12),
-                        Text(
-                          '오늘 컨디션 전하기',
-                          style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1,
-                          ),
-                        ),
-                      ],
-                    ),
+                    textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
-                height: AppConstants.primaryButtonHeight,
+                height: 52,
                 child: FilledButton.icon(
                   onPressed: () {
                     final userId = authService.user?.uid;
@@ -411,29 +405,23 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> with WidgetsBindi
                       );
                     }
                   },
-                  icon: const Icon(Icons.history_rounded, size: 40),
+                  icon: const Icon(Icons.history_rounded, size: 22),
                   label: const Text('지난 컨디션 보기'),
                   style: FilledButton.styleFrom(
                     backgroundColor: AppConstants.primaryColor,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 24),
-                    elevation: 6,
-                    shadowColor: AppConstants.primaryColor.withOpacity(0.5),
+                    padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(AppConstants.buttonBorderRadius),
                     ),
-                    textStyle: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1,
-                    ),
+                    textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
-                height: AppConstants.primaryButtonHeight,
+                height: 52,
                 child: FilledButton.icon(
                   onPressed: () {
                     Navigator.of(context).push(
@@ -442,22 +430,16 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> with WidgetsBindi
                       ),
                     );
                   },
-                  icon: const Icon(Icons.person_add_rounded, size: 40),
+                  icon: const Icon(Icons.person_add_rounded, size: 22),
                   label: const Text('보호자 관리'),
                   style: FilledButton.styleFrom(
                     backgroundColor: AppConstants.primaryColor,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 24),
-                    elevation: 6,
-                    shadowColor: AppConstants.primaryColor.withOpacity(0.5),
+                    padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(AppConstants.buttonBorderRadius),
                     ),
-                    textStyle: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1,
-                    ),
+                    textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                   ),
                 ),
               ),
