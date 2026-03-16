@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/auth_service.dart';
 import '../services/mode_service.dart';
 import '../services/guardian_service.dart';
@@ -231,7 +232,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       Text('보호자', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
                       SizedBox(height: 2),
-                      Text('소중한 분의 안부 확인', style: TextStyle(fontSize: 13)),
+                      Text(
+                        '소중한 분의 안부를 확인해요',
+                        style: TextStyle(fontSize: 12),
+                        maxLines: 2,
+                        textAlign: TextAlign.center,
+                      ),
                     ],
                   ),
                   style: FilledButton.styleFrom(
@@ -260,7 +266,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       Text('보호대상자', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
                       SizedBox(height: 2),
-                      Text('나의 안부 전달', style: TextStyle(fontSize: 13)),
+                      Text(
+                        '나의 안부를 전해요',
+                        style: TextStyle(fontSize: 12),
+                        maxLines: 2,
+                        textAlign: TextAlign.center,
+                      ),
                     ],
                   ),
                   style: FilledButton.styleFrom(
@@ -273,6 +284,24 @@ class _HomeScreenState extends State<HomeScreen> {
                       borderRadius: BorderRadius.circular(AppConstants.buttonBorderRadius),
                     ),
                   ),
+                ),
+              ),
+              const SizedBox(height: 32),
+              GestureDetector(
+                onTap: () async {
+                  final uri = Uri.parse(AppConstants.inquiryUrl);
+                  if (await canLaunchUrl(uri)) {
+                    await launchUrl(uri, mode: LaunchMode.externalApplication);
+                  }
+                },
+                child: Text(
+                  '앱 소개 · 오늘어때.com',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.grey.shade600,
+                    decoration: TextDecoration.underline,
+                  ),
+                  textAlign: TextAlign.center,
                 ),
               ),
             ],

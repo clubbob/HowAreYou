@@ -269,6 +269,34 @@ class MoodService {
     return _getLastNDaysResponses(subjectId, 30);
   }
 
+  /// 최근 maxDays(기본 30일) 이력 기준으로, 오늘을 포함한 "실제 연속 기록 일수"를 다시 계산한다.
+  /// subjects.currentStreak가 과거 데이터로 부풀려진 경우(중간에 끊겼는데 갱신 안 된 경우)를 보정하기 위해 사용.
+  Future<int> computeCurrentStreakFromHistory(
+    String subjectId, {
+    int maxDays = 30,
+  }) async {
+    final now = _nowKorea();
+    final today = DateTime(now.year, now.month, now.day);
+    final history =
+        await _getLastNDaysResponses(subjectId, maxDays, forGuardian: true);
+
+    int streak = 0;
+    for (var i = 0; i < maxDays; i++) {
+      final date = today.subtract(Duration(days: i));
+      final dateStr = DateFormat('yyyy-MM-dd').format(date);
+      final dayMap = history[dateStr];
+      final hasRecord =
+          dayMap != null && dayMap.values.any((response) => response != null);
+      if (hasRecord) {
+        streak += 1;
+      } else {
+        // 오늘 포함해서 연속으로 이어진 일수만 계산하므로, 처음 끊기는 날에서 종료
+        break;
+      }
+    }
+    return streak;
+  }
+
   /// 특정 월 기록률 계산. (기록한 일수 / 해당 월 총 일수) * 100.
   /// [year], [month]: 1-based. 반환값 0~100.
   Future<double> getMonthRecordRate(String subjectId, int year, int month) async {

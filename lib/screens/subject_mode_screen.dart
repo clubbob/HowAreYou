@@ -301,8 +301,9 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> with WidgetsBindi
                     ? () async {
                         final uid = authService.user!.uid;
                         final hasToday = await _moodService.hasRespondedToday(subjectId: uid);
-                        final streakData = await _moodService.getStreak(uid);
-                        return (hasToday: hasToday, currentStreak: streakData?.currentStreak ?? 0);
+                        final streak =
+                            await _moodService.computeCurrentStreakFromHistory(uid, maxDays: 30);
+                        return (hasToday: hasToday, currentStreak: streak);
                       }()
                     : Future.value((hasToday: false, currentStreak: 0)),
                 builder: (context, snapshot) {
@@ -314,7 +315,7 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> with WidgetsBindi
                     message = streak == 1 ? '오늘 안부를 전했어요' : '$streak일 연속 기록 중';
                     icon = '🔥';
                   } else {
-                    message = '오늘 기록 안했어요';
+                    message = '오늘 안부를 아직 전하지 않았어요';
                     icon = '⏳';
                   }
                   return Padding(
@@ -351,7 +352,7 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> with WidgetsBindi
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(
-                    '오늘 컨디션은 어떤가요?',
+                    '오늘 안부는 어떤가요?',
                     style: theme.textTheme.headlineLarge?.copyWith(
                       fontWeight: FontWeight.bold,
                       fontSize: 36,
@@ -374,19 +375,20 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> with WidgetsBindi
               const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
-                height: 52,
+                height: 72,
                 child: FilledButton.icon(
                   onPressed: () => _navigateToQuestion(),
-                  icon: const Icon(Icons.sentiment_satisfied_rounded, size: 22),
-                  label: const Text('오늘 컨디션 전하기'),
+                  icon: const Icon(Icons.sentiment_satisfied_rounded, size: 26),
+                  label: const Text('오늘 안부 전하기'),
                   style: FilledButton.styleFrom(
+                    // PRIMARY: 가장 진한 색, 메인 액션
                     backgroundColor: AppConstants.primaryColor,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+                    padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 32),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(AppConstants.buttonBorderRadius),
                     ),
-                    textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                    textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
                   ),
                 ),
               ),
@@ -406,9 +408,10 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> with WidgetsBindi
                     }
                   },
                   icon: const Icon(Icons.history_rounded, size: 22),
-                  label: const Text('지난 컨디션 보기'),
+                  label: const Text('지난 안부 보기'),
                   style: FilledButton.styleFrom(
-                    backgroundColor: AppConstants.primaryColor,
+                    // SECONDARY: 조금 연한 색
+                    backgroundColor: Color(0xFF7986CB),
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
                     shape: RoundedRectangleBorder(
@@ -433,7 +436,8 @@ class _SubjectModeScreenState extends State<SubjectModeScreen> with WidgetsBindi
                   icon: const Icon(Icons.person_add_rounded, size: 22),
                   label: const Text('보호자 관리'),
                   style: FilledButton.styleFrom(
-                    backgroundColor: AppConstants.primaryColor,
+                    // SECONDARY: 조금 연한 색
+                    backgroundColor: Color(0xFF7986CB),
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
                     shape: RoundedRectangleBorder(

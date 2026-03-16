@@ -602,11 +602,11 @@ async function sendResponseNotification(snap, context) {
         return null; // 보호자가 없으면 알림 불필요
       }
 
-      // 보호 대상 이름 가져오기
+      // 보호 대상 이름 가져오기 (보호자가 저장한 표시 이름 우선)
       const subjectDisplayName = subjectData.displayName || '보호 대상';
       
-      // slot 값으로 문구 결정 (하루 1회 응답 시 slot === 'daily')
-      const bodyText = `${subjectDisplayName}님이 컨디션을 기록 했습니다`;
+      // 기록 알림 문구: 오늘 ○○님이 안부를 전했습니다
+      const bodyText = `오늘 ${subjectDisplayName}님이 안부를 전했습니다`;
 
       // 보호자별로 알림 발송 (FCM 토큰 정리 포함)
       const sendPromises = guardianUids.map(async (guardianUid) => {

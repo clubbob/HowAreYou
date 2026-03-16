@@ -1689,9 +1689,13 @@ class _SubjectListItemState extends State<_SubjectListItem> {
       return;
     }
     // 보호자용: prompts만 (기록 여부만, mood/note 비공개)
-    final today = await widget.moodService.getTodayResponses(widget.subjectId, forGuardian: true);
-    final last7 = await widget.moodService.getLast7DaysResponses(widget.subjectId, forGuardian: true);
-    final streak = await widget.moodService.getStreak(widget.subjectId);
+    final today =
+        await widget.moodService.getTodayResponses(widget.subjectId, forGuardian: true);
+    final last7 =
+        await widget.moodService.getLast7DaysResponses(widget.subjectId, forGuardian: true);
+    // subjects.currentStreak 대신 실제 기록 이력 기준으로 연속 일수를 다시 계산
+    final streak =
+        await widget.moodService.computeCurrentStreakFromHistory(widget.subjectId, maxDays: 30);
     DateTime? latest;
     for (final dayMap in last7.values) {
       for (final r in dayMap.values) {
@@ -1704,7 +1708,7 @@ class _SubjectListItemState extends State<_SubjectListItem> {
       setState(() {
         _todayResponses = today;
         _latestAnsweredAt = latest;
-        _currentStreak = streak?.currentStreak ?? 0;
+        _currentStreak = streak;
       });
     }
   }

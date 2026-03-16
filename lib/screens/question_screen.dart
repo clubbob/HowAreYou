@@ -88,7 +88,7 @@ class _QuestionScreenState extends State<QuestionScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('오늘 컨디션 기록하기'),
+        title: const Text('오늘 안부 전하기'),
         backgroundColor: Colors.white,
         elevation: 0,
         foregroundColor: Colors.black87,
@@ -378,27 +378,64 @@ class _QuestionScreenState extends State<QuestionScreen> {
 
       if (!mounted) return;
 
-      // 이전 화면이 있는지 확인
-      try {
-        if (Navigator.of(context).canPop()) {
-          Navigator.of(context).pop();
-        } else {
-          // 이전 화면이 없으면 (알림에서 직접 온 경우) SubjectModeScreen으로 이동
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const SubjectModeScreen()),
+      // 안부 전달 완료 애니메이션 (1초)
+      await showDialog(
+        context: context,
+        barrierDismissible: false,
+        barrierColor: Colors.black.withOpacity(0.1),
+        builder: (dialogContext) {
+          Future.delayed(const Duration(seconds: 1), () {
+            if (Navigator.of(dialogContext).canPop()) {
+              Navigator.of(dialogContext).pop();
+            }
+          });
+          return Center(
+            child: Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.12),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: const [
+                  SizedBox(
+                    height: 40,
+                    width: 40,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 3,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.green),
+                    ),
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    '안부가 전달되었습니다',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
           );
-        }
-      } catch (e) {
-        // pop() 실패 시 SubjectModeScreen으로 이동
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const SubjectModeScreen()),
-        );
-      }
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('잘했어요. 오늘 기록은 끝이에요.'),
-        ),
+        },
+      );
+
+      if (!mounted) return;
+
+      // 완료 후 자동으로 보호대상자 메인 화면으로 이동
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const SubjectModeScreen()),
+        (route) => false,
       );
     } catch (e, stack) {
       debugPrint('[컨디션 저장] 오류: $e\n$stack');
