@@ -327,44 +327,157 @@ class GuardianService {
   }
 
   /// 보호대상자가 보호자를 자신의 목록에서 제거 (Callable removeGuardianFromSubjectBySubject)
+  /// Callable 미배포·네트워크 오류 시 Firestore 규칙 허용 범위에서 직접 pairedGuardianUids 제거(폴백).
   Future<void> removeGuardianBySubject({
     required String subjectUid,
     required String guardianUid,
   }) async {
     if (subjectUid == guardianUid) return;
+    final g = guardianUid.trim();
+    if (g.isEmpty) return;
+
     try {
-      final callable = FirebaseFunctions.instance.httpsCallable('removeGuardianFromSubjectBySubject');
-      await callable.call({'guardianUid': guardianUid});
+      final callable =
+          FirebaseFunctions.instance.httpsCallable('removeGuardianFromSubjectBySubject');
+      await callable.call({'guardianUid': g});
+      return;
     } on FirebaseFunctionsException catch (e) {
-      debugPrint('GuardianService: removeGuardianBySubject 실패 $e');
-      final msg = switch (e.code) {
-        'unauthenticated' => '로그인이 필요합니다.',
-        'invalid-argument' => e.message ?? '잘못된 요청입니다.',
-        _ => e.message ?? '삭제에 실패했습니다. 잠시 후 다시 시도해 주세요.',
-      };
-      throw Exception(msg);
+      debugPrint('GuardianService: removeGuardianBySubject Callable 실패 → Firestore 폴백: $e');
+      if (e.code == 'unauthenticated') {
+        throw Exception('로그인이 필요합니다.');
+      }
+      if (e.code == 'invalid-argument' || e.code == 'failed-precondition') {
+        final m = e.message ?? '';
+        if (m.isNotEmpty) throw Exception(m);
+      }
+      // not-found(함수 미배포)·deadline·unavailable 등 → 폴백
+    } catch (e) {
+      debugPrint('GuardianService: removeGuardianBySubject Callable 오류 → Firestore 폴백: $e');
+    }
+
+    await _removeGuardianPairingFirestore(subjectUid, g);
+  }
+
+  /// subjects 문서에서 보호자 연결만 제거 (보호대상자 본인 규칙: pairedGuardianUids 크기 감소 허용)
+  Future<void> _removeGuardianPairingFirestore(String subjectUid, String guardianUid) async {
+    final subjectRef =
+        FirebaseFirestore.instance.collection(AppConstants.subjectsCollection).doc(subjectUid);
+    try {
+      await FirebaseFirestore.instance.runTransaction((tx) async {
+        final snap = await tx.get(subjectRef);
+        if (!snap.exists) {
+          throw Exception('보호 대상 정보를 찾을 수 없습니다.');
+        }
+        final data = snap.data()!;
+        final raw = data['pairedGuardianUids'];
+        final paired = <String>[
+          if (raw is List) ...raw.map((e) => e.toString().trim()),
+        ];
+        if (!paired.contains(guardianUid)) {
+          throw Exception('이미 삭제되었거나 목록에 없는 보호자입니다.');
+        }
+        final newPaired = paired.where((id) => id != guardianUid).toList();
+        final infos = Map<String, dynamic>.from(
+          (data['guardianInfos'] as Map?)?.map((k, v) => MapEntry(k.toString(), v)) ?? {},
+        );
+        infos.remove(guardianUid);
+        tx.update(subjectRef, {
+          'pairedGuardianUids': newPaired,
+          'guardianInfos': infos,
+        });
+      });
+    } on FirebaseException catch (e) {
+      debugPrint('GuardianService: Firestore 폴백 실패 $e');
+      if (e.code == 'permission-denied') {
+        throw Exception('삭제 권한이 없습니다. 앱을 최신으로 업데이트한 뒤 다시 시도해 주세요.');
+      }
+      throw Exception('삭제에 실패했습니다. 네트워크를 확인한 뒤 다시 시도해 주세요.');
     }
   }
 
-  /// 보호자가 보호 대상을 목록에서 제거 (Cloud Function 호출 - Firestore permission-denied 우회)
+  /// 보호자가 보호 대상을 목록에서 제거 (Callable removeGuardianFromSubject)
+  /// Callable 실패 시 규칙상 보호자 본인이 subjects에서 자신만 제거 가능 → Firestore 폴백
   Future<void> removeSubjectFromGuardian({
     required String guardianUid,
     required String subjectId,
   }) async {
     if (guardianUid == subjectId) return;
+    final sid = subjectId.trim();
+    final gid = guardianUid.trim();
+    if (sid.isEmpty || gid.isEmpty) return;
+
     try {
       final callable = FirebaseFunctions.instance.httpsCallable('removeGuardianFromSubject');
-      await callable.call({'subjectId': subjectId});
-      debugPrint('GuardianService: 보호 대상 제거 완료 subjectId=$subjectId guardianUid=$guardianUid');
+      await callable.call({'subjectId': sid});
+      debugPrint('GuardianService: 보호 대상 제거 완료 subjectId=$sid guardianUid=$gid');
+      return;
     } on FirebaseFunctionsException catch (e) {
-      debugPrint('GuardianService: 보호 대상 제거 실패 $e');
-      final msg = switch (e.code) {
-        'unauthenticated' => '로그인이 필요합니다.',
-        'invalid-argument' => e.message ?? '잘못된 요청입니다.',
-        'permission-denied' => '권한이 없습니다.',
-        _ => e.message ?? '삭제에 실패했습니다. 잠시 후 다시 시도해 주세요.',
-      };
-      throw Exception(msg);
+      debugPrint('GuardianService: removeSubjectFromGuardian Callable 실패 → Firestore 폴백: $e');
+      if (e.code == 'unauthenticated') {
+        throw Exception('로그인이 필요합니다.');
+      }
+      if (e.code == 'invalid-argument' || e.code == 'failed-precondition') {
+        final m = e.message ?? '';
+        if (m.isNotEmpty) throw Exception(m);
+      }
+    } catch (e) {
+      debugPrint('GuardianService: removeSubjectFromGuardian Callable 오류 → Firestore 폴백: $e');
+    }
+
+    await _removeGuardianSelfFromSubjectFirestore(gid, sid);
+  }
+
+  /// 보호자가 subjects/{subjectId}에서 본인 UID만 제거 (canRemoveSelfAsGuardian 규칙)
+  Future<void> _removeGuardianSelfFromSubjectFirestore(
+    String guardianUid,
+    String subjectId,
+  ) async {
+    final subjectRef = _firestore.collection(AppConstants.subjectsCollection).doc(subjectId);
+    final userRef = _firestore.collection(AppConstants.usersCollection).doc(guardianUid);
+    try {
+      await _firestore.runTransaction((tx) async {
+        // Firestore: 트랜잭션 안에서는 모든 read를 먼저 한 뒤에만 write 가능
+        final snap = await tx.get(subjectRef);
+        final userSnap = await tx.get(userRef);
+
+        if (!snap.exists) {
+          throw Exception('보호 대상 정보를 찾을 수 없습니다.');
+        }
+        final data = snap.data()!;
+        final raw = data['pairedGuardianUids'];
+        final paired = <String>[
+          if (raw is List) ...raw.map((e) => e.toString().trim()),
+        ];
+        if (!paired.contains(guardianUid)) {
+          throw Exception('이미 삭제되었거나 목록에 없는 보호 대상입니다.');
+        }
+        final newPaired = paired.where((id) => id != guardianUid).toList();
+        final infos = Map<String, dynamic>.from(
+          (data['guardianInfos'] as Map?)?.map((k, v) => MapEntry(k.toString(), v)) ?? {},
+        );
+        infos.remove(guardianUid);
+
+        tx.update(subjectRef, {
+          'pairedGuardianUids': newPaired,
+          'guardianInfos': infos,
+        });
+
+        if (userSnap.exists) {
+          final count = (userSnap.data()?['guardianSubjectCount'] as num?)?.toInt() ?? 0;
+          if (count > 0) {
+            tx.update(userRef, {
+              'guardianSubjectCount': FieldValue.increment(-1),
+            });
+          }
+        }
+      });
+      debugPrint('GuardianService: Firestore 폴백으로 보호 대상 제거 완료 subjectId=$subjectId');
+    } on FirebaseException catch (e) {
+      debugPrint('GuardianService: 보호 대상 Firestore 폴백 실패 $e');
+      if (e.code == 'permission-denied') {
+        throw Exception('삭제 권한이 없습니다. 앱을 최신으로 업데이트한 뒤 다시 시도해 주세요.');
+      }
+      throw Exception('삭제에 실패했습니다. 네트워크를 확인한 뒤 다시 시도해 주세요.');
     }
   }
 

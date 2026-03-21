@@ -385,27 +385,33 @@ exports.removeGuardianFromSubject = functions.https.onCall(async (data, context)
   const userRef = db.collection('users').doc(guardianUid);
 
   await db.runTransaction(async (transaction) => {
+    // Firestore: 트랜잭션 내 모든 read를 먼저 수행한 뒤에만 write 가능
     const subjectSnap = await transaction.get(subjectRef);
+    const userSnap = await transaction.get(userRef);
+
     if (!subjectSnap.exists) {
-      return;
+      throw new functions.https.HttpsError('not-found', '보호 대상 문서가 없습니다.');
     }
 
     const existing = subjectSnap.data() || {};
-    const paired = [...(existing.pairedGuardianUids || [])];
-    if (!paired.includes(guardianUid)) {
-      return;
+    const paired = [...(existing.pairedGuardianUids || [])].map((u) => String(u).trim());
+    const g = String(guardianUid).trim();
+    if (!paired.includes(g)) {
+      throw new functions.https.HttpsError(
+        'failed-precondition',
+        '이미 연결이 해제되었거나 목록에 없는 보호 대상입니다.',
+      );
     }
 
     const infos = { ...(existing.guardianInfos || {}) };
-    delete infos[guardianUid];
-    const newPaired = paired.filter((uid) => uid !== guardianUid);
+    delete infos[g];
+    const newPaired = paired.filter((uid) => uid !== g);
 
     transaction.update(subjectRef, {
       pairedGuardianUids: newPaired,
       guardianInfos: infos,
     });
 
-    const userSnap = await transaction.get(userRef);
     const userData = userSnap.exists ? userSnap.data() : {};
     const count = userData.guardianSubjectCount ?? 0;
     if (count > 0) {
@@ -442,22 +448,31 @@ exports.removeGuardianFromSubjectBySubject = functions.https.onCall(async (data,
 
   await db.runTransaction(async (transaction) => {
     const subjectSnap = await transaction.get(subjectRef);
-    if (!subjectSnap.exists) return;
+    const userSnap = await transaction.get(userRef);
+
+    if (!subjectSnap.exists) {
+      throw new functions.https.HttpsError('not-found', '보호 대상 문서가 없습니다.');
+    }
 
     const existing = subjectSnap.data() || {};
-    const paired = [...(existing.pairedGuardianUids || [])];
-    if (!paired.includes(guardianUid)) return;
+    const paired = [...(existing.pairedGuardianUids || [])].map((u) => String(u).trim());
+    const g = String(guardianUid).trim();
+    if (!paired.includes(g)) {
+      throw new functions.https.HttpsError(
+        'failed-precondition',
+        '이미 연결이 해제되었거나 목록에 없는 보호자입니다.',
+      );
+    }
 
     const infos = { ...(existing.guardianInfos || {}) };
-    delete infos[guardianUid];
-    const newPaired = paired.filter((uid) => uid !== guardianUid);
+    delete infos[g];
+    const newPaired = paired.filter((uid) => uid !== g);
 
     transaction.update(subjectRef, {
       pairedGuardianUids: newPaired,
       guardianInfos: infos,
     });
 
-    const userSnap = await transaction.get(userRef);
     const userData = userSnap.exists ? userSnap.data() : {};
     const count = userData.guardianSubjectCount ?? 0;
     if (count > 0) {
